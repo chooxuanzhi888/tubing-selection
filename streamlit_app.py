@@ -236,7 +236,7 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
     # 1. Hero Platform Banner (Using exact uploaded image file)
-    st.image("Picture 1.jpg", 
+    st.image("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop", 
              caption="Offshore Production Facility — Upper Completion Overview", 
              use_container_width=True)
     
