@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import os
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
@@ -172,8 +173,6 @@ def run_engineering_calculations(inputs, candidate_df):
         velocity_pass = v_critical_loading < v_m < v_erosional
         
         # Material Compliance
-        # Sour Service (NACE MR0175): H2S >= 0.05 psi requires Sour Grade/13Cr
-        # Sweet Corrosion: CO2 >= 7.0 psi requires 13Cr
         material_pass = True
         mat_reason = "Compatible"
         if p_h2s >= 0.05 or p_co2 >= 7.0:
@@ -226,7 +225,7 @@ page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("**Project Stage:** Week 2 Implementation\n**Core Engine:** Field Units (Imperial)")
+st.sidebar.info("**Project Stage:** Upper Completion Optimization\n**Core Engine:** Field Units (Imperial)")
 
 # -----------------------------------------------------------------------------
 # PAGE 1: INTRODUCTION & OVERVIEW
@@ -236,11 +235,10 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
     # 1. Hero Offshore Rig Banner
-    st.image("image.png", 
-             caption="Offshore Production Facility — Upper Completion Overview", 
-             use_container_width=True)
+    if os.path.exists("image.png"):
+        st.image("image.png", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
     
-    # 2. What is Upper Completion?
+    # 2. Section: What is Upper Completion?
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
         <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">What is Upper Completion?</h2>
@@ -270,9 +268,8 @@ if page == "1. Introduction & Overview":
         """, unsafe_allow_html=True)
 
         # FIGURE 1
-        st.image("Figure 1.png", 
-                 caption="Figure 1: Upper-completion configurations", 
-                 use_container_width=True)
+        if os.path.exists("Figure 1.png"):
+            st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
 
         st.markdown("""
         <div class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
@@ -301,9 +298,76 @@ if page == "1. Introduction & Overview":
         """, unsafe_allow_html=True)
 
         # FIGURE 2
-        st.image("Figure 2.jpg", 
-                 caption="Figure 2: Typical upper-completion components", 
-                 use_container_width=True)
+        if os.path.exists("Figure 2.jpg"):
+            st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # SECTION 2: PRODUCTION TUBING: THE FLOW PATH OF THE WELL
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.markdown("""
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem;">
+        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">Production Tubing: The Flow Path of the Well</h2>
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
+            <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_pt1, col_pt2 = st.columns(2, gap="large")
+
+    with col_pt1:
+        if os.path.exists("Figure 3.jpg"):
+            st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
+
+    with col_pt2:
+        if os.path.exists("Figure 4.png"):
+            st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
+
+    # Key Tubing Specifications Table
+    st.markdown("""
+    <div class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
+        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">Key Tubing Specifications</h3>
+        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
+            <thead>
+                <tr style="background-color: #065F46; color: white; text-align: left;">
+                    <th style="padding: 12px 16px; border-radius: 6px 0 0 0; width: 30%;">Specification</th>
+                    <th style="padding: 12px 16px; border-radius: 0 6px 0 0; width: 70%;">Importance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal size / OD</td>
+                    <td style="padding: 12px 16px; color: #334155;">Determines the overall tubing size and compatibility with the casing.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Internal diameter (ID)</td>
+                    <td style="padding: 12px 16px; color: #334155;">Influences <b>fluid velocity and pressure loss</b>.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Drift diameter</td>
+                    <td style="padding: 12px 16px; color: #334155;">Determines the maximum equipment diameter that can pass through the tubing.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal weight</td>
+                    <td style="padding: 12px 16px; color: #334155;">Indicates tubing weight and is related to <b>wall thickness</b>.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Steel grade</td>
+                    <td style="padding: 12px 16px; color: #334155;">Determines <b>strength and suitability for corrosive environments</b>.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Connection</td>
+                    <td style="padding: 12px 16px; color: #334155;">Affects connection strength and tubing integrity.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
+                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Joint length</td>
+                    <td style="padding: 12px 16px; color: #334155;">Influences running and handling operations during completion and workover.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
@@ -433,7 +497,6 @@ elif page == "5. Recommendation & Sensitivity":
     
     with col1:
         if not passed_candidates.empty:
-            # Pick candidate with minimum total pressure drop among passed
             preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
             
             st.success("### Preferred Candidate")
