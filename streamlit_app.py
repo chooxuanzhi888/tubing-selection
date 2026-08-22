@@ -235,42 +235,177 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns([3, 2])
-    
+    # Section 1: What is Upper Completion?
+    st.markdown("""
+    <div class="card">
+        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem;">What is Upper Completion?</h2>
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
+            The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
     with col1:
         st.markdown("""
-        <div class="card">
-        <h3>What is Upper Completion & Production Tubing?</h3>
-        <p>The <b>upper completion</b> encompasses all tubulars and subsurface control equipment installed between the top of the production packer and the wellhead. At its core is the <b>production tubing</b>, which acts as the primary conduit transporting produced hydrocarbons from the reservoir to surface facilities.</p>
+        <div class="card" style="height: 100%;">
+            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Upper Completion Configurations</h3>
+            <p style="font-size: 0.98rem; line-height: 1.5; color: #334155;">Common configurations include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B;">
+                <li><b>Tubingless completion:</b> fluids flow through the casing.</li>
+                <li><b>Tubing without packer:</b> tubing is installed without annular isolation.</li>
+                <li><b>Tubing with packer:</b> the packer isolates the tubing–casing annulus.</li>
+                <li><b>Dual tubing with packers:</b> provides separate flow paths for multiple zones or fluids.</li>
+            </ul>
+            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-top: 1.2rem; margin-bottom: 0.6rem;">Major Design Decisions</h3>
+            <p style="font-size: 0.98rem; line-height: 1.5; color: #334155;">Key decisions include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B;">
+                <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
+                <li><b>Tubing size:</b> balances production capacity and pressure drop.</li>
+                <li><b>Completion configuration:</b> single or dual completion.</li>
+                <li><b>Tubing isolation:</b> using a <b>packer or equivalent</b> to control fluid communication.</li>
+            </ul>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="card">
-        <h3>Why Does Tubing Size Matter?</h3>
-        <ul>
-            <li><b>Sized Too Small:</b> Generates excessive frictional pressure drop ($\Delta P_{fric}$), restricting maximum production rates and triggering erosional wear.</li>
-            <li><b>Sized Too Large:</b> Leads to low flow velocities where gas fails to lift liquids, causing <i>liquid loading</i> and well shut-in.</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        
+
     with col2:
         st.markdown("""
-        <div class="card">
-        <h3>Chemical Engineering Core Pillars</h3>
-        <ul>
-            <li><b>Fluid Mechanics:</b> Velocity profiles, friction factors, and Reynolds regimes.</li>
-            <li><b>Multiphase Flow:</b> Combined oil, gas, and water holdup calculations.</li>
-            <li><b>Thermodynamics:</b> Pressure-Temperature gradients & PVT phase behavior.</li>
-            <li><b>Material Selection:</b> NACE MR0175 corrosion screening ($CO_2 / H_2S$ limits).</li>
-        </ul>
+        <div class="card" style="height: 100%;">
+            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Key Components</h3>
+            <p style="font-size: 0.98rem; line-height: 1.6; color: #1E293B;">
+                Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
+            </p>
+            <hr style="margin: 1.2rem 0; border-top: 1px solid #CBD5E1;">
+            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Chemical Engineering Core Pillars</h3>
+            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B;">
+                <li><b>Fluid Mechanics:</b> Velocity profiles, friction factors, and Reynolds regimes.</li>
+                <li><b>Multiphase Flow:</b> Combined oil, gas, and water holdup calculations.</li>
+                <li><b>Thermodynamics:</b> Pressure-Temperature gradients & PVT phase behavior.</li>
+                <li><b>Material Selection:</b> NACE MR0175 corrosion screening (CO₂ / H₂S limits).</li>
+            </ul>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.subheader("Completion Schematics & Figures")
+
+    tab1, tab2 = st.tabs(["Figure 1: Upper-Completion Configurations", "Figure 2: Typical Upper-Completion Components"])
+
+    # -------------------------------------------------------------------------
+    # FIGURE 1: Upper-Completion Configurations Schematic
+    # -------------------------------------------------------------------------
+    with tab1:
+        fig1 = go.Figure()
+        configs = ["Tubingless\nCompletion", "Tubing w/o\nPacker", "Tubing w/\nPacker", "Dual Tubing\nw/ Packers"]
+        x_offsets = [1, 3, 5, 7]
+
+        for idx, x in enumerate(x_offsets):
+            # Production Casing Outer Shell
+            fig1.add_shape(type="rect", x0=x-0.65, y0=0, x1=x+0.65, y1=10, line=dict(color="#1E293B", width=3), fillcolor="#F8FAFC")
+            
+            # Surface Xmas Tree Valves Assembly
+            fig1.add_shape(type="rect", x0=x-0.45, y0=10, x1=x+0.45, y1=11.4, line=dict(color="#0F172A", width=2), fillcolor="#E0F2FE")
+            fig1.add_shape(type="line", x0=x-0.45, y0=10.7, x1=x+0.45, y1=10.7, line=dict(color="#0284C7", width=2))
+            fig1.add_annotation(x=x, y=10.7, text="Xmas Tree", showarrow=False, font=dict(size=10, color="#0369A1", family="Arial Black"))
+
+            # Reservoir Inflow Arrows at Base
+            fig1.add_annotation(x=x-0.9, y=0.8, text="➔", showarrow=False, font=dict(size=14, color="#DC2626"))
+            fig1.add_annotation(x=x+0.9, y=0.8, text="⬅", showarrow=False, font=dict(size=14, color="#DC2626"))
+
+        # 1. Tubingless
+        fig1.add_annotation(x=1, y=5.5, text="↑ Fluid Flow ↑", showarrow=False, font=dict(color="#2563EB", size=13, family="Arial Black"))
+
+        # 2. Tubing w/o Packer
+        fig1.add_shape(type="rect", x0=2.85, y0=0, x1=3.15, y1=10, line=dict(color="#0F172A", width=2), fillcolor="#94A3B8")
+        fig1.add_annotation(x=3, y=5.5, text="Tubing", showarrow=False, font=dict(color="#0F172A", size=11, family="Arial Black"))
+        fig1.add_annotation(x=3.45, y=6.5, text="Annulus\nFlow", showarrow=False, font=dict(color="#64748B", size=9))
+
+        # 3. Tubing w/ Packer
+        fig1.add_shape(type="rect", x0=4.85, y0=0, x1=5.15, y1=10, line=dict(color="#0F172A", width=2), fillcolor="#94A3B8")
+        # Isolation Packer Elements (Solid Red Blocks)
+        fig1.add_shape(type="rect", x0=4.35, y0=3.8, x1=4.85, y1=4.4, fillcolor="#DC2626", line=dict(color="#991B1B"))
+        fig1.add_shape(type="rect", x0=5.15, y0=3.8, x1=5.65, y1=4.4, fillcolor="#DC2626", line=dict(color="#991B1B"))
+        fig1.add_annotation(x=5, y=4.1, text="PACKER", showarrow=False, font=dict(color="white", size=9, family="Arial Black"))
+
+        # 4. Dual Tubing w/ Packers
+        fig1.add_shape(type="rect", x0=6.65, y0=0, x1=6.88, y1=10, line=dict(color="#0F172A", width=2), fillcolor="#94A3B8")
+        fig1.add_shape(type="rect", x0=7.12, y0=2.2, x1=7.35, y1=10, line=dict(color="#0F172A", width=2), fillcolor="#94A3B8")
+        # Dual Packers
+        fig1.add_shape(type="rect", x0=6.35, y0=6.0, x1=7.65, y1=6.5, fillcolor="#DC2626", line=dict(color="#991B1B"))
+        fig1.add_shape(type="rect", x0=6.35, y0=1.8, x1=7.65, y1=2.3, fillcolor="#DC2626", line=dict(color="#991B1B"))
+        fig1.add_annotation(x=7, y=6.25, text="UPPER PACKER", showarrow=False, font=dict(color="white", size=8, family="Arial Black"))
+        fig1.add_annotation(x=7, y=2.05, text="LOWER PACKER", showarrow=False, font=dict(color="white", size=8, family="Arial Black"))
+
+        # Labels Below Schematics
+        for i, cfg in enumerate(configs):
+            fig1.add_annotation(x=x_offsets[i], y=-1.2, text=cfg, showarrow=False, font=dict(size=11, color="#0F172A", family="Arial Black"))
+
+        fig1.update_layout(
+            title=dict(text="Figure 1: Upper-Completion Configurations", font=dict(size=16, color="#1E3A8A")),
+            xaxis=dict(visible=False, range=[0, 8]),
+            yaxis=dict(visible=False, range=[-2.0, 12]),
+            height=460,
+            margin=dict(l=10, r=10, t=40, b=10),
+            plot_bgcolor="white"
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # FIGURE 2: Typical Upper-Completion Hardware Layout Schematic
+    # -------------------------------------------------------------------------
+    with tab2:
+        fig2 = go.Figure()
+
+        # Outer Production Casing Wall
+        fig2.add_shape(type="rect", x0=2.0, y0=0, x1=6.0, y1=12, line=dict(color="#1E293B", width=3), fillcolor="#F8FAFC")
+
+        # Intermediate Casing Shoe Transition
+        fig2.add_shape(type="path", path="M 1.5 10.8 L 2.0 10.2 L 2.0 10.8 Z", fillcolor="#1E293B")
+        fig2.add_shape(type="path", path="M 6.5 10.8 L 6.0 10.2 L 6.0 10.8 Z", fillcolor="#1E293B")
+        fig2.add_annotation(x=0.2, y=10.5, text="Intermediate Casing Shoe", showarrow=False, font=dict(size=10, color="#334155"))
+
+        # Central Production Tubing
+        fig2.add_shape(type="rect", x0=3.7, y0=1, x1=4.3, y1=12, line=dict(color="#0F172A", width=2), fillcolor="#94A3B8")
+
+        # SCSSV & Hydraulic Control Line
+        fig2.add_shape(type="rect", x0=3.4, y0=11.0, x1=4.6, y1=11.5, fillcolor="#F59E0B", line=dict(color="#B45309"))
+        fig2.add_shape(type="line", x0=3.2, y0=11.25, x1=3.4, y1=11.25, line=dict(color="#B45309", width=2))
+        fig2.add_shape(type="line", x0=3.2, y0=11.25, x1=3.2, y1=12.2, line=dict(color="#B45309", width=2))
+        fig2.add_annotation(x=1.1, y=11.25, text="<b>Hydraulic Control Line & SCSSV</b>", showarrow=True, arrowhead=2, ax=-30, ay=0, font=dict(size=10, color="#B45309"))
+
+        # Production Packers (Zonal Isolation)
+        packer_depths = [9.2, 6.2, 3.2]
+        for y_p in packer_depths:
+            fig2.add_shape(type="rect", x0=2.0, y0=y_p-0.25, x1=3.7, y1=y_p+0.25, fillcolor="#DC2626", line=dict(color="#7F1D1D"))
+            fig2.add_shape(type="rect", x0=4.3, y0=y_p-0.25, x1=6.0, y1=y_p+0.25, fillcolor="#DC2626", line=dict(color="#7F1D1D"))
+        fig2.add_annotation(x=7.5, y=9.2, text="<b>Production Packer 1</b>", showarrow=True, arrowhead=2, ax=40, ay=0, font=dict(size=10, color="#DC2626"))
+
+        # Electro-Hydraulic Flow Control Valves
+        fig2.add_shape(type="rect", x0=3.4, y0=7.4, x1=4.6, y1=8.0, fillcolor="#2563EB", line=dict(color="#1D4ED8"))
+        fig2.add_shape(type="rect", x0=3.4, y0=4.4, x1=4.6, y1=5.0, fillcolor="#2563EB", line=dict(color="#1D4ED8"))
+        fig2.add_annotation(x=7.6, y=7.7, text="<b>Electro-Hydraulic Control Valve</b>", showarrow=True, arrowhead=2, ax=40, ay=0, font=dict(size=10, color="#2563EB"))
+
+        # Producing Intervals / Perforated Zones
+        intervals = [(7.2, 8.4, "1st Producing Interval"), (4.2, 5.4, "2nd Producing Interval"), (1.2, 2.4, "3rd Producing Interval")]
+        for y_bot, y_top, label in intervals:
+            fig2.add_shape(type="rect", x0=1.1, y0=y_bot, x1=2.0, y1=y_top, fillcolor="#CBD5E1", line=dict(color="#64748B", dash="dot"))
+            fig2.add_shape(type="rect", x0=6.0, y0=y_bot, x1=6.9, y1=y_top, fillcolor="#CBD5E1", line=dict(color="#64748B", dash="dot"))
+            fig2.add_annotation(x=-0.2, y=(y_bot+y_top)/2, text=f"<b>{label}</b><br>(Perforated Zone)", showarrow=False, font=dict(size=10, color="#1E293B"))
+
+        fig2.update_layout(
+            title=dict(text="Figure 2: Typical Upper-Completion Hardware Layout Schematic", font=dict(size=16, color="#1E3A8A")),
+            xaxis=dict(visible=False, range=[-1.2, 9.0]),
+            yaxis=dict(visible=False, range=[0, 12.8]),
+            height=540,
+            margin=dict(l=10, r=10, t=40, b=10),
+            plot_bgcolor="white"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("Workflow Architecture")
     st.code("USER INPUTS ➔ HYDRAULIC SCREENING ➔ MECHANICAL & CORROSION CHECK ➔ RANKED RECOMMENDATIONS", language="text")
-
+    
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
 # -----------------------------------------------------------------------------
