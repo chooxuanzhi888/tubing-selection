@@ -235,32 +235,32 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
-    # 1. Hero Offshore Rig Banner
-    st.image("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop", 
-             caption="Offshore Production Platform — Upper Completion Facility", 
+    # 1. Hero Platform Banner (Using exact uploaded image file)
+    st.image("Picture 1.jpg", 
+             caption="Offshore Production Facility — Upper Completion Overview", 
              use_container_width=True)
     
-    # 2. Section: What is Upper Completion?
+    # 2. What is Upper Completion?
     st.markdown("""
-    <div class="card">
-        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem;">What is Upper Completion?</h2>
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
+        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">What is Upper Completion?</h2>
         <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
             The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2, gap="medium")
+    col1, col2 = st.columns(2, gap="large")
 
     # -------------------------------------------------------------------------
     # LEFT COLUMN: Configurations -> Figure 1 -> Major Decisions
     # -------------------------------------------------------------------------
     with col1:
         st.markdown("""
-        <div class="card">
-            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Upper Completion Configurations</h3>
-            <p style="font-size: 0.98rem; line-height: 1.5; color: #334155;">Common configurations include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0;">
+        <div class="card" style="border-top: 3px solid #3B82F6;">
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Upper Completion Configurations</h3>
+            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Common configurations include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Tubingless completion:</b> fluids flow through the casing.</li>
                 <li><b>Tubing without packer:</b> tubing is installed without annular isolation.</li>
                 <li><b>Tubing with packer:</b> the packer isolates the tubing–casing annulus.</li>
@@ -270,68 +270,58 @@ if page == "1. Introduction & Overview":
         """, unsafe_allow_html=True)
 
         # ---------------------------------------------------------------------
-        # FIGURE 1: Original Engineering Schematic Style
+        # FIGURE 1: Cleaned & Re-Organized Vector Diagram
         # ---------------------------------------------------------------------
         fig1 = go.Figure()
-        x_positions = [1, 3.2, 5.4, 7.6]
+        x_positions = [1.2, 3.6, 6.0, 8.4]
 
         for x in x_positions:
-            # Main Casing Outer Walls
-            fig1.add_shape(type="line", x0=x-0.6, y0=0, x1=x-0.6, y1=10, line=dict(color="#000000", width=2))
-            fig1.add_shape(type="line", x0=x+0.6, y0=0, x1=x+0.6, y1=10, line=dict(color="#000000", width=2))
+            # Main Casing Outer Shell
+            fig1.add_shape(type="line", x0=x-0.6, y0=0, x1=x-0.6, y1=10, line=dict(color="#0F172A", width=2))
+            fig1.add_shape(type="line", x0=x+0.6, y0=0, x1=x+0.6, y1=10, line=dict(color="#0F172A", width=2))
             
-            # Casing Shoe Triangles at Base
-            fig1.add_shape(type="path", path=f"M {x-0.9} 0 L {x-0.6} 0 L {x-0.6} 0.6 Z", fillcolor="#000000")
-            fig1.add_shape(type="path", path=f"M {x+0.9} 0 L {x+0.6} 0 L {x+0.6} 0.6 Z", fillcolor="#000000")
+            # Casing Shoe Triangles
+            fig1.add_shape(type="path", path=f"M {x-0.9} 0 L {x-0.6} 0 L {x-0.6} 0.6 Z", fillcolor="#0F172A")
+            fig1.add_shape(type="path", path=f"M {x+0.9} 0 L {x+0.6} 0 L {x+0.6} 0.6 Z", fillcolor="#0F172A")
             
             # Surface Wellhead Base Line
-            fig1.add_shape(type="line", x0=x-0.8, y0=10, x1=x+0.8, y1=10, line=dict(color="#000000", width=3))
-            
-            # Reservoir Inflow Arrows
-            fig1.add_annotation(x=x-1.0, y=3.0, text="Reservoir ➔", showarrow=False, font=dict(size=10, color="#000000", family="Arial"))
-            fig1.add_annotation(x=x+1.0, y=3.0, text="⬅ Reservoir", showarrow=False, font=dict(size=10, color="#000000", family="Arial"))
+            fig1.add_shape(type="line", x0=x-0.75, y0=10, x1=x+0.75, y1=10, line=dict(color="#0F172A", width=2.5))
 
         # Config 1: Tubingless
-        # Xmas Tree Valves (Blue Box with Valve Crosses)
-        fig1.add_shape(type="rect", x0=0.6, y0=10, x1=1.4, y1=11.2, fillcolor="#E0F2FE", line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="circle", x0=0.85, y0=10.3, x1=1.15, y1=10.9, line=dict(color="#000000", width=1.5))
-        fig1.add_annotation(x=1.0, y=5.0, text="↑", showarrow=False, font=dict(size=22, color="#000000"))
+        fig1.add_shape(type="rect", x0=0.8, y0=10, x1=1.6, y1=11.4, fillcolor="#E0F2FE", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="circle", x0=1.05, y0=10.4, x1=1.35, y1=11.0, line=dict(color="#0F172A", width=1.5))
+        fig1.add_annotation(x=1.2, y=5.0, text="↑ Flow ↑", showarrow=False, font=dict(size=14, color="#1E3A8A", family="Arial Black"))
+        fig1.add_annotation(x=0.25, y=3.0, text="Reservoir ➔", showarrow=False, font=dict(size=10, color="#475569"))
 
         # Config 2: Tubing w/o Packer
-        fig1.add_shape(type="rect", x0=2.8, y0=10, x1=3.6, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#000000", width=1.5))
-        # Tubing String
-        fig1.add_shape(type="line", x0=3.0, y0=0, x1=3.0, y1=10, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=3.4, y0=0, x1=3.4, y1=10, line=dict(color="#000000", width=1.5))
-        # Side Annulus Valve
-        fig1.add_shape(type="circle", x0=3.7, y0=9.2, x1=3.9, y1=9.6, line=dict(color="#000000", width=1.5))
-        fig1.add_annotation(x=3.2, y=5.0, text="↑  ↑", showarrow=False, font=dict(size=18, color="#000000"))
+        fig1.add_shape(type="rect", x0=3.2, y0=10, x1=4.0, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=3.4, y0=0, x1=3.4, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=3.8, y0=0, x1=3.8, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="circle", x0=4.1, y0=9.2, x1=4.3, y1=9.6, line=dict(color="#0F172A", width=1.5))
+        fig1.add_annotation(x=3.6, y=5.0, text="↑  ↑", showarrow=False, font=dict(size=16, color="#1E3A8A", family="Arial Black"))
 
         # Config 3: Tubing w/ Annulus Packer
-        fig1.add_shape(type="rect", x0=5.0, y0=10, x1=5.8, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=5.2, y0=0, x1=5.2, y1=10, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=5.6, y0=0, x1=5.6, y1=10, line=dict(color="#000000", width=1.5))
+        fig1.add_shape(type="rect", x0=5.6, y0=10, x1=6.4, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=5.8, y0=0, x1=5.8, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=6.2, y0=0, x1=6.2, y1=10, line=dict(color="#0F172A", width=1.5))
         # Packer Cross Blocks
-        fig1.add_shape(type="rect", x0=4.8, y0=4.2, x1=5.2, y1=4.8, fillcolor="white", line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=4.8, y0=4.2, x1=5.2, y1=4.8, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=4.8, y0=4.8, x1=5.2, y1=4.2, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="rect", x0=5.6, y0=4.2, x1=6.0, y1=4.8, fillcolor="white", line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=5.6, y0=4.2, x1=6.0, y1=4.8, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=5.6, y0=4.8, x1=6.0, y1=4.2, line=dict(color="#000000", width=1.5))
-        fig1.add_annotation(x=5.4, y=6.5, text="↑", showarrow=False, font=dict(size=20, color="#000000"))
+        fig1.add_shape(type="rect", x0=5.4, y0=4.2, x1=5.8, y1=4.8, fillcolor="#FFFFFF", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=5.4, y0=4.2, x1=5.8, y1=4.8, line=dict(color="#0F172A", width=1))
+        fig1.add_shape(type="line", x0=5.4, y0=4.8, x1=5.8, y1=4.2, line=dict(color="#0F172A", width=1))
+        fig1.add_shape(type="rect", x0=6.2, y0=4.2, x1=6.6, y1=4.8, fillcolor="#FFFFFF", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=6.2, y0=4.2, x1=6.6, y1=4.8, line=dict(color="#0F172A", width=1))
+        fig1.add_shape(type="line", x0=6.2, y0=4.8, x1=6.6, y1=4.2, line=dict(color="#0F172A", width=1))
+        fig1.add_annotation(x=6.0, y=6.5, text="↑", showarrow=False, font=dict(size=18, color="#1E3A8A", family="Arial Black"))
 
         # Config 4: Dual Tubing w/ Packers
-        fig1.add_shape(type="rect", x0=7.0, y0=10, x1=8.2, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#000000", width=1.5))
-        # Tubing 1
-        fig1.add_shape(type="line", x0=7.2, y0=0, x1=7.2, y1=10, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=7.4, y0=0, x1=7.4, y1=10, line=dict(color="#000000", width=1.5))
-        # Tubing 2 (Shorter)
-        fig1.add_shape(type="line", x0=7.8, y0=3.0, x1=7.8, y1=10, line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=8.0, y0=3.0, x1=8.0, y1=10, line=dict(color="#000000", width=1.5))
-        # Upper Packer
-        fig1.add_shape(type="rect", x0=7.0, y0=5.2, x1=8.2, y1=5.7, fillcolor="white", line=dict(color="#000000", width=1.5))
-        fig1.add_shape(type="line", x0=7.0, y0=5.2, x1=8.2, y1=5.7, line=dict(color="#000000", width=1))
-        # Lower Packer
-        fig1.add_shape(type="rect", x0=7.0, y0=1.8, x1=7.6, y1=2.3, fillcolor="white", line=dict(color="#000000", width=1.5))
+        fig1.add_shape(type="rect", x0=7.8, y0=10, x1=9.0, y1=12.2, fillcolor="#E0F2FE", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=8.0, y0=0, x1=8.0, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=8.2, y0=0, x1=8.2, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=8.6, y0=3.0, x1=8.6, y1=10, line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="line", x0=8.8, y0=3.0, x1=8.8, y1=10, line=dict(color="#0F172A", width=1.5))
+        # Upper/Lower Packers
+        fig1.add_shape(type="rect", x0=7.8, y0=5.2, x1=9.0, y1=5.7, fillcolor="#FFFFFF", line=dict(color="#0F172A", width=1.5))
+        fig1.add_shape(type="rect", x0=7.8, y0=1.8, x1=8.4, y1=2.3, fillcolor="#FFFFFF", line=dict(color="#0F172A", width=1.5))
 
         labels = [
             "Tubingless<br>completion", 
@@ -340,23 +330,23 @@ if page == "1. Introduction & Overview":
             "Dual tubing<br>completion<br>with packers"
         ]
         for i, lbl in enumerate(labels):
-            fig1.add_annotation(x=x_positions[i], y=-1.6, text=f"<b>{lbl}</b>", showarrow=False, font=dict(size=11, color="#0F172A", family="Arial"))
+            fig1.add_annotation(x=x_positions[i], y=-1.6, text=f"<b>{lbl}</b>", showarrow=False, font=dict(size=11, color="#1E293B", family="Arial"))
 
         fig1.update_layout(
-            title=dict(text="Figure 1: Upper-completion configurations", font=dict(size=15, color="#1E3A8A")),
-            xaxis=dict(visible=False, range=[-0.2, 8.8]),
+            title=dict(text="Figure 1: Upper-completion configurations", font=dict(size=14, color="#1E3A8A", family="Arial")),
+            xaxis=dict(visible=False, range=[-0.2, 9.8]),
             yaxis=dict(visible=False, range=[-2.8, 12.8]),
-            height=460,
-            margin=dict(l=5, r=5, t=35, b=5),
+            height=440,
+            margin=dict(l=10, r=10, t=35, b=10),
             plot_bgcolor="white"
         )
         st.plotly_chart(fig1, use_container_width=True)
 
         st.markdown("""
-        <div class="card" style="margin-top: 1rem;">
-            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Major Design Decisions</h3>
-            <p style="font-size: 0.98rem; line-height: 1.5; color: #334155;">Key decisions include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0;">
+        <div class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Major Design Decisions</h3>
+            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Key decisions include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
                 <li><b>Tubing size:</b> balances production capacity and pressure drop.</li>
                 <li><b>Completion configuration:</b> single or dual completion.</li>
@@ -370,90 +360,83 @@ if page == "1. Introduction & Overview":
     # -------------------------------------------------------------------------
     with col2:
         st.markdown("""
-        <div class="card">
-            <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.6rem;">Key Components</h3>
-            <p style="font-size: 0.98rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
+        <div class="card" style="border-top: 3px solid #10B981;">
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Key Components</h3>
+            <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
                 Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
         # ---------------------------------------------------------------------
-        # FIGURE 2: Exact Component Replica
+        # FIGURE 2: Spaced, High-Contrast Component Diagram
         # ---------------------------------------------------------------------
         fig2 = go.Figure()
 
-        # Intermediate Casing (Top Section Outer Boundary)
-        fig2.add_shape(type="line", x0=2.2, y0=11.0, x1=2.2, y1=13.0, line=dict(color="#000000", width=2.5))
-        fig2.add_shape(type="line", x0=5.8, y0=11.0, x1=5.8, y1=13.0, line=dict(color="#000000", width=2.5))
-        # Intermediate Casing Shoe
-        fig2.add_shape(type="path", path="M 1.7 11.0 L 2.2 10.5 L 2.2 11.0 Z", fillcolor="#000000")
-        fig2.add_shape(type="path", path="M 6.3 11.0 L 5.8 10.5 L 5.8 11.0 Z", fillcolor="#000000")
+        # Intermediate Casing
+        fig2.add_shape(type="line", x0=3.2, y0=11.2, x1=3.2, y1=13.0, line=dict(color="#0F172A", width=2.5))
+        fig2.add_shape(type="line", x0=6.8, y0=11.2, x1=6.8, y1=13.0, line=dict(color="#0F172A", width=2.5))
+        fig2.add_shape(type="path", path="M 2.6 11.2 L 3.2 10.6 L 3.2 11.2 Z", fillcolor="#0F172A")
+        fig2.add_shape(type="path", path="M 7.4 11.2 L 6.8 10.6 L 6.8 11.2 Z", fillcolor="#0F172A")
 
-        # Production Casing (Lower Main Body)
-        fig2.add_shape(type="line", x0=2.6, y0=0.5, x1=2.6, y1=11.0, line=dict(color="#000000", width=2))
-        fig2.add_shape(type="line", x0=5.4, y0=0.5, x1=5.4, y1=11.0, line=dict(color="#000000", width=2))
-        # Production Casing Shoe
-        fig2.add_shape(type="path", path="M 2.2 0.5 L 2.6 0 L 2.6 0.5 Z", fillcolor="#000000")
-        fig2.add_shape(type="path", path="M 5.8 0.5 L 5.4 0 L 5.4 0.5 Z", fillcolor="#000000")
+        # Production Casing
+        fig2.add_shape(type="line", x0=3.6, y0=0.6, x1=3.6, y1=11.2, line=dict(color="#0F172A", width=2))
+        fig2.add_shape(type="line", x0=6.4, y0=0.6, x1=6.4, y1=11.2, line=dict(color="#0F172A", width=2))
+        fig2.add_shape(type="path", path="M 3.1 0.6 L 3.6 0.1 L 3.6 0.6 Z", fillcolor="#0F172A")
+        fig2.add_shape(type="path", path="M 6.9 0.6 L 6.4 0.1 L 6.4 0.6 Z", fillcolor="#0F172A")
 
-        # Production Tubing (Central Grey Column)
-        fig2.add_shape(type="rect", x0=3.7, y0=1.5, x1=4.3, y1=13.0, fillcolor="#E2E8F0", line=dict(color="#000000", width=1.5))
+        # Production Tubing
+        fig2.add_shape(type="rect", x0=4.7, y0=1.6, x1=5.3, y1=13.0, fillcolor="#E2E8F0", line=dict(color="#0F172A", width=1.5))
 
-        # Hydraulic Control Line (Top Left)
-        fig2.add_shape(type="line", x0=3.2, y0=11.8, x1=3.7, y1=11.8, line=dict(color="#000000", width=1.5))
-        fig2.add_shape(type="line", x0=3.2, y0=11.8, x1=3.2, y1=13.0, line=dict(color="#000000", width=1.5))
+        # Control Lines & SCSSV
+        fig2.add_shape(type="line", x0=4.2, y0=12.0, x1=4.7, y1=12.0, line=dict(color="#0F172A", width=1.5))
+        fig2.add_shape(type="line", x0=4.2, y0=12.0, x1=4.2, y1=13.0, line=dict(color="#0F172A", width=1.5))
+        fig2.add_shape(type="rect", x0=4.6, y0=11.8, x1=5.4, y1=12.4, fillcolor="#CBD5E1", line=dict(color="#0F172A", width=1.5))
 
-        # Subsurface Safety Valve (TRSSSV Block)
-        fig2.add_shape(type="rect", x0=3.6, y0=11.6, x1=4.4, y1=12.2, fillcolor="#CBD5E1", line=dict(color="#000000", width=1.5))
-        fig2.add_shape(type="line", x0=3.6, y0=11.9, x1=4.4, y1=11.9, line=dict(color="#000000", width=1))
-
-        # Production Packers (3 Locations with Solid Crosses)
-        packer_ys = [10.0, 6.8, 3.6]
+        # Packers (Solid Black Blocks)
+        packer_ys = [10.2, 7.0, 3.8]
         for y_p in packer_ys:
-            # Left Packer Block
-            fig2.add_shape(type="rect", x0=2.6, y0=y_p-0.2, x1=3.7, y1=y_p+0.2, fillcolor="#000000")
-            # Right Packer Block
-            fig2.add_shape(type="rect", x0=4.3, y0=y_p-0.2, x1=5.4, y1=y_p+0.2, fillcolor="#000000")
+            fig2.add_shape(type="rect", x0=3.6, y0=y_p-0.2, x1=4.7, y1=y_p+0.2, fillcolor="#0F172A")
+            fig2.add_shape(type="rect", x0=5.3, y0=y_p-0.2, x1=6.4, y1=y_p+0.2, fillcolor="#0F172A")
 
-        # Electro-Hydraulic Control Valves & Lines
-        fig2.add_shape(type="line", x0=3.3, y0=5.0, x1=3.3, y1=8.8, line=dict(color="#000000", width=1.5))
-        fig2.add_shape(type="rect", x0=3.5, y0=8.4, x1=4.5, y1=9.0, fillcolor="#E2E8F0", line=dict(color="#000000", width=1.5))
-        fig2.add_shape(type="rect", x0=3.5, y0=5.0, x1=4.5, y1=5.6, fillcolor="#E2E8F0", line=dict(color="#000000", width=1.5))
+        # Control Valves & Lines
+        fig2.add_shape(type="line", x0=4.3, y0=5.2, x1=4.3, y1=9.0, line=dict(color="#0F172A", width=1.5))
+        fig2.add_shape(type="rect", x0=4.5, y0=8.6, x1=5.5, y1=9.2, fillcolor="#E2E8F0", line=dict(color="#0F172A", width=1.5))
+        fig2.add_shape(type="rect", x0=4.5, y0=5.2, x1=5.5, y1=5.8, fillcolor="#E2E8F0", line=dict(color="#0F172A", width=1.5))
 
-        # Perforations (Hatch Marks on Casing)
-        perf_zones = [7.6, 8.0, 4.4, 4.8, 1.0, 1.4]
+        # Perforations
+        perf_zones = [7.8, 8.2, 4.6, 5.0, 1.2, 1.6]
         for y_f in perf_zones:
-            fig2.add_shape(type="line", x0=2.3, y0=y_f, x1=2.6, y1=y_f, line=dict(color="#000000", width=2))
-            fig2.add_shape(type="line", x0=5.4, y0=y_f, x1=5.7, y1=y_f, line=dict(color="#000000", width=2))
+            fig2.add_shape(type="line", x0=3.3, y0=y_f, x1=3.6, y1=y_f, line=dict(color="#0F172A", width=2))
+            fig2.add_shape(type="line", x0=6.4, y0=y_f, x1=6.7, y1=y_f, line=dict(color="#0F172A", width=2))
 
-        # Annotations with Clean Pointers and High Contrast Labels
-        fig2.add_annotation(x=3.2, y=12.4, text="Hydraulic control line", showarrow=True, arrowhead=1, ax=-80, ay=0, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=4.0, y=11.9, text="Subsurface safety valve", showarrow=True, arrowhead=1, ax=100, ay=0, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=1.95, y=10.75, text="Intermediate casing shoe", showarrow=True, arrowhead=1, ax=-90, ay=0, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=5.0, y=10.0, text="Production packer", showarrow=True, arrowhead=1, ax=90, ay=0, font=dict(size=11, color="#000000"))
+        # Clean Annotations Outside the Drawing Boundary
+        fig2.add_annotation(x=4.2, y=12.6, text="Hydraulic control line", showarrow=True, arrowhead=1, ax=-120, ay=0, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=5.0, y=12.1, text="Subsurface safety valve", showarrow=True, arrowhead=1, ax=110, ay=0, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=2.9, y=10.9, text="Intermediate casing shoe", showarrow=True, arrowhead=1, ax=-110, ay=0, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=6.0, y=10.2, text="Production packer", showarrow=True, arrowhead=1, ax=100, ay=0, font=dict(size=10, color="#1E293B"))
         
-        fig2.add_annotation(x=4.0, y=8.7, text="Electro-hydraulic control valve", showarrow=True, arrowhead=1, ax=110, ay=0, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=3.3, y=7.0, text="Electro-hydraulic control line", showarrow=True, arrowhead=1, ax=-110, ay=0, font=dict(size=11, color="#000000"))
+        fig2.add_annotation(x=5.0, y=8.9, text="Electro-hydraulic control valve", showarrow=True, arrowhead=1, ax=110, ay=0, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=4.3, y=7.2, text="Electro-hydraulic control line", showarrow=True, arrowhead=1, ax=-120, ay=0, font=dict(size=10, color="#1E293B"))
         
-        fig2.add_annotation(x=2.0, y=8.2, text="First producing interval", showarrow=False, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=2.0, y=5.0, text="Second producing interval", showarrow=False, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=2.0, y=1.2, text="Third producing interval", showarrow=False, font=dict(size=11, color="#000000"))
+        fig2.add_annotation(x=2.8, y=8.4, text="First producing interval", showarrow=False, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=2.8, y=5.2, text="Second producing interval", showarrow=False, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=2.8, y=1.4, text="Third producing interval", showarrow=False, font=dict(size=10, color="#1E293B"))
         
-        fig2.add_annotation(x=5.55, y=4.6, text="} Perforations", showarrow=False, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=4.0, y=2.0, text="Production tubing", showarrow=True, arrowhead=1, ax=80, ay=0, font=dict(size=11, color="#000000"))
-        fig2.add_annotation(x=5.6, y=0.25, text="Production casing shoe", showarrow=True, arrowhead=1, ax=80, ay=0, font=dict(size=11, color="#000000"))
+        fig2.add_annotation(x=6.7, y=4.8, text="} Perforations", showarrow=False, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=5.0, y=2.2, text="Production tubing", showarrow=True, arrowhead=1, ax=100, ay=0, font=dict(size=10, color="#1E293B"))
+        fig2.add_annotation(x=6.6, y=0.3, text="Production casing shoe", showarrow=True, arrowhead=1, ax=90, ay=0, font=dict(size=10, color="#1E293B"))
 
         fig2.update_layout(
-            title=dict(text="Figure 2: Typical upper-completion components", font=dict(size=15, color="#1E3A8A")),
-            xaxis=dict(visible=False, range=[-0.5, 8.5]),
+            title=dict(text="Figure 2: Typical upper-completion components", font=dict(size=14, color="#1E3A8A", family="Arial")),
+            xaxis=dict(visible=False, range=[-0.5, 10.5]),
             yaxis=dict(visible=False, range=[-0.5, 13.5]),
             height=700,
-            margin=dict(l=5, r=5, t=35, b=5),
+            margin=dict(l=10, r=10, t=35, b=10),
             plot_bgcolor="white"
         )
         st.plotly_chart(fig2, use_container_width=True)
-            
+
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
 # -----------------------------------------------------------------------------
