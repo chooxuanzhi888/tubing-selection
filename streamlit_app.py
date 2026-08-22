@@ -248,7 +248,8 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2, gap="large")
+    # Tightened gap between columns
+    col1, col2 = st.columns(2, gap="small")
 
     # -------------------------------------------------------------------------
     # LEFT COLUMN: Configurations -> Figure 1 -> Major Decisions
@@ -314,15 +315,9 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    col_pt1, col_pt2 = st.columns(2, gap="large")
-
-    with col_pt1:
-        if os.path.exists("Figure 3.jpg"):
-            st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
-
-    with col_pt2:
-        if os.path.exists("Figure 4.png"):
-            st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
+    # Figure 3 displayed full-width above the specifications table
+    if os.path.exists("Figure 3.jpg"):
+        st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
 
     # Key Tubing Specifications Table
     st.markdown("""
@@ -368,6 +363,10 @@ if page == "1. Introduction & Overview":
         </table>
     </div>
     """, unsafe_allow_html=True)
+
+    # Figure 4 positioned directly below the specifications table
+    if os.path.exists("Figure 4.png"):
+        st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
