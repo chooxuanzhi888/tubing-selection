@@ -235,8 +235,8 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
-    # 1. Hero Offshore Rig Banner (Original Uploaded Image)
-    st.image("image_b20de8.jpg", 
+    # 1. Hero Offshore Rig Banner
+    st.image("image.png", 
              caption="Offshore Production Facility — Upper Completion Overview", 
              use_container_width=True)
     
@@ -269,8 +269,8 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-        # FIGURE 1: Original Uploaded Image
-        st.image("image_b1a222.png", 
+        # FIGURE 1
+        st.image("Figure 1.png", 
                  caption="Figure 1: Upper-completion configurations", 
                  use_container_width=True)
 
@@ -300,8 +300,8 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-        # FIGURE 2: Original Uploaded Image
-        st.image("Picture 1.jpg", 
+        # FIGURE 2
+        st.image("Figure 2.jpg", 
                  caption="Figure 2: Typical upper-completion components", 
                  use_container_width=True)
 
