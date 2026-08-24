@@ -88,14 +88,42 @@ if 'inputs' not in st.session_state:
 
 if 'tubing_db' not in st.session_state:
     st.session_state.tubing_db = pd.DataFrame([
-        {"Name": '2-7/8" L-80', "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.5, "Grade": "L-80", "Material": "Carbon Steel", "Yield_psi": 80000, "Burst_psi": 10570},
-        {"Name": '2-7/8" 13Cr', "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.5, "Grade": "13Cr", "Material": "Martensitic Stainless", "Yield_psi": 80000, "Burst_psi": 10570},
-        {"Name": '3-1/2" L-80', "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.3, "Grade": "L-80", "Material": "Carbon Steel", "Yield_psi": 80000, "Burst_psi": 10160},
-        {"Name": '3-1/2" 13Cr', "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.3, "Grade": "13Cr", "Material": "Martensitic Stainless", "Yield_psi": 80000, "Burst_psi": 10160},
-        {"Name": '4" L-80',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.0, "Grade": "L-80", "Material": "Carbon Steel", "Yield_psi": 80000, "Burst_psi": 9520},
-        {"Name": '4" 13Cr',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.0, "Grade": "13Cr", "Material": "Martensitic Stainless", "Yield_psi": 80000, "Burst_psi": 9520},
-        {"Name": '4-1/2" L-80', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.6, "Grade": "L-80", "Material": "Carbon Steel", "Yield_psi": 80000, "Burst_psi": 8980},
-        {"Name": '4-1/2" 13Cr', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.6, "Grade": "13Cr", "Material": "Martensitic Stainless", "Yield_psi": 80000, "Burst_psi": 8980},
+        # 2-3/8" Candidates
+        {"Name": '2-3/8" J-55 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "J-55",  "Material": "Carbon Steel",        "Yield_psi": 55000,  "Burst_psi": 7700},
+        {"Name": '2-3/8" L-80 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 11200},
+        {"Name": '2-3/8" 13Cr (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 11200},
+        
+        # 2-7/8" Candidates
+        {"Name": '2-7/8" J-55 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "J-55",  "Material": "Carbon Steel",        "Yield_psi": 55000,  "Burst_psi": 7260},
+        {"Name": '2-7/8" L-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" N-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "N-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" 13Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" P-110 (6.5#)',  "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 14530},
+        {"Name": '2-7/8" 22Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Yield_psi": 110000, "Burst_psi": 14530},
+
+        # 3-1/2" Candidates
+        {"Name": '3-1/2" L-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" N-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "N-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" 13Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" P-110 (9.3#)',  "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 13970},
+        {"Name": '3-1/2" 22Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Yield_psi": 110000, "Burst_psi": 13970},
+        {"Name": '3-1/2" 25Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "25Cr",  "Material": "Super Duplex CRA",    "Yield_psi": 125000, "Burst_psi": 15870},
+
+        # 4" Candidates
+        {"Name": '4" L-80 (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 9520},
+        {"Name": '4" 13Cr (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 9520},
+        {"Name": '4" P-110 (11.0#)',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 13090},
+
+        # 4-1/2" Candidates
+        {"Name": '4-1/2" L-80 (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 8980},
+        {"Name": '4-1/2" 13Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 8980},
+        {"Name": '4-1/2" P-110 (12.6#)', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 12340},
+        {"Name": '4-1/2" 25Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "25Cr",  "Material": "Super Duplex CRA",    "Yield_psi": 125000, "Burst_psi": 14020},
+
+        # 5-1/2" Candidates
+        {"Name": '5-1/2" L-80 (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 7740},
+        {"Name": '5-1/2" 13Cr (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 7740},
+        {"Name": '5-1/2" P-110 (17.0#)', "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 10640},
     ])
 
 # -----------------------------------------------------------------------------
@@ -482,9 +510,9 @@ elif page == "3. Candidate Tubing Specs":
                 c_id = st.number_input("Inner Diameter (ID) [in]", value=2.992)
                 c_weight = st.number_input("Weight [lb/ft]", value=9.3)
             with col3:
-                c_grade = st.selectbox("Grade", ["L-80", "13Cr", "P-110", "25Cr"])
-                c_mat = st.selectbox("Material Type", ["Carbon Steel", "Martensitic Stainless", "Duplex Stainless"])
-                
+                c_grade = st.selectbox("Grade", ["J-55", "L-80", "N-80", "13Cr", "P-110", "22Cr", "25Cr"])
+                c_mat = st.selectbox("Material Type", ["Carbon Steel", "Martensitic Stainless", "High-Strength Alloy", "Duplex Stainless", "Super Duplex CRA"])
+                                
             add_sub = st.form_submit_button("Add to Database")
             if add_sub:
                 new_row = pd.DataFrame([{
