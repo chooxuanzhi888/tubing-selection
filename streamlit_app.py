@@ -597,20 +597,27 @@ elif page == "5. Recommendation & Sensitivity":
     tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
     
     with tab1:
-        # Fixed text overlap by adjusting position and layout padding
-        fig_dp = px.line(
-            res_df, x="ID_in", y="dp_total_psi", text="Name", markers=True,
-            title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
-            labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"}
-        )
-        fig_dp.update_traces(textposition="top center", marker=dict(size=8))
-        fig_dp.add_hline(y=res_df['dp_avail_psi'].iloc[0], line_dash="dash", line_color="red", annotation_text="Available Drawdown Limit")
-        
-        # Add Y-axis padding to ensure annotations don't overlap borders
-        max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
-        fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
-        
-        st.plotly_chart(fig_dp, use_container_width=True)
+            # Clean line plot with custom hover templates to prevent text collision
+            fig_dp = px.line(
+                res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
+                title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
+                labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
+                hover_data=["Name", "Velocity_fts", "Overall_Pass"]
+            )
+            
+            fig_dp.update_traces(marker=dict(size=10))
+            fig_dp.add_hline(
+                y=res_df['dp_avail_psi'].iloc[0], 
+                line_dash="dash", 
+                line_color="red", 
+                annotation_text="Available Drawdown Limit",
+                annotation_position="bottom right"
+            )
+            
+            max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
+            fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
+            
+            st.plotly_chart(fig_dp, use_container_width=True)
         
         # Explanatory card under Graph 1
         st.info("""
