@@ -597,13 +597,27 @@ elif page == "5. Recommendation & Sensitivity":
     tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
     
     with tab1:
+        # Fixed text overlap by adjusting position and layout padding
         fig_dp = px.line(
             res_df, x="ID_in", y="dp_total_psi", text="Name", markers=True,
             title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
             labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"}
         )
+        fig_dp.update_traces(textposition="top center", marker=dict(size=8))
         fig_dp.add_hline(y=res_df['dp_avail_psi'].iloc[0], line_dash="dash", line_color="red", annotation_text="Available Drawdown Limit")
+        
+        # Add Y-axis padding to ensure annotations don't overlap borders
+        max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
+        fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
+        
         st.plotly_chart(fig_dp, use_container_width=True)
+        
+        # Explanatory card under Graph 1
+        st.info("""
+        **💡 How to Interpret Graph 1:**
+        * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive ($P_{bhp} - P_{wh}$). Candidates operating **above** this line cannot flow naturally to the surface.
+        * **Pressure Curve Trend:** Frictional pressure drop decreases sharply as tubing inner diameter increases. The optimal candidate balances low pressure drop while remaining comfortably below the drawdown ceiling.
+        """)
 
     with tab2:
         fig_v = go.Figure()
@@ -615,6 +629,15 @@ elif page == "5. Recommendation & Sensitivity":
         fig_v.update_layout(
             title="Flow Velocity Window vs. Tubing Inner Diameter",
             xaxis_title="Inner Diameter (inches)",
-            yaxis_title="Velocity (ft/s)"
+            yaxis_title="Velocity (ft/s)",
+            margin=dict(t=50, b=40)
         )
         st.plotly_chart(fig_v, use_container_width=True)
+        
+        # Explanatory card under Graph 2
+        st.info("""
+        **💡 How to Interpret Graph 2:**
+        * **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.
+        * **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.
+        * **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line **above** the orange limit to ensure long-term well performance.
+        """)
