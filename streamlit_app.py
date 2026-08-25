@@ -609,10 +609,11 @@ elif page == "5. Recommendation & Sensitivity":
             else:
                 with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini AI..."):
                     try:
-                        from google import genai
-                        from google.genai import types
+                        import google.generativeai as genai
 
-                        client = genai.Client(api_key=api_key)
+                        # Configure Gemini with the API Key
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
                         
                         # Construct strict raw numerical data payload
                         pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
@@ -647,10 +648,9 @@ elif page == "5. Recommendation & Sensitivity":
                         5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
                         """
 
-                        response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt_data,
-                            config=types.GenerateContentConfig(
+                        response = model.generate_content(
+                            prompt_data,
+                            generation_config=genai.types.GenerationConfig(
                                 temperature=0.2
                             )
                         )
