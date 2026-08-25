@@ -599,7 +599,8 @@ elif page == "5. Recommendation & Sensitivity":
     st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
 
     if st.button("✨ Generate AI Executive Summary", type="primary"):
-        api_key = st.secrets.get("GEMINI_API_KEY", None)
+        raw_key = st.secrets.get("GEMINI_API_KEY", "")
+        api_key = raw_key.strip().replace('"', '').replace("'", "")
         
         if not api_key:
             st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
@@ -643,7 +644,7 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
                     """
 
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key.strip()}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
