@@ -567,7 +567,7 @@ elif page == "5. Recommendation & Sensitivity":
         else:
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, or corrosion).")
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # GEMINI AI EXECUTIVE SUMMARY ENGINE (NATIVE REST - HEADER AUTH)
     # -------------------------------------------------------------------------
     st.markdown("---")
@@ -618,8 +618,8 @@ elif page == "5. Recommendation & Sensitivity":
                     3. Paragraph 2: Analyze initial vs Year 15 late-life velocities against Turner loading and API RP 14E limits.
                     4. Paragraph 3: Justify J-55 carbon steel selection under NACE MR0175 partial pressure limits to avoid unnecessary CRA expenditure.
                     5. Use formal engineering phrasing and bold key numeric values.
+                    """
 
-                    # UPDATED: Endpoint set to gemini-3.6-flash
                     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
@@ -654,7 +654,7 @@ elif page == "5. Recommendation & Sensitivity":
                 except Exception as e:
                     st.error(f"Error calling Gemini API: {str(e)}")
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
@@ -690,23 +690,23 @@ elif page == "5. Recommendation & Sensitivity":
         """)
 
     with tab2:
-            fig_v = go.Figure()
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Erosional Limit (Max)', line=dict(dash='dash', color='red')))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_critical'], mode='lines', name='Turner Liquid Loading Limit (Min)', line=dict(dash='dot', color='orange')))
-            
-            fig_v.update_layout(
-                title="Flow Velocity Window vs. Tubing Inner Diameter",
-                xaxis_title="Inner Diameter (inches)",
-                yaxis_title="Velocity (ft/s)",
-                margin=dict(t=50, b=40)
-            )
-            st.plotly_chart(fig_v, use_container_width=True)
-            
-            st.info(
-                "**How to Interpret Graph 2:**\n\n"
-                "* **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.\n"
-                "* **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.\n"
-                "* **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance."
-            )
+        fig_v = go.Figure()
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Erosional Limit (Max)', line=dict(dash='dash', color='red')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_critical'], mode='lines', name='Turner Liquid Loading Limit (Min)', line=dict(dash='dot', color='orange')))
+        
+        fig_v.update_layout(
+            title="Flow Velocity Window vs. Tubing Inner Diameter",
+            xaxis_title="Inner Diameter (inches)",
+            yaxis_title="Velocity (ft/s)",
+            margin=dict(t=50, b=40)
+        )
+        st.plotly_chart(fig_v, use_container_width=True)
+        
+        st.info(
+            "**How to Interpret Graph 2:**\n\n"
+            "* **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.\n"
+            "* **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.\n"
+            "* **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance."
+        )
