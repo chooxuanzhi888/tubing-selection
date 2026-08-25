@@ -609,7 +609,7 @@ elif page == "5. Recommendation & Sensitivity":
         else:
             with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini AI..."):
                 try:
-                    from google import genai
+                    import google.genai as genai
                     from google.genai import types
 
                     client = genai.Client(api_key=api_key)
