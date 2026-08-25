@@ -613,12 +613,11 @@ elif page == "5. Recommendation & Sensitivity":
                     - Fluid PVT Outputs: Gas Z-Factor = {pref['Z_Factor']}, Bo = {pref['Bo_rb_stb']} rb/STB
 
                     INSTRUCTIONS:
-                    1. Write a 3-paragraph executive technical memo.
-                    2. Paragraph 1: State the recommended tubing size and grade, confirming drawdown hydraulic drive acceptability.
-                    3. Paragraph 2: Discuss velocity window stability (initial vs late-life Turner liquid loading and erosional limits).
-                    4. Paragraph 3: Explain the metallurgy selection under NACE MR0175 CO2/H2S partial pressure limits.
-                    5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
-                    """
+                    1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
+                    2. Paragraph 1: Recommend the candidate size/grade and justify hydraulics vs available drawdown.
+                    3. Paragraph 2: Analyze initial vs Year 15 late-life velocities against Turner loading and API RP 14E limits.
+                    4. Paragraph 3: Justify J-55 carbon steel selection under NACE MR0175 partial pressure limits to avoid unnecessary CRA expenditure.
+                    5. Use formal engineering phrasing and bold key numeric values.
 
                     # UPDATED: Endpoint set to gemini-3.6-flash
                     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
