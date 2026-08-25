@@ -592,77 +592,77 @@ elif page == "5. Recommendation & Sensitivity":
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, or corrosion).")
 
     # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE
-    # -------------------------------------------------------------------------
-    st.markdown("---")
-    st.subheader("🤖 AI-Powered Executive Completion Memo")
-    st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
+        # GEMINI AI EXECUTIVE SUMMARY ENGINE
+        # -------------------------------------------------------------------------
+        st.markdown("---")
+        st.subheader("🤖 AI-Powered Executive Completion Memo")
+        st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
 
-    if st.button("✨ Generate AI Executive Summary", type="primary"):
-        # Check for Gemini API key in Streamlit Secrets
-        api_key = st.secrets.get("GEMINI_API_KEY", None)
-        
-        if not api_key:
-            st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
-        elif passed_candidates.empty:
-            st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
-        else:
-            with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini AI..."):
-                try:
-                    import google.genai as genai
-                    from google.genai import types
+        if st.button("✨ Generate AI Executive Summary", type="primary"):
+            # Check for Gemini API key in Streamlit Secrets
+            api_key = st.secrets.get("GEMINI_API_KEY", None)
+            
+            if not api_key:
+                st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
+            elif passed_candidates.empty:
+                st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
+            else:
+                with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini AI..."):
+                    try:
+                        from google import genai
+                        from google.genai import types
 
-                    client = genai.Client(api_key=api_key)
-                    
-                    # Construct strict raw numerical data payload
-                    pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-                    
-                    prompt_data = f"""
-                    You are a Senior Completion Engineer writing an executive technical recommendation memo for an asset manager.
-                    Synthesize the following PRE-CALCULATED Python engineering data into a concise, professional technical assessment.
-                    DO NOT re-calculate or alter any numerical values. Rely STRICTLY on these provided facts:
+                        client = genai.Client(api_key=api_key)
+                        
+                        # Construct strict raw numerical data payload
+                        pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
+                        
+                        prompt_data = f"""
+                        You are a Senior Completion Engineer writing an executive technical recommendation memo for an asset manager.
+                        Synthesize the following PRE-CALCULATED Python engineering data into a concise, professional technical assessment.
+                        DO NOT re-calculate or alter any numerical values. Rely STRICTLY on these provided facts:
 
-                    WELL & OPERATIONAL PARAMETERS:
-                    - Well Type: {st.session_state.inputs['well_type']}
-                    - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft
-                    - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
-                    - Target Field Life: {st.session_state.inputs['field_life_yrs']} Years at {st.session_state.inputs['decline_rate']}% Annual Decline Rate
-                    - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_mole_pct']} mole% H2S
+                        WELL & OPERATIONAL PARAMETERS:
+                        - Well Type: {st.session_state.inputs['well_type']}
+                        - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft
+                        - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
+                        - Target Field Life: {st.session_state.inputs['field_life_yrs']} Years at {st.session_state.inputs['decline_rate']}% Annual Decline Rate
+                        - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_mole_pct']} mole% H2S
 
-                    SELECTED PREFERRED TUBING CANDIDATE:
-                    - Candidate Name: {pref['Name']}
-                    - Steel Grade / Material: {pref['Grade']} ({pref['Material']})
-                    - Total Calculated Pressure Drop: {pref['dp_total_psi']} psi (Hydrostatic: {pref['dp_hydro_psi']} psi, Friction: {pref['dp_fric_psi']} psi)
-                    - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
-                    - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
-                    - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
-                    - API RP 14E Max Erosional Velocity Limit: {pref['v_erosional']} ft/s
-                    - Fluid PVT Outputs: Gas Z-Factor = {pref['Z_Factor']}, Bo = {pref['Bo_rb_stb']} rb/STB
+                        SELECTED PREFERRED TUBING CANDIDATE:
+                        - Candidate Name: {pref['Name']}
+                        - Steel Grade / Material: {pref['Grade']} ({pref['Material']})
+                        - Total Calculated Pressure Drop: {pref['dp_total_psi']} psi (Hydrostatic: {pref['dp_hydro_psi']} psi, Friction: {pref['dp_fric_psi']} psi)
+                        - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
+                        - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
+                        - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
+                        - API RP 14E Max Erosional Velocity Limit: {pref['v_erosional']} ft/s
+                        - Fluid PVT Outputs: Gas Z-Factor = {pref['Z_Factor']}, Bo = {pref['Bo_rb_stb']} rb/STB
 
-                    INSTRUCTIONS:
-                    1. Write a 3-paragraph executive technical memo.
-                    2. Paragraph 1: State the recommended tubing size and grade, confirming drawdown hydraulic drive acceptability.
-                    3. Paragraph 2: Discuss velocity window stability (initial vs late-life Turner liquid loading and erosional limits).
-                    4. Paragraph 3: Explain the metallurgy selection under NACE MR0175 CO2/H2S partial pressure limits.
-                    5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
-                    """
+                        INSTRUCTIONS:
+                        1. Write a 3-paragraph executive technical memo.
+                        2. Paragraph 1: State the recommended tubing size and grade, confirming drawdown hydraulic drive acceptability.
+                        3. Paragraph 2: Discuss velocity window stability (initial vs late-life Turner liquid loading and erosional limits).
+                        4. Paragraph 3: Explain the metallurgy selection under NACE MR0175 CO2/H2S partial pressure limits.
+                        5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
+                        """
 
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt_data,
-                        config=types.GenerateContentConfig(
-                            temperature=0.2  # Low temperature guarantees deterministic adherence to provided facts
+                        response = client.models.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt_data,
+                            config=types.GenerateContentConfig(
+                                temperature=0.2
+                            )
                         )
-                    )
 
-                    st.markdown("""
-                    <div style="background-color: #F0F9FF; border: 1px solid #BAE6FD; border-left: 5px solid #0284C7; border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
-                    """, unsafe_allow_html=True)
-                    st.markdown(response.text)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                        st.markdown("""
+                        <div style="background-color: #F0F9FF; border: 1px solid #BAE6FD; border-left: 5px solid #0284C7; border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
+                        """, unsafe_allow_html=True)
+                        st.markdown(response.text)
+                        st.markdown("</div>", unsafe_allow_html=True)
 
-                except Exception as e:
-                    st.error(f"Error calling Gemini API: {str(e)}")
+                    except Exception as e:
+                        st.error(f"Error calling Gemini API: {str(e)}")
 
     # -------------------------------------------------------------------------
     # INTERACTIVE SENSITIVITY PLOTS
