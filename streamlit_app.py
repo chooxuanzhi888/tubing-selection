@@ -567,8 +567,8 @@ elif page == "5. Recommendation & Sensitivity":
         else:
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, or corrosion).")
 
-    # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE (PURE PYTHON REST - GEMINI 2.5 FLASH)
+# -------------------------------------------------------------------------
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE (NATIVE REST - HEADER AUTH)
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
@@ -583,7 +583,7 @@ elif page == "5. Recommendation & Sensitivity":
         elif passed_candidates.empty:
             st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
         else:
-            with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini 2.5 API..."):
+            with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini API..."):
                 try:
                     import json
                     import urllib.request
@@ -620,17 +620,23 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
                     """
 
-                    # Official REST endpoint using gemini-2.5-flash
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+                    # FIXED: Send x-goog-api-key header to target the v1beta endpoint reliably
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
                     }
                     
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': api_key
+                    }
+                    
                     req = urllib.request.Request(
                         url,
                         data=json.dumps(payload).encode('utf-8'),
-                        headers={'Content-Type': 'application/json'}
+                        headers=headers,
+                        method='POST'
                     )
 
                     with urllib.request.urlopen(req) as response:
@@ -643,6 +649,9 @@ elif page == "5. Recommendation & Sensitivity":
                     st.markdown(ai_text)
                     st.markdown("</div>", unsafe_allow_html=True)
 
+                except urllib.error.HTTPError as http_err:
+                    error_body = http_err.read().decode('utf-8')
+                    st.error(f"Gemini API HTTP Error {http_err.code}: {error_body}")
                 except Exception as e:
                     st.error(f"Error calling Gemini API: {str(e)}")
 
