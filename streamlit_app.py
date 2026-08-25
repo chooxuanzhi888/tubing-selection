@@ -654,7 +654,7 @@ elif page == "5. Recommendation & Sensitivity":
                 except Exception as e:
                     st.error(f"Error calling Gemini API: {str(e)}")
 
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
@@ -684,8 +684,8 @@ elif page == "5. Recommendation & Sensitivity":
         st.plotly_chart(fig_dp, use_container_width=True)
         
         st.info("""
-        **💡 How to Interpret Graph 1:**
-        * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive ($P_{bhp} - P_{wh}$). Candidates operating **above** this line cannot flow naturally to the surface.
+        **How to Interpret Graph 1:**
+        * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive (P_bhp - P_wh). Candidates operating above this line cannot flow naturally to the surface.
         * **Pressure Curve Trend:** Frictional pressure drop decreases sharply as tubing inner diameter increases. The optimal candidate balances low pressure drop while remaining comfortably below the drawdown ceiling.
         """)
 
@@ -705,8 +705,8 @@ elif page == "5. Recommendation & Sensitivity":
         st.plotly_chart(fig_v, use_container_width=True)
         
         st.info("""
-        **💡 How to Interpret Graph 2:**
+        **How to Interpret Graph 2:**
         * **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.
         * **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.
-        * **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line **above** the orange limit to ensure long-term well performance.
+        * **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance.
         """)
