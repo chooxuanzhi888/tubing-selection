@@ -138,7 +138,6 @@ def compute_dynamic_z_factor(p_psi, t_deg_r, gas_sg):
     
     t_r = 1.0 / t_pr
     a = 0.06125 * t_r * np.exp(-1.2 * (1.0 - t_r)**2)
-    # Hall-Yarborough explicit approximation for Z
     y = 0.0125 * p_pr * t_r
     z = a * p_pr / y if y > 0 else 0.88
     return float(np.clip(z, 0.65, 1.25))
@@ -147,15 +146,14 @@ def run_engineering_calculations(inputs, candidate_df):
     """Executes hydraulic, mechanical, live oil PVT, and lifecycle screening."""
     results = []
     
-    # Pressure & Temperature averages
     p_avg = (inputs['p_wh'] + inputs['p_bhp']) / 2.0         # psi
     t_avg_f = (inputs['t_wh'] + inputs['t_bht']) / 2.0       # deg F
     t_avg_r = t_avg_f + 459.67                               # deg R
     
-    # 1. Live Oil PVT Model (Standing's Correlation for Bo & Rs)
+    # Live Oil PVT Model (Standing's Correlation for Bo & Rs)
     gamma_o = 141.5 / (131.5 + inputs['api_gravity'])
     rs_scf_stb = inputs['gas_sg'] * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * inputs['api_gravity'] - 0.00091 * t_avg_f))) ** 1.2048
-    rs_scf_stb = min(rs_scf_stb, inputs['gor'])              # Cap solution GOR at total GOR
+    rs_scf_stb = min(rs_scf_stb, inputs['gor'])
     
     bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((inputs['gas_sg'] / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
     rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * inputs['gas_sg']) / bo_rb_stb  # lb/ft3
@@ -164,7 +162,7 @@ def run_engineering_calculations(inputs, candidate_df):
     wc_frac = inputs['water_cut'] / 100.0
     rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w    # Live liquid mixture density
     
-    # 2. Dynamic Z-Factor & Gas Density
+    # Dynamic Z-Factor & Gas Density
     z_factor = compute_dynamic_z_factor(p_avg, t_avg_r, inputs['gas_sg'])
     rho_g = (2.7 * inputs['gas_sg'] * p_avg) / (z_factor * t_avg_r) # lb/ft3
     rho_g = max(rho_g, 0.05)
@@ -183,7 +181,7 @@ def run_engineering_calculations(inputs, candidate_df):
     lambda_l = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 1.0
     rho_m = lambda_l * rho_l + (1.0 - lambda_l) * rho_g        # Mixture density
     
-    mu_w_cp = 0.5                                             # Water viscosity downhole approx
+    mu_w_cp = 0.5
     mu_l_cp = (1.0 - wc_frac) * inputs['oil_visc'] + wc_frac * mu_w_cp
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
@@ -192,7 +190,7 @@ def run_engineering_calculations(inputs, candidate_df):
     p_co2 = p_avg * (inputs['co2_mole_pct'] / 100.0)
     p_h2s = p_avg * (inputs['h2s_mole_pct'] / 100.0)
     
-    # Late-life Capacity Screening (End of Field Life Flow Rate)
+    # Late-life Capacity Screening
     late_life_q = inputs['q_liquid'] * ((1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs'])
     q_m_late = (late_life_q * 5.615 / 86400.0) + q_g_ft3s
     
@@ -201,39 +199,37 @@ def run_engineering_calculations(inputs, candidate_df):
         area_ft2 = (np.pi / 4.0) * (id_ft ** 2)
         
         # Velocity calculations
-        v_m = q_m_ft3s / area_ft2                              # ft/s
-        v_m_late = q_m_late / area_ft2                         # Late-life velocity
+        v_m = q_m_ft3s / area_ft2
+        v_m_late = q_m_late / area_ft2
         
         # Reynolds Number & Friction Factor
         reynolds = (rho_m * v_m * id_ft) / mu_m_lbfts if mu_m_lbfts > 0 else 10000
         relative_roughness = (0.0006 / row['ID_in'])
         
-        # Haaland Equation
         if reynolds > 2300:
             f = 1.0 / (-1.8 * np.log10((relative_roughness / 3.7) ** 1.11 + 6.9 / reynolds)) ** 2
         else:
             f = 64.0 / reynolds if reynolds > 0 else 0.04
             
         # Pressure Losses
-        dp_hydro = (rho_m * inputs['tvd']) / 144.0              # psi
-        dp_fric = (f * inputs['md'] * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0) # psi
-        dp_total = dp_hydro + dp_fric                           # psi
+        dp_hydro = (rho_m * inputs['tvd']) / 144.0
+        dp_fric = (f * inputs['md'] * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
+        dp_total = dp_hydro + dp_fric
         
         # Screening Threshold Limits
         c_factor = 120.0 if inputs['well_type'] == 'Gas Well' else 140.0
-        v_erosional = c_factor / np.sqrt(rho_m)                 # API RP 14E limit
+        v_erosional = c_factor / np.sqrt(rho_m)
         sigma_dynes = 20.0
         
-        # Turner Liquid Loading Limit (Fixed Constant C = 1.3)
+        # Turner Liquid Loading Limit
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
         
-        # Pressure Available Check
         dp_available = inputs['p_bhp'] - inputs['p_wh']
         
         # Compliance Flags
         hydraulics_pass = dp_total <= dp_available
         velocity_pass = v_critical_loading < v_m < v_erosional
-        late_life_pass = v_m_late >= v_critical_loading        # Lifecycle liquid loading check
+        late_life_pass = v_m_late >= v_critical_loading
         
         # Material Compliance (NACE MR0175)
         material_pass = True
@@ -243,7 +239,6 @@ def run_engineering_calculations(inputs, candidate_df):
                 material_pass = False
                 mat_reason = "Corrosion Risk (Requires 13Cr CRA)"
                 
-        # Overall Candidate Status
         overall_pass = hydraulics_pass and velocity_pass and late_life_pass and material_pass
         
         results.append({
@@ -300,11 +295,9 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
-    # 1. Hero Offshore Rig Banner
     if os.path.exists("image.png"):
         st.image("image.png", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
     
-    # 2. Section: What is Upper Completion?
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
         <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">What is Upper Completion?</h2>
@@ -316,9 +309,6 @@ if page == "1. Introduction & Overview":
 
     col1, col2 = st.columns(2, gap="small")
 
-    # -------------------------------------------------------------------------
-    # LEFT COLUMN: Configurations -> Figure 1 -> Major Decisions
-    # -------------------------------------------------------------------------
     with col1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
@@ -333,7 +323,6 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-        # FIGURE 1
         if os.path.exists("Figure 1.png"):
             st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
 
@@ -350,9 +339,6 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # RIGHT COLUMN: Key Components -> Figure 2
-    # -------------------------------------------------------------------------
     with col2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
@@ -363,13 +349,9 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-        # FIGURE 2
         if os.path.exists("Figure 2.jpg"):
             st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
 
-    # -------------------------------------------------------------------------
-    # SECTION 2: PRODUCTION TUBING: THE FLOW PATH OF THE WELL
-    # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem;">
@@ -380,11 +362,9 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    # Figure 3 displayed full-width above the specifications table
     if os.path.exists("Figure 3.jpg"):
         st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
 
-    # Key Tubing Specifications Table
     st.markdown("""
     <div class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
         <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">Key Tubing Specifications</h3>
@@ -429,7 +409,6 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    # Figure 4 positioned directly below the specifications table
     if os.path.exists("Figure 4.png"):
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
@@ -440,7 +419,6 @@ elif page == "2. Well & Fluid Inputs":
     st.markdown('<div class="main-header">Step 2: Well & Operating Inputs</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Define subsurface geometry, production rates, PVT properties, and lifecycle targets.</div>', unsafe_allow_html=True)
     
-    # Operating Well Type Selector
     well_type = st.radio("Select Operating Well Type:", ["Oil Well", "Gas Well"], horizontal=True, index=0 if st.session_state.inputs['well_type'] == 'Oil Well' else 1)
 
     with st.form("inputs_form"):
@@ -532,7 +510,6 @@ elif page == "4. Engineering Calculations":
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
     
-    # Overview Summary Table
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs['well_type']} Mode)")
     
     display_df = res_df[[
@@ -547,7 +524,6 @@ elif page == "4. Engineering Calculations":
     
     st.dataframe(display_df, use_container_width=True)
     
-    # Calculation Formula Expanders
     with st.expander("Show Governing Equations & Correlations"):
         st.latex(r"Z = f(P_{pr}, T_{pr}) \quad \text{(Hall-Yarborough Correlation)}")
         st.latex(r"B_o = 0.9759 + 0.000120 \left[ R_s \left(\frac{\gamma_g}{\gamma_o}\right)^{0.5} + 1.25 T \right]^{1.2} \quad \text{(Standing Correlation)}")
@@ -591,8 +567,8 @@ elif page == "5. Recommendation & Sensitivity":
         else:
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, or corrosion).")
 
-# -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE (PURE PYTHON REST)
+    # -------------------------------------------------------------------------
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE (PURE PYTHON REST - GEMINI 2.5 FLASH)
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
@@ -607,7 +583,7 @@ elif page == "5. Recommendation & Sensitivity":
         elif passed_candidates.empty:
             st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
         else:
-            with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini API..."):
+            with st.spinner("Analyzing hydraulics, velocity limits, and NACE compliance via Gemini 2.5 API..."):
                 try:
                     import json
                     import urllib.request
@@ -644,8 +620,8 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
                     """
 
-                    # Updated REST endpoint using gemini-1.5-flash
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                    # Official REST endpoint using gemini-2.5-flash
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
