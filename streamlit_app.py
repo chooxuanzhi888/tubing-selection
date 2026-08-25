@@ -620,8 +620,8 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Keep tone formal, concise, and professional. Use markdown formatting with bold metrics.
                     """
 
-                    # FIXED: Updated model path to gemini-2.5-flash
-                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                    # UPDATED: Endpoint set to gemini-3.6-flash
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
