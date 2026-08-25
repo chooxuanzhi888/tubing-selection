@@ -597,29 +597,27 @@ elif page == "5. Recommendation & Sensitivity":
     tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
     
     with tab1:
-            # Clean line plot with custom hover templates to prevent text collision
-            fig_dp = px.line(
-                res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
-                title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
-                labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
-                hover_data=["Name", "Velocity_fts", "Overall_Pass"]
-            )
-            
-            fig_dp.update_traces(marker=dict(size=10))
-            fig_dp.add_hline(
-                y=res_df['dp_avail_psi'].iloc[0], 
-                line_dash="dash", 
-                line_color="red", 
-                annotation_text="Available Drawdown Limit",
-                annotation_position="bottom right"
-            )
-            
-            max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
-            fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
-            
-            st.plotly_chart(fig_dp, use_container_width=True)
+        # Clean line plot grouping by Grade to eliminate text label collision
+        fig_dp = px.line(
+            res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
+            title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
+            labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
+            hover_data=["Name", "Velocity_fts", "Overall_Pass"]
+        )
+        fig_dp.update_traces(marker=dict(size=10))
+        fig_dp.add_hline(
+            y=res_df['dp_avail_psi'].iloc[0], 
+            line_dash="dash", 
+            line_color="red", 
+            annotation_text="Available Drawdown Limit",
+            annotation_position="bottom right"
+        )
         
-        # Explanatory card under Graph 1
+        max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
+        fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
+        
+        st.plotly_chart(fig_dp, use_container_width=True)
+        
         st.info("""
         **💡 How to Interpret Graph 1:**
         * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive ($P_{bhp} - P_{wh}$). Candidates operating **above** this line cannot flow naturally to the surface.
@@ -641,7 +639,6 @@ elif page == "5. Recommendation & Sensitivity":
         )
         st.plotly_chart(fig_v, use_container_width=True)
         
-        # Explanatory card under Graph 2
         st.info("""
         **💡 How to Interpret Graph 2:**
         * **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.
