@@ -89,41 +89,41 @@ if 'inputs' not in st.session_state:
 if 'tubing_db' not in st.session_state:
     st.session_state.tubing_db = pd.DataFrame([
         # 2-3/8" Candidates
-        {"Name": '2-3/8" J-55 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "J-55",  "Material": "Carbon Steel",        "Yield_psi": 55000,  "Burst_psi": 7700},
-        {"Name": '2-3/8" L-80 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 11200},
-        {"Name": '2-3/8" 13Cr (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 11200},
+        {"Name": '2-3/8" J-55 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7700},
+        {"Name": '2-3/8" L-80 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 11200},
+        {"Name": '2-3/8" 13Cr (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 11200},
         
         # 2-7/8" Candidates
-        {"Name": '2-7/8" J-55 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "J-55",  "Material": "Carbon Steel",        "Yield_psi": 55000,  "Burst_psi": 7260},
-        {"Name": '2-7/8" L-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" N-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "N-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" 13Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" P-110 (6.5#)',  "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 14530},
-        {"Name": '2-7/8" 22Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Yield_psi": 110000, "Burst_psi": 14530},
+        {"Name": '2-7/8" J-55 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7260},
+        {"Name": '2-7/8" L-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" N-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "N-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" 13Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 10570},
+        {"Name": '2-7/8" P-110 (6.5#)',  "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 14530},
+        {"Name": '2-7/8" 22Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Connection": "Premium (VAM Top)", "Yield_psi": 110000, "Burst_psi": 14530},
 
         # 3-1/2" Candidates
-        {"Name": '3-1/2" L-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" N-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "N-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" 13Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" P-110 (9.3#)',  "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 13970},
-        {"Name": '3-1/2" 22Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Yield_psi": 110000, "Burst_psi": 13970},
-        {"Name": '3-1/2" 25Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "25Cr",  "Material": "Super Duplex CRA",    "Yield_psi": 125000, "Burst_psi": 15870},
+        {"Name": '3-1/2" L-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" N-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "N-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" 13Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 10160},
+        {"Name": '3-1/2" P-110 (9.3#)',  "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 13970},
+        {"Name": '3-1/2" 22Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Connection": "Premium (VAM Top)", "Yield_psi": 110000, "Burst_psi": 13970},
+        {"Name": '3-1/2" 25Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "25Cr",  "Material": "Super Duplex CRA",    "Connection": "Premium (VAM Top)", "Yield_psi": 125000, "Burst_psi": 15870},
 
         # 4" Candidates
-        {"Name": '4" L-80 (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 9520},
-        {"Name": '4" 13Cr (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 9520},
-        {"Name": '4" P-110 (11.0#)',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 13090},
+        {"Name": '4" L-80 (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 9520},
+        {"Name": '4" 13Cr (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 9520},
+        {"Name": '4" P-110 (11.0#)',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 13090},
 
         # 4-1/2" Candidates
-        {"Name": '4-1/2" L-80 (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 8980},
-        {"Name": '4-1/2" 13Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 8980},
-        {"Name": '4-1/2" P-110 (12.6#)', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 12340},
-        {"Name": '4-1/2" 25Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "25Cr",  "Material": "Super Duplex CRA",    "Yield_psi": 125000, "Burst_psi": 14020},
+        {"Name": '4-1/2" L-80 (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 8980},
+        {"Name": '4-1/2" 13Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 8980},
+        {"Name": '4-1/2" P-110 (12.6#)', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 12340},
+        {"Name": '4-1/2" 25Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "25Cr",  "Material": "Super Duplex CRA",    "Connection": "Premium (VAM Top)", "Yield_psi": 125000, "Burst_psi": 14020},
 
         # 5-1/2" Candidates
-        {"Name": '5-1/2" L-80 (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Yield_psi": 80000,  "Burst_psi": 7740},
-        {"Name": '5-1/2" 13Cr (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Yield_psi": 80000,  "Burst_psi": 7740},
-        {"Name": '5-1/2" P-110 (17.0#)', "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Yield_psi": 110000, "Burst_psi": 10640},
+        {"Name": '5-1/2" L-80 (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 7740},
+        {"Name": '5-1/2" 13Cr (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 7740},
+        {"Name": '5-1/2" P-110 (17.0#)', "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 10640},
     ])
 
 # -----------------------------------------------------------------------------
@@ -247,6 +247,7 @@ def run_engineering_calculations(inputs, candidate_df):
             "ID_in": row['ID_in'],
             "Grade": row['Grade'],
             "Material": row['Material'],
+            "Connection": row.get('Connection', 'API EUE'),
             "Velocity_fts": round(v_m, 2),
             "v_late_life_fts": round(v_m_late, 2),
             "v_erosional": round(v_erosional, 2),
@@ -474,7 +475,7 @@ elif page == "2. Well & Fluid Inputs":
 # -----------------------------------------------------------------------------
 elif page == "3. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 3: Candidate Tubing Database</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Manage standard API tubing dimensions, steel grades, and mechanical yield limits.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Manage standard API tubing dimensions, steel grades, connection profiles, and mechanical yield limits.</div>', unsafe_allow_html=True)
     
     st.dataframe(st.session_state.tubing_db, use_container_width=True)
     
@@ -490,15 +491,16 @@ elif page == "3. Candidate Tubing Specs":
             with col3:
                 c_grade = st.selectbox("Grade", ["J-55", "L-80", "N-80", "13Cr", "P-110", "22Cr", "25Cr"])
                 c_mat = st.selectbox("Material Type", ["Carbon Steel", "Martensitic Stainless", "High-Strength Alloy", "Duplex Stainless", "Super Duplex CRA"])
+                c_conn = st.selectbox("Connection Type", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"])
                                 
             add_sub = st.form_submit_button("Add to Database")
             if add_sub:
                 new_row = pd.DataFrame([{
                     "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight,
-                    "Grade": c_grade, "Material": c_mat, "Yield_psi": 80000, "Burst_psi": 10000
+                    "Grade": c_grade, "Material": c_mat, "Connection": c_conn, "Yield_psi": 80000, "Burst_psi": 10000
                 }])
                 st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True)
-                st.success(f"Added {c_name} to candidates database!")
+                st.success(f"Added {c_name} ({c_conn}) to candidates database!")
                 st.rerun()
 
 # -----------------------------------------------------------------------------
@@ -513,12 +515,12 @@ elif page == "4. Engineering Calculations":
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs['well_type']} Mode)")
     
     display_df = res_df[[
-        'Name', 'ID_in', 'Velocity_fts', 'v_late_life_fts', 'v_critical', 'v_erosional', 
+        'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_critical', 'v_erosional', 
         'dp_hydro_psi', 'dp_fric_psi', 'dp_total_psi', 'Z_Factor', 'Bo_rb_stb', 'Material_Reason', 'Overall_Pass'
     ]].copy()
     
     display_df.columns = [
-        'Tubing Candidate', 'ID (in)', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Lift Vel (ft/s)', 'Max Erosional Vel (ft/s)',
+        'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Lift Vel (ft/s)', 'Max Erosional Vel (ft/s)',
         'Hydrostatic dP (psi)', 'Friction dP (psi)', 'Total dP (psi)', 'Dynamic Z', 'Bo (rb/STB)', 'Material Status', 'Overall Status'
     ]
     
@@ -551,6 +553,7 @@ elif page == "5. Recommendation & Sensitivity":
             st.metric("Total Pressure Drop", f"{preferred['dp_total_psi']} psi")
             st.metric("Flow Velocity", f"{preferred['Velocity_fts']} ft/s")
             st.metric("Material Grade", f"{preferred['Grade']}")
+            st.metric("Connection Type", f"{preferred['Connection']}")
         else:
             st.error("### No Candidates Passed All Screenings!")
             st.warning("Consider increasing bottomhole pressure, reducing target rates, or picking higher CRA tubing grades.")
@@ -562,7 +565,7 @@ elif page == "5. Recommendation & Sensitivity":
             st.markdown(f"""
             * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) and Bo (**{preferred['Bo_rb_stb']} rb/STB**) confirm live-fluid flow.
             * **Velocity Window:** Initial mixture flow velocity (**{preferred['Velocity_fts']} ft/s**) and Year {st.session_state.inputs['field_life_yrs']} late-life velocity (**{preferred['v_late_life_fts']} ft/s**) both remain safely above liquid loading limits (**{preferred['v_critical']} ft/s**).
-            * **Corrosion & Metallurgy:** Selected **{preferred['Grade']} ({preferred['Material']})** tubing satisfies NACE MR0175 requirements for $CO_2$ ({st.session_state.inputs['co2_mole_pct']} mole %) and $H_2S$ ({st.session_state.inputs['h2s_mole_pct']} mole %).
+            * **Corrosion & Metallurgy:** Selected **{preferred['Grade']} ({preferred['Material']})** tubing with **{preferred['Connection']}** connections satisfies NACE MR0175 requirements for $CO_2$ ({st.session_state.inputs['co2_mole_pct']} mole %) and $H_2S$ ({st.session_state.inputs['h2s_mole_pct']} mole %).
             """)
         else:
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, or corrosion).")
@@ -605,6 +608,7 @@ elif page == "5. Recommendation & Sensitivity":
                     SELECTED PREFERRED TUBING CANDIDATE:
                     - Candidate Name: {pref['Name']}
                     - Steel Grade / Material: {pref['Grade']} ({pref['Material']})
+                    - Thread / Connection Type: {pref['Connection']}
                     - Total Calculated Pressure Drop: {pref['dp_total_psi']} psi (Hydrostatic: {pref['dp_hydro_psi']} psi, Friction: {pref['dp_fric_psi']} psi)
                     - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
                     - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
@@ -614,9 +618,9 @@ elif page == "5. Recommendation & Sensitivity":
 
                     INSTRUCTIONS:
                     1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
-                    2. Paragraph 1: Recommend the candidate size/grade and justify hydraulics vs available drawdown.
+                    2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulics vs available drawdown.
                     3. Paragraph 2: Analyze initial vs Year 15 late-life velocities against Turner loading and API RP 14E limits.
-                    4. Paragraph 3: Justify J-55 carbon steel selection under NACE MR0175 partial pressure limits to avoid unnecessary CRA expenditure.
+                    4. Paragraph 3: Justify material and connection selection under NACE MR0175 partial pressure limits to avoid unnecessary CRA expenditure.
                     5. Use formal engineering phrasing and bold key numeric values.
                     """
 
