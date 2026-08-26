@@ -1,0 +1,26 @@
+Name,OD_in,ID_in,Weight_lbft,Grade,Material,Connection,Yield_psi,Burst_psi
+2-3/8" J-55 (4.7#),2.375,1.995,4.70,J-55,Carbon Steel,API EUE,55000,7700
+2-3/8" L-80 (4.7#),2.375,1.995,4.70,L-80,Carbon Steel,API EUE,80000,11200
+2-3/8" 13Cr (4.7#),2.375,1.995,4.70,13Cr,Martensitic Stainless,Premium (VAM Top),80000,11200
+2-7/8" J-55 (6.5#),2.875,2.441,6.50,J-55,Carbon Steel,API EUE,55000,7260
+2-7/8" L-80 (6.5#),2.875,2.441,6.50,L-80,Carbon Steel,API EUE,80000,10570
+2-7/8" N-80 (6.5#),2.875,2.441,6.50,N-80,Carbon Steel,API EUE,80000,10570
+2-7/8" 13Cr (6.5#),2.875,2.441,6.50,13Cr,Martensitic Stainless,Premium (VAM Top),80000,10570
+2-7/8" P-110 (6.5#),2.875,2.441,6.50,P-110,High-Strength Alloy,Premium (TenarisHydril),110000,14530
+2-7/8" 22Cr (6.5#),2.875,2.441,6.50,22Cr,Duplex Stainless,Premium (VAM Top),110000,14530
+3-1/2" L-80 (9.3#),3.500,2.992,9.30,L-80,Carbon Steel,API EUE,80000,10160
+3-1/2" N-80 (9.3#),3.500,2.992,9.30,N-80,Carbon Steel,API EUE,80000,10160
+3-1/2" 13Cr (9.3#),3.500,2.992,9.30,13Cr,Martensitic Stainless,Premium (VAM Top),80000,10160
+3-1/2" P-110 (9.3#),3.500,2.992,9.30,P-110,High-Strength Alloy,Premium (TenarisHydril),110000,13970
+3-1/2" 22Cr (9.3#),3.500,2.992,9.30,22Cr,Duplex Stainless,Premium (VAM Top),110000,13970
+3-1/2" 25Cr (9.3#),3.500,2.992,9.30,25Cr,Super Duplex CRA,Premium (VAM Top),125000,15870
+4" L-80 (11.0#),4.000,3.476,11.00,L-80,Carbon Steel,API EUE,80000,9520
+4" 13Cr (11.0#),4.000,3.476,11.00,13Cr,Martensitic Stainless,Premium (VAM Top),80000,9520
+4" P-110 (11.0#),4.000,3.476,11.00,P-110,High-Strength Alloy,Premium (TenarisHydril),110000,13090
+4-1/2" L-80 (12.6#),4.500,3.958,12.60,L-80,Carbon Steel,API EUE,80000,8980
+4-1/2" 13Cr (12.6#),4.500,3.958,12.60,13Cr,Martensitic Stainless,Premium (VAM Top),80000,8980
+4-1/2" P-110 (12.6#),4.500,3.958,12.60,P-110,High-Strength Alloy,Premium (TenarisHydril),110000,12340
+4-1/2" 25Cr (12.6#),4.500,3.958,12.60,25Cr,Super Duplex CRA,Premium (VAM Top),125000,14020
+5-1/2" L-80 (17.0#),5.500,4.892,17.00,L-80,Carbon Steel,API EUE,80000,7740
+5-1/2" 13Cr (17.0#),5.500,4.892,17.00,13Cr,Martensitic Stainless,Premium (VAM Top),80000,7740
+5-1/2" P-110 (17.0#),5.500,4.892,17.00,P-110,High-Strength Alloy,Premium (TenarisHydril),110000,10640

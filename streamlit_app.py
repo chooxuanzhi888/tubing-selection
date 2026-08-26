@@ -55,7 +55,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# SESSION STATE INITIALIZATION
+# SESSION STATE INITIALIZATION & CSV LOADER FOR 500+ CANDIDATES
 # -----------------------------------------------------------------------------
 if 'inputs' not in st.session_state:
     st.session_state.inputs = {
@@ -90,44 +90,16 @@ if 'inputs' not in st.session_state:
     }
 
 if 'tubing_db' not in st.session_state:
-    st.session_state.tubing_db = pd.DataFrame([
-        # 2-3/8" Candidates
-        {"Name": '2-3/8" J-55 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7700},
-        {"Name": '2-3/8" L-80 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 11200},
-        {"Name": '2-3/8" 13Cr (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 11200},
-        
-        # 2-7/8" Candidates
-        {"Name": '2-7/8" J-55 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7260},
-        {"Name": '2-7/8" L-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" N-80 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "N-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" 13Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 10570},
-        {"Name": '2-7/8" P-110 (6.5#)',  "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 14530},
-        {"Name": '2-7/8" 22Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Connection": "Premium (VAM Top)", "Yield_psi": 110000, "Burst_psi": 14530},
-
-        # 3-1/2" Candidates
-        {"Name": '3-1/2" L-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" N-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "N-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" 13Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 10160},
-        {"Name": '3-1/2" P-110 (9.3#)',  "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 13970},
-        {"Name": '3-1/2" 22Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "22Cr",  "Material": "Duplex Stainless",    "Connection": "Premium (VAM Top)", "Yield_psi": 110000, "Burst_psi": 13970},
-        {"Name": '3-1/2" 25Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "25Cr",  "Material": "Super Duplex CRA",    "Connection": "Premium (VAM Top)", "Yield_psi": 125000, "Burst_psi": 15870},
-
-        # 4" Candidates
-        {"Name": '4" L-80 (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 9520},
-        {"Name": '4" 13Cr (11.0#)',      "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 9520},
-        {"Name": '4" P-110 (11.0#)',     "OD_in": 4.000, "ID_in": 3.476, "Weight_lbft": 11.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 13090},
-
-        # 4-1/2" Candidates
-        {"Name": '4-1/2" L-80 (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 8980},
-        {"Name": '4-1/2" 13Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 8980},
-        {"Name": '4-1/2" P-110 (12.6#)', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 12340},
-        {"Name": '4-1/2" 25Cr (12.6#)',  "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60,"Grade": "25Cr",  "Material": "Super Duplex CRA",    "Connection": "Premium (VAM Top)", "Yield_psi": 125000, "Burst_psi": 14020},
-
-        # 5-1/2" Candidates
-        {"Name": '5-1/2" L-80 (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 7740},
-        {"Name": '5-1/2" 13Cr (17.0#)',  "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 7740},
-        {"Name": '5-1/2" P-110 (17.0#)', "OD_in": 5.500, "ID_in": 4.892, "Weight_lbft": 17.00,"Grade": "P-110", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 10640},
-    ])
+    if os.path.exists("tubing_database.csv"):
+        st.session_state.tubing_db = pd.read_csv("tubing_database.csv")
+    else:
+        st.session_state.tubing_db = pd.DataFrame([
+            {"Name": '2-3/8" J-55 (4.7#)',   "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.70, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7700},
+            {"Name": '2-7/8" J-55 (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "J-55",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 55000,  "Burst_psi": 7260},
+            {"Name": '2-7/8" 13Cr (6.5#)',   "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "13Cr",  "Material": "Martensitic Stainless","Connection": "Premium (VAM Top)", "Yield_psi": 80000,  "Burst_psi": 10570},
+            {"Name": '3-1/2" L-80 (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "L-80",  "Material": "Carbon Steel",        "Connection": "API EUE", "Yield_psi": 80000,  "Burst_psi": 10160},
+            {"Name": '3-1/2" 25Cr (9.3#)',   "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.30, "Grade": "25Cr",  "Material": "Super Duplex CRA",    "Connection": "Premium (VAM Top)", "Yield_psi": 125000, "Burst_psi": 15870}
+        ])
 
 # -----------------------------------------------------------------------------
 # ANNULAR FLUID LOOKUP DICTIONARY
@@ -206,9 +178,7 @@ def run_engineering_calculations(inputs, candidate_df):
     late_life_q = inputs['q_liquid'] * ((1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs'])
     q_m_late = (late_life_q * 5.615 / 86400.0) + q_g_ft3s
     
-    # -------------------------------------------------------------------------
-    # ANNULAR PRESSURE BUILD-UP (APB) CALCULATION ENGINE
-    # -------------------------------------------------------------------------
+    # Annular Pressure Build-up (APB) Calculation Engine
     fluid_props = ANNULAR_FLUID_PROPS.get(inputs['annular_fluid'], ANNULAR_FLUID_PROPS["Fresh Water / Light Brine"])
     alpha_v = fluid_props['alpha_v']
     kappa_t = fluid_props['kappa_t']
@@ -250,40 +220,29 @@ def run_engineering_calculations(inputs, candidate_df):
         
         dp_available = inputs['p_bhp'] - inputs['p_wh']
         
-        # Compliance Flags: Hydraulics & Velocity
+        # Compliance Flags
         hydraulics_pass = dp_total <= dp_available
         velocity_pass = v_critical_loading < v_m < v_erosional
         late_life_pass = v_m_late >= v_critical_loading
         
-        # ---------------------------------------------------------------------
-        # COMPREHENSIVE LUBINSKI AXIAL FORCE BALANCE & STRESS ANALYSIS
-        # ---------------------------------------------------------------------
-        # 1. Buoyed Gravity Load
-        rho_buoy_factor = (1.0 - (rho_m / 490.0))  # Steel density ~ 490 lb/ft3
+        # Lubinski Axial Force Balance & Stress Analysis
+        rho_buoy_factor = (1.0 - (rho_m / 490.0))
         f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
         
-        # 2. Thermal Stress Load (Packer Constrained Expansion)
-        e_modulus = 30e6  # Steel Young's Modulus (psi)
-        alpha_steel = 6.9e-6  # Thermal expansion coeff (/deg F)
+        e_modulus = 30e6
+        alpha_steel = 6.9e-6
         f_thermal_lbs = e_modulus * area_steel_in2 * alpha_steel * delta_t_annular
         
-        # 3. Piston & Ballooning Forces
         f_piston_lbs = (inputs['p_bhp'] * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((inputs['p_bhp'] * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
-        
-        # 4. Fluid Friction Drag Load
         f_drag_lbs = (f * rho_m * (v_m ** 2) * np.pi * id_ft * inputs['md']) / (2.0 * 32.174)
-        
-        # 5. Bending Stress (Dogleg Severity DLS)
         sigma_bending_psi = 218.0 * row['OD_in'] * inputs['dls']
         
-        # Total Net Axial Force (Top of String)
         f_axial_total_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs
         f_axial_total_klbs = f_axial_total_lbs / 1000.0
         
         sigma_axial_psi = (f_axial_total_lbs / area_steel_in2) + sigma_bending_psi
         
-        # Lame Tangential (Hoop) and Radial Stresses at ID
         p_int = inputs['p_bhp']
         p_ext = p_annular_total_wh
         r_i = row['ID_in'] / 2.0
@@ -292,38 +251,30 @@ def run_engineering_calculations(inputs, candidate_df):
         sigma_hoop_psi = (p_int * (r_i**2) - p_ext * (r_o**2) + (r_i**2 * r_o**2 * (p_int - p_ext) / (r_i**2))) / (r_o**2 - r_i**2)
         sigma_radial_psi = -p_int
         
-        # von Mises Triaxial Equivalent Stress
         vme_stress_psi = np.sqrt(0.5 * ((sigma_hoop_psi - sigma_radial_psi)**2 + (sigma_radial_psi - sigma_axial_psi)**2 + (sigma_axial_psi - sigma_hoop_psi)**2))
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
-        stress_pass = triaxial_sf >= 1.25  # Standard Completion Safety Factor (1.25)
+        stress_pass = triaxial_sf >= 1.25
         
-        # ---------------------------------------------------------------------
-        # AUTOMATED 5-FACTOR CONNECTION SELECTION LOGIC
-        # ---------------------------------------------------------------------
+        # 5-Factor Automated Connection Selection Logic
         conn_reasons = []
         needs_premium = False
         
-        # Factor 1: Gas Drive / High GOR
         if inputs['well_type'] == 'Gas Well' or inputs['gor'] > 2000:
             needs_premium = True
             conn_reasons.append("High Gas Ratio (Gas-Tight Metal Seal Required)")
             
-        # Factor 2: High APB Risk
         if dp_apb_psi > 1500:
             needs_premium = True
             conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi) - Thread Dope Washout Risk")
             
-        # Factor 3: CRA Alloy Galling
         if row['Material'] in ["Martensitic Stainless", "Duplex Stainless", "Super Duplex CRA"]:
             needs_premium = True
             conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
             
-        # Factor 4: High TVD / Tensile Load
         if inputs['tvd'] > 10000 or f_axial_total_klbs > 150.0:
             needs_premium = True
             conn_reasons.append("High Depth / Axial Load")
             
-        # Factor 5: High Well Bending / Dogleg
         if inputs['dls'] > 3.0:
             needs_premium = True
             conn_reasons.append(f"High Dogleg ({inputs['dls']}°/100ft)")
@@ -337,7 +288,6 @@ def run_engineering_calculations(inputs, candidate_df):
         elif needs_premium and 'Premium' in row['Connection']:
             conn_status_msg = "Premium Connection Validated (" + "; ".join(conn_reasons) + ")"
 
-        # NACE Metallurgy Check
         material_pass = True
         mat_reason = "Compatible"
         if p_h2s >= 0.05 or p_co2 >= 7.0:
@@ -440,19 +390,6 @@ if page == "1. Introduction & Overview":
         if os.path.exists("Figure 1.png"):
             st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
 
-        st.markdown("""
-        <div class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Major Design Decisions</h3>
-            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Key decisions include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
-                <li><b>Tubing size:</b> balances production capacity and pressure drop.</li>
-                <li><b>Completion configuration:</b> single or dual completion.</li>
-                <li><b>Tubing isolation:</b> using a <b>packer or equivalent</b> to control fluid communication.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-
     with col2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
@@ -465,66 +402,6 @@ if page == "1. Introduction & Overview":
 
         if os.path.exists("Figure 2.jpg"):
             st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
-
-    st.markdown("---")
-    st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem;">
-        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">Production Tubing: The Flow Path of the Well</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
-            <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if os.path.exists("Figure 3.jpg"):
-        st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
-
-    st.markdown("""
-    <div class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
-        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">Key Tubing Specifications</h3>
-        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
-            <thead>
-                <tr style="background-color: #065F46; color: white; text-align: left;">
-                    <th style="padding: 12px 16px; border-radius: 6px 0 0 0; width: 30%;">Specification</th>
-                    <th style="padding: 12px 16px; border-radius: 0 6px 0 0; width: 70%;">Importance</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal size / OD</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the overall tubing size and compatibility with the casing.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Internal diameter (ID)</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences <b>fluid velocity and pressure loss</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Drift diameter</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the maximum equipment diameter that can pass through the tubing.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal weight</td>
-                    <td style="padding: 12px 16px; color: #334155;">Indicates tubing weight and is related to <b>wall thickness</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Steel grade</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines <b>strength and suitability for corrosive environments</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Connection</td>
-                    <td style="padding: 12px 16px; color: #334155;">Affects connection strength and tubing integrity.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Joint length</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences running and handling operations during completion and workover.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if os.path.exists("Figure 4.png"):
-        st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
@@ -594,13 +471,33 @@ elif page == "2. Well & Fluid Inputs":
                 st.success("Inputs saved successfully! Proceed to Page 3 or 4.")
 
 # -----------------------------------------------------------------------------
-# PAGE 3: CANDIDATE TUBING SPECS
+# PAGE 3: CANDIDATE TUBING SPECS (WITH FILTERING)
 # -----------------------------------------------------------------------------
 elif page == "3. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 3: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing dimensions, steel grades, connection profiles, and mechanical yield limits.</div>', unsafe_allow_html=True)
     
-    st.dataframe(st.session_state.tubing_db, use_container_width=True)
+    st.subheader("🔍 Database Filter Controls")
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        selected_sizes = st.multiselect(
+            "Filter by Outer Diameter (OD):", 
+            options=sorted(st.session_state.tubing_db['OD_in'].unique()),
+            default=sorted(st.session_state.tubing_db['OD_in'].unique())
+        )
+    with col_f2:
+        selected_grades = st.multiselect(
+            "Filter by Steel Grade:", 
+            options=sorted(st.session_state.tubing_db['Grade'].unique()),
+            default=sorted(st.session_state.tubing_db['Grade'].unique())
+        )
+
+    filtered_db = st.session_state.tubing_db[
+        (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) & 
+        (st.session_state.tubing_db['Grade'].isin(selected_grades))
+    ]
+    
+    st.dataframe(filtered_db, use_container_width=True, height=450)
     
     with st.expander("Add Custom Tubing Candidate"):
         with st.form("add_candidate_form"):
@@ -627,7 +524,7 @@ elif page == "3. Candidate Tubing Specs":
                 st.rerun()
 
 # -----------------------------------------------------------------------------
-# PAGE 4: ENGINEERING CALCULATIONS
+# PAGE 4: ENGINEERING CALCULATIONS (WITH SCROLLABLE TABLE)
 # -----------------------------------------------------------------------------
 elif page == "4. Engineering Calculations":
     st.markdown('<div class="main-header">Step 4: Engineering Calculation Engine</div>', unsafe_allow_html=True)
@@ -647,7 +544,7 @@ elif page == "4. Engineering Calculations":
         'Total dP (psi)', 'APB Pressure (psi)', 'Axial Load (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Connection Status', 'Overall Status'
     ]
     
-    st.dataframe(display_df, use_container_width=True)
+    st.dataframe(display_df, use_container_width=True, height=450)
     
     with st.expander("Show Governing Equations & Correlations"):
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
@@ -697,7 +594,7 @@ elif page == "5. Recommendation & Sensitivity":
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, APB, or triaxial stress).")
 
     # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE (NATIVE REST - HEADER AUTH)
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
