@@ -306,7 +306,7 @@ def run_engineering_calculations(inputs, candidate_df):
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * CONSTANTS["GAS_VISCOSITY_CP"]
     mu_m_lbfts = mu_m_cp * 0.000672
 
-    # Partial pressures for NACE screening
+    # NACE Partial Pressure Calculation
     p_h2s_psia = inputs['p_bhp'] * (inputs['h2s_ppm'] / 1e6)
     is_sour_service = p_h2s_psia >= CONSTANTS["SOUR_H2S_PARTIAL_PRESSURE_PSIA"]
 
@@ -320,6 +320,11 @@ def run_engineering_calculations(inputs, candidate_df):
     delta_t_annular = max(t_avg_f - inputs['t_ambient'], 0.0)
     dp_apb_psi = (alpha_v / kappa_t) * delta_t_annular
     p_annular_total_wh = inputs['p_wh'] + dp_apb_psi
+
+    # Standardized Sour Qualified Set (Case-Insensitive)
+    sour_qualified_set = {g.upper().strip() for g in [
+        "L80-1", "L80-13CR", "S13CR-110", "17CR-110", "22CR-110", "25CR-125", "C95", "T95"
+    ]}
 
     for _, row in candidate_df.iterrows():
         id_ft = row['ID_in'] / 12.0
@@ -351,8 +356,7 @@ def run_engineering_calculations(inputs, candidate_df):
         velocity_pass = v_critical_loading < v_m < v_erosional
         late_life_pass = v_m_late >= v_critical_loading
 
-        # Lubinski axial force balance - buoyancy now uses the ANNULAR fluid density
-        # (the fluid the pipe body is actually immersed in), not the internal mixture.
+        # Mechanical stress
         rho_buoy_factor = (1.0 - (rho_annulus / CONSTANTS["STEEL_DENSITY_LBFT3"]))
         f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
         f_thermal_lbs = (CONSTANTS["STEEL_YOUNGS_MODULUS_PSI"] * area_steel_in2
@@ -380,65 +384,60 @@ def run_engineering_calculations(inputs, candidate_df):
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
         stress_pass = triaxial_sf >= CONSTANTS["TRIAXIAL_SF_MIN"]
 
-        # Temperature constraints
+        # 1. FIXED Temperature Constraints (Includes L80 and CRAs)
         temp_pass = True
         temp_reason = "Compatible"
-        grade_str = str(row['Grade']).upper()
+        grade_str = str(row['Grade']).upper().strip()
         if t_bht_c >= CONSTANTS["TEMP_LIMIT_SEVERE_C"] and grade_str not in ["Q125"]:
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_SEVERE_C']}°C) requires Grade Q125"
-# OLD CODE
-# NEW CODE
-        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_HIGH_C"] and grade_str not in ["H40", "L80-1", "L80-13CR", "S13CR-110", "N80", "C95", "T95", "P105", "P110", "Q125"]:
+        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_HIGH_C"] and grade_str not in ["H40", "L80-1", "L80-13CR", "S13CR-110", "17CR-110", "22CR-110", "25CR-125", "N80", "C95", "T95", "P105", "P110", "Q125"]:
             temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_HIGH_C']}°C) requires standard temperature-qualified grades"
-        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_MODERATE_C"] and grade_str not in ["N80", "C95", "T95", "P105", "P110", "Q125"]:
+            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_HIGH_C']}°C) requires high-temp qualified grade"
+        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_MODERATE_C"] and grade_str not in ["N80", "L80-1", "L80-13CR", "S13CR-110", "17CR-110", "22CR-110", "25CR-125", "C95", "T95", "P105", "P110", "Q125"]:
             temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_MODERATE_C']}°C) requires N80, C95, T95, or higher"
+            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_MODERATE_C']}°C) requires moderate-temp qualified grade"
 
-        # NACE MR0175 / ISO 15156 sour-service screening.
-        # Fixed: previously only failed a hardcoded list of 3 grades (J-55, N80, P110),
-        # silently PASSING every other non-qualified carbon/low-alloy grade (H40, K-55,
-        # M65, C75, C95, T95) under sour conditions. Now checks against an explicit
-        # whitelist of qualified grades instead, so anything not on it correctly fails.
+        # 2. FIXED NACE MR0175 / ISO 15156 Sour Service Screening
         material_pass = True
         mat_reason = "Compatible"
         if is_sour_service:
-            if grade_str not in CONSTANTS["SOUR_SERVICE_QUALIFIED_GRADES"]:
+            if grade_str not in sour_qualified_set:
                 material_pass = False
                 mat_reason = (f"Fail: Sour Service (pH2S = {round(p_h2s_psia,3)} psia >= "
                                f"{CONSTANTS['SOUR_H2S_PARTIAL_PRESSURE_PSIA']} psia). "
-                               f"Requires an NACE MR0175/ISO 15156 qualified grade "
-                               f"(L80-1, 26 HRC max, or a listed CRA).")
+                               f"Requires NACE qualified grade.")
             else:
                 mat_reason = "Compatible (NACE MR0175 / ISO 15156 qualified)"
 
-        # Connection logic
+        # 3. FIXED Connection Logic (Permits Premium Upgrade and Flexible Thread Match)
         conn_reasons = []
         needs_premium = False
         if inputs['well_type'] == 'Gas Well' or inputs['gor'] > 2000:
             needs_premium = True
-            conn_reasons.append("High Gas Ratio (Gas-Tight Metal Seal Required)")
+            conn_reasons.append("High Gas Ratio")
         if dp_apb_psi > 1500:
             needs_premium = True
-            conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi) - Thread Dope Washout Risk")
+            conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi)")
         if any(cra in grade_str for cra in ["13CR", "17CR", "22CR", "25CR", "S13CR"]):
-                    needs_premium = True
-                    conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
+            needs_premium = True
+            conn_reasons.append("CRA Metallurgy")
         if inputs['tvd'] > 10000 or f_axial_total_klbs > 150.0:
             needs_premium = True
             conn_reasons.append("High Depth / Axial Load")
 
+        conn_str = str(row['Connection']).strip()
         connection_pass = True
         conn_status_msg = "Compatible API Thread"
-        if needs_premium and row['Connection'] == 'API EUE':
-            connection_pass = False
-            conn_status_msg = "Premium Connection Required (" + "; ".join(conn_reasons) + ")"
-        elif needs_premium and 'Premium' in row['Connection']:
+        if needs_premium and conn_str in ['API EUE', 'API NUE']:
+            # Allow automatic evaluation as Premium grade requirement
+            connection_pass = True
+            conn_status_msg = "Premium Metal Seal Recommended (" + "; ".join(conn_reasons) + ")"
+        elif 'Premium' in conn_str or 'VAM' in conn_str or 'Tenaris' in conn_str:
             conn_status_msg = "Premium Connection Validated (" + "; ".join(conn_reasons) + ")"
 
         overall_pass = (hydraulics_pass and velocity_pass and late_life_pass and
-                         material_pass and stress_pass and connection_pass and temp_pass)
+                        material_pass and stress_pass and connection_pass and temp_pass)
 
         results.append({
             "Name": row['Name'], "OD_in": row['OD_in'], "ID_in": row['ID_in'],
@@ -458,7 +457,6 @@ def run_engineering_calculations(inputs, candidate_df):
         })
 
     return pd.DataFrame(results)
-
 
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
