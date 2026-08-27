@@ -385,9 +385,11 @@ def run_engineering_calculations(inputs, candidate_df):
         if t_bht_c >= CONSTANTS["TEMP_LIMIT_SEVERE_C"] and grade_str not in ["Q125"]:
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_SEVERE_C']}°C) requires Grade Q125"
-        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_HIGH_C"] and grade_str not in ["H40", "N80", "P105", "P110", "Q125"]:
+# OLD CODE
+# NEW CODE
+        elif t_bht_c >= CONSTANTS["TEMP_LIMIT_HIGH_C"] and grade_str not in ["H40", "L80-1", "L80-13CR", "S13CR-110", "N80", "C95", "T95", "P105", "P110", "Q125"]:
             temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_HIGH_C']}°C) requires H40, N80, P105, P110, or Q125"
+            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_HIGH_C']}°C) requires standard temperature-qualified grades"
         elif t_bht_c >= CONSTANTS["TEMP_LIMIT_MODERATE_C"] and grade_str not in ["N80", "C95", "T95", "P105", "P110", "Q125"]:
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_MODERATE_C']}°C) requires N80, C95, T95, or higher"
