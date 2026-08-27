@@ -199,7 +199,9 @@ if 'inputs' not in st.session_state:
 
 if 'tubing_db' not in st.session_state:
     if os.path.exists("tubing_database.csv"):
-        st.session_state.tubing_db = pd.read_csv("tubing_database.csv")
+        df_loaded = pd.read_csv("tubing_database.csv")
+        df_loaded['Grade'] = df_loaded['Grade'].astype(str).str.strip()
+        st.session_state.tubing_db = df_loaded
     else:
         st.session_state.tubing_db = pd.DataFrame([
             {"Name": '2-3/8" L80-1 (4.6#)', "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.60, "Grade": "L80-1", "UNS_Code": "K08000", "Material": "NACE Carbon Steel", "Connection": "API EUE", "Yield_psi": 80000, "Burst_psi": 11200},
@@ -420,9 +422,9 @@ def run_engineering_calculations(inputs, candidate_df):
         if dp_apb_psi > 1500:
             needs_premium = True
             conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi) - Thread Dope Washout Risk")
-        if "13CR" in grade_str or "22CR" in grade_str or "25CR" in grade_str:
-            needs_premium = True
-            conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
+        if any(cra in grade_str for cra in ["13CR", "17CR", "22CR", "25CR", "S13CR"]):
+                    needs_premium = True
+                    conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
         if inputs['tvd'] > 10000 or f_axial_total_klbs > 150.0:
             needs_premium = True
             conn_reasons.append("High Depth / Axial Load")
