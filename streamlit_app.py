@@ -217,9 +217,7 @@ def run_engineering_calculations(inputs, candidate_df):
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
         stress_pass = triaxial_sf >= 1.25
         
-        # ---------------------------------------------------------------------
-        # TEMPERATURE OPERATING CONSTRAINTS SCREENING
-        # ---------------------------------------------------------------------
+        # Temperature Constraints
         temp_pass = True
         temp_reason = "Compatible"
         grade_str = str(row['Grade']).upper()
@@ -234,9 +232,7 @@ def run_engineering_calculations(inputs, candidate_df):
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= 65°C) requires N80, C95, T95, or higher"
 
-        # ---------------------------------------------------------------------
-        # NACE MR0175 / SOUR SERVICE SCREENING
-        # ---------------------------------------------------------------------
+        # NACE MR0175 / Sour Service Screening
         material_pass = True
         mat_reason = "Compatible"
         
@@ -335,7 +331,7 @@ st.sidebar.markdown("---")
 st.sidebar.info("**Project Stage:** Upper Completion Optimization\n**Core Engine:** Field Units (Imperial)")
 
 # -----------------------------------------------------------------------------
-# PAGE 1: INTRODUCTION & OVERVIEW (FULLY RESTORED)
+# PAGE 1: INTRODUCTION & OVERVIEW
 # -----------------------------------------------------------------------------
 if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
@@ -527,7 +523,7 @@ elif page == "2. Well & Fluid Inputs":
                 st.success("Inputs saved successfully! Proceed to Page 3 or 4.")
 
 # -----------------------------------------------------------------------------
-# PAGE 3: CANDIDATE TUBING SPECS
+# PAGE 3: CANDIDATE TUBING SPECS (WITH CUSTOM INPUT FORM RESTORED)
 # -----------------------------------------------------------------------------
 elif page == "3. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 3: Candidate Tubing Database</div>', unsafe_allow_html=True)
@@ -554,9 +550,41 @@ elif page == "3. Candidate Tubing Specs":
     ]
     
     st.dataframe(filtered_db, use_container_width=True, height=450)
+    
+    # --- CUSTOM TUBING INPUT FORM (RESTORED) ---
+    with st.expander("➕ Add Custom Tubing Candidate"):
+        with st.form("add_candidate_form"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                c_name = st.text_input("Candidate Name", value='3-1/2" P110 (9.2#)')
+                c_od = st.number_input("Outer Diameter (OD) [in]", value=3.500, min_value=1.0, max_value=12.0)
+                c_yield = st.number_input("Yield Strength [psi]", value=110000, min_value=30000, max_value=180000)
+            with col2:
+                c_id = st.number_input("Inner Diameter (ID) [in]", value=2.992, min_value=0.5, max_value=11.0)
+                c_weight = st.number_input("Nominal Weight [lb/ft]", value=9.2, min_value=1.0, max_value=100.0)
+                c_burst = st.number_input("Burst Pressure Rating [psi]", value=13970, min_value=1000, max_value=30000)
+            with col3:
+                c_grade = st.selectbox("Steel Grade", ["H40", "J-55", "K-55", "M65", "C75", "L80-1", "N80", "C95", "T95", "L80-13Cr", "S13Cr-110", "17Cr-110", "22Cr-110", "25Cr-125", "P110", "Q125"])
+                c_mat = st.selectbox("Material Class", ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless", "Super Martensitic CRA", "Enhanced Martensitic CRA", "Duplex Stainless", "Super Duplex CRA", "High-Strength Alloy"])
+                c_conn = st.selectbox("Connection Profile", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"])
+                c_uns = st.text_input("UNS Designation Code", value="K01100")
+                                
+            add_sub = st.form_submit_button("Add Candidate to Database")
+            if add_sub:
+                if c_id >= c_od:
+                    st.error("Validation Error: Inner Diameter (ID) must be strictly less than Outer Diameter (OD).")
+                else:
+                    new_row = pd.DataFrame([{
+                        "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight,
+                        "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn, 
+                        "Yield_psi": c_yield, "Burst_psi": c_burst
+                    }])
+                    st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True)
+                    st.success(f"Added {c_name} ({c_conn}) to active candidate database!")
+                    st.rerun()
 
 # -----------------------------------------------------------------------------
-# PAGE 4: ENGINEERING CALCULATIONS
+# PAGE 4: ENGINEERING CALCULATIONS (WITH FORMULAS EXPANDER RESTORED)
 # -----------------------------------------------------------------------------
 elif page == "4. Engineering Calculations":
     st.markdown('<div class="main-header">Step 4: Engineering Calculation Engine</div>', unsafe_allow_html=True)
@@ -577,9 +605,27 @@ elif page == "4. Engineering Calculations":
     ]
     
     st.dataframe(display_df, use_container_width=True, height=450)
+    
+    # --- FORMULAS & GOVERNING EQUATIONS EXPANDER (RESTORED) ---
+    with st.expander("📐 Show Governing Equations & Technical Correlations"):
+        st.markdown("#### 1. Annular Pressure Build-up (APB)")
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
+        st.caption("Where $\\alpha_v$ is thermal expansion coefficient and $\\kappa_T$ is fluid isothermal compressibility.")
+        
+        st.markdown("#### 2. Lubinski Total Net Axial Load Balance")
+        st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
+        st.caption("Includes buoyed pipe weight, constrained thermal expansion, pressure area changes across seals, radial expansion shortening, and fluid skin friction.")
+
+        st.markdown("#### 3. von Mises Triaxial Equivalent Stress")
+        st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]} \le \frac{Y_{yield}}{SF_{triaxial}}")
+        st.caption("Requires a minimum triaxial safety factor $SF_{triaxial} \\ge 1.25$ per completion design standards.")
+
+        st.markdown("#### 4. Turner Critical Liquid Loading Velocity")
+        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25} (\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Correlation, } C=1.3\text{)}")
+        st.caption("Calculates minimum gas mixture velocity required to continuously transport liquid droplets to surface.")
 
 # -----------------------------------------------------------------------------
-# PAGE 5: RECOMMENDATION & SENSITIVITY
+# PAGE 5: RECOMMENDATION & SENSITIVITY (WITH GEMINI AI & SENSITIVITY PLOTS RESTORED)
 # -----------------------------------------------------------------------------
 elif page == "5. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 5: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
@@ -618,3 +664,151 @@ elif page == "5. Recommendation & Sensitivity":
             """)
         else:
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, APB, temperature rating, or NACE limits).")
+
+    # -------------------------------------------------------------------------
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE (RESTORED)
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("🤖 AI-Powered Executive Completion Memo")
+    st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
+
+    if st.button("✨ Generate AI Executive Summary", type="primary"):
+        raw_key = st.secrets.get("GEMINI_API_KEY", "")
+        api_key = raw_key.strip().replace('"', '').replace("'", "")
+        
+        if not api_key:
+            st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
+        elif passed_candidates.empty:
+            st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
+        else:
+            with st.spinner("Analyzing hydraulics, velocity limits, APB, and NACE compliance via Gemini API..."):
+                try:
+                    import json
+                    import urllib.request
+
+                    pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
+                    
+                    prompt_text = f"""
+                    You are a Senior Completion Engineer writing an executive technical recommendation memo for an asset manager.
+                    Synthesize the following PRE-CALCULATED Python engineering data into a concise, professional technical assessment.
+                    DO NOT re-calculate or alter any numerical values. Rely STRICTLY on these provided facts:
+
+                    WELL & OPERATIONAL PARAMETERS:
+                    - Well Type: {st.session_state.inputs['well_type']}
+                    - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft (Dogleg Severity: {st.session_state.inputs['dls']} deg/100ft)
+                    - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
+                    - Annular Fluid & APB Pressure Build-up: {st.session_state.inputs['annular_fluid']} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
+                    - Target Field Life: {st.session_state.inputs['field_life_yrs']} Years at {st.session_state.inputs['decline_rate']}% Annual Decline Rate
+                    - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_ppm']} PPM H2S (pH: {st.session_state.inputs['ph_val']})
+
+                    SELECTED PREFERRED TUBING CANDIDATE:
+                    - Candidate Name: {pref['Name']}
+                    - Steel Grade / Material: {pref['Grade']} ({pref['Material']})
+                    - Thread / Connection Type: {pref['Connection']}
+                    - Total Calculated Pressure Drop: {pref['dp_total_psi']} psi (Hydrostatic: {pref['dp_hydro_psi']} psi, Friction: {pref['dp_fric_psi']} psi)
+                    - Net Lubinski Axial Force: {pref['f_axial_klbs']} klbs
+                    - von Mises Triaxial Stress: {pref['vme_stress_psi']} psi (Triaxial Safety Factor: {pref['triaxial_sf']})
+                    - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
+                    - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
+                    - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
+                    - API RP 14E Max Erosional Velocity Limit: {pref['v_erosional']} ft/s
+                    - Connection Evaluation Rationale: {pref['Connection_Reason']}
+
+                    INSTRUCTIONS:
+                    1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
+                    2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulics vs available drawdown.
+                    3. Paragraph 2: Analyze initial vs Year 15 late-life velocities against Turner loading and API RP 14E limits.
+                    4. Paragraph 3: Detail structural safety factor (Triaxial SF), Annular Pressure Build-up (APB), and explain connection choice (API EUE vs Premium metal seal) under NACE MR0175 limits.
+                    5. Use formal engineering phrasing and bold key numeric values.
+                    """
+
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+                    payload = {
+                        "contents": [{"parts": [{"text": prompt_text}]}],
+                        "generationConfig": {"temperature": 0.2}
+                    }
+                    
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': api_key
+                    }
+                    
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode('utf-8'),
+                        headers=headers,
+                        method='POST'
+                    )
+
+                    with urllib.request.urlopen(req) as response:
+                        res_data = json.loads(response.read().decode('utf-8'))
+                        ai_text = res_data['candidates'][0]['content']['parts'][0]['text']
+
+                    st.markdown("""
+                    <div style="background-color: #F0F9FF; border: 1px solid #BAE6FD; border-left: 5px solid #0284C7; border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
+                    """, unsafe_allow_html=True)
+                    st.markdown(ai_text)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except urllib.error.HTTPError as http_err:
+                    error_body = http_err.read().decode('utf-8')
+                    st.error(f"Gemini API HTTP Error {http_err.code}: {error_body}")
+                except Exception as e:
+                    st.error(f"Error calling Gemini API: {str(e)}")
+
+    # -------------------------------------------------------------------------
+    # INTERACTIVE SENSITIVITY PLOTS (RESTORED)
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("Interactive Sensitivity Plots")
+    
+    tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
+    
+    with tab1:
+        fig_dp = px.line(
+            res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
+            title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
+            labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
+            hover_data=["Name", "Velocity_fts", "Overall_Pass"]
+        )
+        fig_dp.update_traces(marker=dict(size=10))
+        fig_dp.add_hline(
+            y=res_df['dp_avail_psi'].iloc[0], 
+            line_dash="dash", 
+            line_color="red", 
+            annotation_text="Available Drawdown Limit",
+            annotation_position="bottom right"
+        )
+        
+        max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
+        fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
+        
+        st.plotly_chart(fig_dp, use_container_width=True)
+        
+        st.info("""
+        **How to Interpret Graph 1:**
+        * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive (P_bhp - P_wh). Candidates operating above this line cannot flow naturally to the surface.
+        * **Pressure Curve Trend:** Frictional pressure drop decreases sharply as tubing inner diameter increases. The optimal candidate balances low pressure drop while remaining comfortably below the drawdown ceiling.
+        """)
+
+    with tab2:
+        fig_v = go.Figure()
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Erosional Limit (Max)', line=dict(dash='dash', color='red')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_critical'], mode='lines', name='Turner Liquid Loading Limit (Min)', line=dict(dash='dot', color='orange')))
+        
+        fig_v.update_layout(
+            title="Flow Velocity Window vs. Tubing Inner Diameter",
+            xaxis_title="Inner Diameter (inches)",
+            yaxis_title="Velocity (ft/s)",
+            margin=dict(t=50, b=40)
+        )
+        st.plotly_chart(fig_v, use_container_width=True)
+        
+        st.info(
+            "**How to Interpret Graph 2:**\n\n"
+            "* **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.\n"
+            "* **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.\n"
+            "* **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance."
+        )
