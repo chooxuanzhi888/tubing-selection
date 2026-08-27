@@ -452,7 +452,7 @@ if page == "1. Introduction & Overview":
     if os.path.exists("Figure 4.png"):
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
-    # --- ADDED: ASSUMPTIONS & LIMITATIONS SECTION ---
+# --- ASSUMPTIONS & LIMITATIONS SECTION (FIXED SYMBOLS) ---
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem;">
         <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">Model Assumptions & Design Limitations</h2>
@@ -462,7 +462,7 @@ if page == "1. Introduction & Overview":
                 <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                     <li><b>Steady-State Flow:</b> Calculates single-phase gas or homogenized multiphase flow under steady operational conditions.</li>
                     <li><b>Linear Thermal Gradient:</b> Assumes a linear temperature distribution from surface wellhead to bottomhole.</li>
-                    <li><b>Isothermal Annular APB:</b> Trapped annular fluid volume expansion relies on single-zone average thermal expansion ($\alpha_v$) and compressibility ($\kappa_T$).</li>
+                    <li><b>Isothermal Annular APB:</b> Trapped annular fluid volume expansion relies on single-zone average thermal expansion (α<sub>v</sub>) and isothermal compressibility (κ<sub>T</sub>).</li>
                     <li><b>Uniform Pipe Geometry:</b> Tubing string is evaluated as a single nominal size and weight from surface to TD.</li>
                 </ul>
             </div>
@@ -471,7 +471,7 @@ if page == "1. Introduction & Overview":
                 <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                     <li><b>Transient Effects:</b> Does not account for dynamic shut-in surges, water hammer, or transient thermal warm-up/cool-down loops.</li>
                     <li><b>Multiphase Flow Regimes:</b> Uses a homogenous fluid mixture model; detailed flow pattern maps (slugging, mist, annular) are simplified.</li>
-                    <li><b>Corrosion Kinetics:</b> NACE MR0175 screening is binary (pH2S threshold); it does not compute quantitative corrosion rates ($mm/year$).</li>
+                    <li><b>Corrosion Kinetics:</b> NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); it does not compute quantitative corrosion rates (mm/year).</li>
                     <li><b>Complex Completion Accessories:</b> Subsurface safety valves (SSSVs) and mandrels are modeled as equivalent hydraulic restrictions rather than detailed localized geometries.</li>
                 </ul>
             </div>
@@ -493,16 +493,20 @@ elif page == "2. Calculation Methodology":
         <div class="card" style="border-top: 3px solid #3B82F6;">
             <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">1. PVT & Multiphase Hydraulics</h3>
             <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
-                Evaluates pressure losses ($\Delta P_{total}$) balancing hydrostatic head and skin friction:
+                Evaluates total pressure losses balancing hydrostatic head and skin friction:
             </p>
-            <p style="text-align: center;">$$\Delta P_{total} = \frac{\rho_m \cdot TVD}{144} + \frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}$$</p>
-            <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem;">
-                <li><b>Z-Factor:</b> Computed via Standing-Katz correlations.</li>
-                <li><b>Live Oil Props:</b> Standing's correlations for solution GOR ($R_s$) and oil formation volume factor ($B_o$).</li>
-                <li><b>Friction Factor ($f$):</b> Derived using explicit Colebrook-White formulations for turbulent pipe flow.</li>
-            </ul>
         </div>
         """, unsafe_allow_html=True)
+        st.latex(r"\Delta P_{total} = \frac{\rho_m \cdot TVD}{144} + \frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}")
+        st.markdown("""
+        <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem; line-height: 1.6;">
+            <li><b>Z-Factor:</b> Computed via Standing-Katz correlations.</li>
+            <li><b>Live Oil Props:</b> Standing's correlations for solution GOR (<i>R<sub>s</sub></i>) and oil formation volume factor (<i>B<sub>o</sub></i>).</li>
+            <li><b>Friction Factor (<i>f</i>):</b> Derived using explicit Colebrook-White formulations for turbulent pipe flow.</li>
+        </ul>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
 
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
@@ -510,39 +514,42 @@ elif page == "2. Calculation Methodology":
             <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
                 Net axial load integrates buoyed weight, thermal expansion, piston/seal forces, ballooning, and fluid drag:
             </p>
-            <p style="text-align: center;">$$F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}$$</p>
-            <p style="font-size: 0.95rem; color: #334155;">Triaxial equivalent stress ($\sigma_{VME}$) must satisfy target safety margins ($SF \ge 1.25$):</p>
-            <p style="text-align: center;">$$\sigma_{VME} = \sqrt{\frac{1}{2}\left[(\sigma_\theta-\sigma_r)^2 + (\sigma_r-\sigma_z)^2 + (\sigma_z-\sigma_\theta)^2\right]}$$</p>
         </div>
         """, unsafe_allow_html=True)
+        st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
+        st.caption("Triaxial equivalent stress (VME) must satisfy target safety margins (SF ≥ 1.25):")
+        st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2}\left[(\sigma_\theta-\sigma_r)^2 + (\sigma_r-\sigma_z)^2 + (\sigma_z-\sigma_\theta)^2\right]}")
 
     with col2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">2. Velocity Operating Window</h3>
             <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
-                Ensures operating velocity ($v_m$) remains between liquid loading and erosional limits:
+                Ensures operating velocity (<i>v<sub>m</sub></i>) remains between liquid loading and erosional limits:
             </p>
-            <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem; margin-bottom: 0.8rem;">
-                <li><b>Turner Liquid Loading (Min Limit):</b> Prevents liquid accumulation in gas/multiphase flow:
-                $$v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}$$</li>
-                <li><b>API RP 14E Erosional Velocity (Max Limit):</b> Prevents pipe wall erosion:
-                $$v_{erosional} = \frac{C}{\sqrt{\rho_m}}$$</li>
-            </ul>
         </div>
         """, unsafe_allow_html=True)
+        
+        st.markdown("**Turner Liquid Loading (Min Limit):** Prevents liquid accumulation downhole.")
+        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}")
+        
+        st.markdown("**API RP 14E Erosional Velocity (Max Limit):** Prevents pipe wall erosion.")
+        st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}}")
+
+        st.markdown("---")
 
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
             <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">4. Environmental & Connection Screening</h3>
             <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem; line-height: 1.6;">
-                <li><b>Annular Pressure Build-up (APB):</b> Trapped annular pressure rise ($\Delta P_{APB} = \frac{\alpha_v}{\kappa_T} \Delta T$) calculated from fluid thermal properties.</li>
-                <li><b>NACE MR0175 Compliance:</b> Sour service flagged when partial pressure $p_{H_2S} \ge 0.05\text{ psia}$. Non-compliant carbon steels are filtered out.</li>
-                <li><b>Connection Selection:</b> Recommends gas-tight Premium connections for high GOR, severe APB ($>1500\text{ psi}$), deep vertical depths ($>10,000\text{ ft}$), or CRA metallurgy.</li>
+                <li><b>Annular Pressure Build-up (APB):</b> Trapped annular pressure rise:
+                <br><i>ΔP<sub>APB</sub> = (α<sub>v</sub> / κ<sub>T</sub>) · ΔT</i></li>
+                <li><b>NACE MR0175 Compliance:</b> Sour service flagged when partial pressure <i>p<sub>H<sub>2</sub>S</sub> ≥ 0.05 psia</i>. Non-compliant carbon steels are filtered out.</li>
+                <li><b>Connection Selection:</b> Recommends gas-tight Premium connections for high GOR, severe APB (&gt;1500 psi), deep vertical depths (&gt;10,000 ft), or CRA metallurgy.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
-        
+
 # -----------------------------------------------------------------------------
 # PAGE 2: WELL & FLUID INPUTS
 # -----------------------------------------------------------------------------
