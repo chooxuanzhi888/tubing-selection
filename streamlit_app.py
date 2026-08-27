@@ -15,36 +15,106 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS styling for presentation-grade UI
+# Responsive, theme-aware CSS (Supports Light & Dark mode seamlessly)
 st.markdown("""
     <style>
+    /* Global Typography & Variable Overrides */
     .main-header {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
         font-weight: 700;
-        color: #1E3A8A;
-        margin-bottom: 0.5rem;
+        color: var(--text-color);
+        margin-bottom: 0.25rem;
     }
     .sub-header {
-        font-size: 1.1rem;
-        color: #475569;
+        font-size: 1.05rem;
+        color: var(--text-color);
+        opacity: 0.75;
         margin-bottom: 1.5rem;
     }
-    .card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
+
+    /* Helper Card Component */
+    .custom-card {
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 8px;
         padding: 1.25rem;
         margin-bottom: 1rem;
     }
-    .metric-card {
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        color: white;
-        border-radius: 10px;
+
+    /* Custom Metric Display Cards */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .metric-card-box {
+        background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+        color: #FFFFFF !important;
+        border-radius: 8px;
         padding: 1rem;
         text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .metric-card-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+    .metric-card-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+    }
+
+    /* Clean Table Formatting */
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.95rem;
+    }
+    .styled-table th {
+        background-color: var(--secondary-background-color);
+        color: var(--text-color);
+        font-weight: 600;
+        padding: 10px 14px;
+        text-align: left;
+        border-bottom: 2px solid rgba(128, 128, 128, 0.3);
+    }
+    .styled-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+        color: var(--text-color);
     }
     </style>
 """, unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
+# UI HELPER FUNCTIONS
+# -----------------------------------------------------------------------------
+def render_card(title: str, content_html: str, accent_color: str = "#2563EB"):
+    """Renders a theme-aware styled card with an accent left border."""
+    st.markdown(
+        f"""
+        <div class="custom-card" style="border-left: 4px solid {accent_color};">
+            <h3 style="margin-top:0; margin-bottom:0.6rem; font-size:1.25rem; font-weight:700;">{title}</h3>
+            {content_html}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# Inline fallback SVG icon for offline / corporate network safety
+SIDEBAR_ICON_SVG = """
+<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  <path d="M5 22h14"/>
+</svg>
+"""
 
 # -----------------------------------------------------------------------------
 # SESSION STATE INITIALIZATION & CSV LOADER
@@ -142,9 +212,7 @@ def run_engineering_calculations(inputs, candidate_df):
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
     
-    # Partial Pressures for NACE Screening
     p_h2s_psia = inputs['p_bhp'] * (inputs['h2s_ppm'] / 1e6)
-    p_co2_psia = inputs['p_bhp'] * (inputs['co2_mole_pct'] / 100.0)
     is_sour_service = p_h2s_psia >= 0.05
     
     late_life_q = inputs['q_liquid'] * ((1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs'])
@@ -191,7 +259,6 @@ def run_engineering_calculations(inputs, candidate_df):
         velocity_pass = v_critical_loading < v_m < v_erosional
         late_life_pass = v_m_late >= v_critical_loading
         
-        # Lubinski Force Balance
         rho_buoy_factor = (1.0 - (rho_m / 490.0))
         f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular
@@ -217,7 +284,6 @@ def run_engineering_calculations(inputs, candidate_df):
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
         stress_pass = triaxial_sf >= 1.25
         
-        # Temperature Constraints
         temp_pass = True
         temp_reason = "Compatible"
         grade_str = str(row['Grade']).upper()
@@ -232,7 +298,6 @@ def run_engineering_calculations(inputs, candidate_df):
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= 65°C) requires N80, C95, T95, or higher"
 
-        # NACE MR0175 / Sour Service Screening
         material_pass = True
         mat_reason = "Compatible"
         
@@ -241,7 +306,6 @@ def run_engineering_calculations(inputs, candidate_df):
                 material_pass = False
                 mat_reason = f"Fail: Sour Service (pH2S = {round(p_h2s_psia,3)} psia >= 0.05). Requires L80-1 (26 HRC Max) or CRA."
 
-        # Connection Logic
         conn_reasons = []
         needs_premium = False
         
@@ -312,9 +376,9 @@ def run_engineering_calculations(inputs, candidate_df):
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
 # -----------------------------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/color/96/000000/oil-rig.png", width=70)
+st.sidebar.markdown(SIDEBAR_ICON_SVG, unsafe_allow_html=True)
 st.sidebar.title("Tubing Selection Tool")
-st.sidebar.caption("Upper-Completion Design Engine")
+st.sidebar.caption("Upper-Completion Optimization Engine")
 
 page = st.sidebar.radio(
     "Select Workflow Step:",
@@ -328,7 +392,7 @@ page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("**Project Stage:** Upper Completion Optimization\n**Core Engine:** Field Units (Imperial)")
+st.sidebar.info("**Project Stage:** Upper Completion Optimization\n\n**Core Engine:** Field Units (Imperial)")
 
 # -----------------------------------------------------------------------------
 # PAGE 1: INTRODUCTION & OVERVIEW
@@ -340,116 +404,111 @@ if page == "1. Introduction & Overview":
     if os.path.exists("image.png"):
         st.image("image.png", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
     
-    st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
-        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">What is Upper Completion?</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
-            The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    render_card(
+        "What is Upper Completion?",
+        """<p style="font-size: 1.05rem; line-height: 1.6; margin-bottom: 0;">
+        The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
+        </p>""",
+        accent_color="#1E3A8A"
+    )
 
-    col1, col2 = st.columns(2, gap="small")
+    col1, col2 = st.columns(2, gap="medium")
 
     with col1:
-        st.markdown("""
-        <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Upper Completion Configurations</h3>
-            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Common configurations include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
+        render_card(
+            "Upper Completion Configurations",
+            """<p style="font-size: 0.95rem; line-height: 1.5;">Common configurations include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Tubingless completion:</b> fluids flow through the casing.</li>
                 <li><b>Tubing without packer:</b> tubing is installed without annular isolation.</li>
                 <li><b>Tubing with packer:</b> the packer isolates the tubing–casing annulus.</li>
                 <li><b>Dual tubing with packers:</b> provides separate flow paths for multiple zones or fluids.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+            </ul>""",
+            accent_color="#2563EB"
+        )
 
         if os.path.exists("Figure 1.png"):
             st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
 
-        st.markdown("""
-        <div class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Major Design Decisions</h3>
-            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Key decisions include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
+        render_card(
+            "Major Design Decisions",
+            """<p style="font-size: 0.95rem; line-height: 1.5;">Key decisions include:</p>
+            <ul style="font-size: 0.95rem; line-height: 1.7; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
                 <li><b>Tubing size:</b> balances production capacity and pressure drop.</li>
                 <li><b>Completion configuration:</b> single or dual completion.</li>
                 <li><b>Tubing isolation:</b> using a <b>packer or equivalent</b> to control fluid communication.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+            </ul>""",
+            accent_color="#2563EB"
+        )
 
     with col2:
-        st.markdown("""
-        <div class="card" style="border-top: 3px solid #10B981;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Key Components</h3>
-            <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-                Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        render_card(
+            "Key Components",
+            """<p style="font-size: 0.95rem; line-height: 1.6; margin-bottom: 0;">
+            Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
+            </p>""",
+            accent_color="#10B981"
+        )
 
         if os.path.exists("Figure 2.jpg"):
             st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
 
     st.markdown("---")
-    st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem;">
-        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">Production Tubing: The Flow Path of the Well</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
-            <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    
+    render_card(
+        "Production Tubing: The Flow Path of the Well",
+        """<p style="font-size: 1.05rem; line-height: 1.6; margin-bottom: 0;">
+        <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
+        </p>""",
+        accent_color="#059669"
+    )
 
     if os.path.exists("Figure 3.jpg"):
         st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
 
-    st.markdown("""
-    <div class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
-        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">Key Tubing Specifications</h3>
-        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
+    with st.container():
+        st.subheader("Key Tubing Specifications")
+        st.markdown("""
+        <table class="styled-table">
             <thead>
-                <tr style="background-color: #065F46; color: white; text-align: left;">
-                    <th style="padding: 12px 16px; border-radius: 6px 0 0 0; width: 30%;">Specification</th>
-                    <th style="padding: 12px 16px; border-radius: 0 6px 0 0; width: 70%;">Importance</th>
+                <tr>
+                    <th style="width: 30%;">Specification</th>
+                    <th style="width: 70%;">Importance</th>
                 </tr>
             </thead>
             <tbody>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal size / OD</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the overall tubing size and compatibility with the casing.</td>
+                <tr>
+                    <td><b>Nominal size / OD</b></td>
+                    <td>Determines the overall tubing size and compatibility with the casing.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Internal diameter (ID)</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences <b>fluid velocity and pressure loss</b>.</td>
+                <tr>
+                    <td><b>Internal diameter (ID)</b></td>
+                    <td>Influences <b>fluid velocity and pressure loss</b>.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Drift diameter</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the maximum equipment diameter that can pass through the tubing.</td>
+                <tr>
+                    <td><b>Drift diameter</b></td>
+                    <td>Determines the maximum equipment diameter that can pass through the tubing.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal weight</td>
-                    <td style="padding: 12px 16px; color: #334155;">Indicates tubing weight and is related to <b>wall thickness</b>.</td>
+                <tr>
+                    <td><b>Nominal weight</b></td>
+                    <td>Indicates tubing weight and is related to <b>wall thickness</b>.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Steel grade</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines <b>strength and suitability for corrosive environments</b>.</td>
+                <tr>
+                    <td><b>Steel grade</b></td>
+                    <td>Determines <b>strength and suitability for corrosive environments</b>.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Connection</td>
-                    <td style="padding: 12px 16px; color: #334155;">Affects connection strength and tubing integrity.</td>
+                <tr>
+                    <td><b>Connection</b></td>
+                    <td>Affects connection strength and tubing integrity.</td>
                 </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Joint length</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences running and handling operations during completion and workover.</td>
+                <tr>
+                    <td><b>Joint length</b></td>
+                    <td>Influences running and handling operations during completion and workover.</td>
                 </tr>
             </tbody>
         </table>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     if os.path.exists("Figure 4.png"):
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
@@ -467,7 +526,7 @@ elif page == "2. Well & Fluid Inputs":
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("📍 Well & Thermal Conditions")
+            st.subheader("Well Geometry & Thermal Conditions")
             tvd = st.number_input("True Vertical Depth (TVD) [ft]", value=st.session_state.inputs['tvd'], min_value=1000.0, max_value=25000.0)
             md = st.number_input("Measured Depth (MD) [ft]", value=st.session_state.inputs['md'], min_value=1000.0, max_value=30000.0)
             dls = st.number_input("Dogleg Severity (DLS) [°/100 ft]", value=st.session_state.inputs.get('dls', 1.5), min_value=0.0, max_value=15.0)
@@ -476,7 +535,7 @@ elif page == "2. Well & Fluid Inputs":
             t_wh = st.number_input("Wellhead Temperature [°F]", value=st.session_state.inputs['t_wh'], min_value=40.0, max_value=200.0)
             t_bht = st.number_input("Bottomhole Temperature [°F]", value=st.session_state.inputs['t_bht'], min_value=80.0, max_value=450.0)
             
-            st.subheader("🛡️ APB & Annular Properties")
+            st.subheader("APB & Annular Properties")
             t_ambient = st.number_input("Ambient Surface Temperature [°F]", value=st.session_state.inputs.get('t_ambient', 60.0), min_value=30.0, max_value=120.0)
             annular_fluid = st.selectbox(
                 "Annular Packer Fluid Type", 
@@ -484,25 +543,25 @@ elif page == "2. Well & Fluid Inputs":
                 index=0
             )
 
-            st.subheader("🛢️ Production Rates")
+            st.subheader("Production Rates")
             q_liquid = st.number_input("Target Production Rate [STB/day or Mscf/d]", value=st.session_state.inputs['q_liquid'], min_value=50.0, max_value=100000.0)
             water_cut = st.number_input("Water Cut [%]", value=st.session_state.inputs['water_cut'], min_value=0.0, max_value=100.0)
             gor = st.number_input("Gas-Oil Ratio (GOR) [scf/STB]", value=st.session_state.inputs['gor'], min_value=0.0, max_value=50000.0)
 
         with col2:
-            st.subheader("🧪 Fluid PVT Properties")
+            st.subheader("Fluid PVT Properties")
             api_gravity = st.number_input("Oil Gravity [°API]", value=st.session_state.inputs['api_gravity'], min_value=10.0, max_value=60.0)
             gas_sg = st.number_input("Gas Specific Gravity [Air = 1.0]", value=st.session_state.inputs['gas_sg'], min_value=0.55, max_value=0.95)
             water_sg = st.number_input("Water Specific Gravity [Fresh = 1.0]", value=st.session_state.inputs['water_sg'], min_value=1.00, max_value=1.25)
             oil_visc = st.number_input("Oil Viscosity [cP]", value=st.session_state.inputs['oil_visc'], min_value=0.1, max_value=200.0)
 
-            st.subheader("☣️ Environmental & Corrosion Factors")
+            st.subheader("Environmental & Corrosion Factors")
             co2_mole_pct = st.number_input("CO₂ Concentration [mole %]", value=st.session_state.inputs['co2_mole_pct'], min_value=0.0, max_value=50.0)
             h2s_ppm = st.number_input("H₂S Concentration [PPM]", value=st.session_state.inputs.get('h2s_ppm', 50.0), min_value=0.0, max_value=100000.0)
             ph_val = st.number_input("In-Situ Fluid pH", value=st.session_state.inputs.get('ph_val', 5.5), min_value=2.0, max_value=9.0)
             chlorides_ppm = st.number_input("Water Chloride Content [PPM]", value=st.session_state.inputs['chlorides_ppm'], min_value=0.0, max_value=250000.0)
 
-            st.subheader("📅 Field Life & Lifecycle Capacity")
+            st.subheader("Field Life & Lifecycle Capacity")
             field_life_yrs = st.number_input("Target Field Life [Years]", value=st.session_state.inputs['field_life_yrs'], min_value=1, max_value=40)
             decline_rate = st.number_input("Annual Reservoir Decline Rate [%/year]", value=st.session_state.inputs['decline_rate'], min_value=0.0, max_value=30.0)
 
@@ -523,13 +582,13 @@ elif page == "2. Well & Fluid Inputs":
                 st.success("Inputs saved successfully! Proceed to Page 3 or 4.")
 
 # -----------------------------------------------------------------------------
-# PAGE 3: CANDIDATE TUBING SPECS (WITH CUSTOM INPUT FORM RESTORED)
+# PAGE 3: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
 elif page == "3. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 3: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
     
-    st.subheader("🔍 Database Filter Controls")
+    st.subheader("Database Filter Controls")
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         selected_sizes = st.multiselect(
@@ -551,8 +610,7 @@ elif page == "3. Candidate Tubing Specs":
     
     st.dataframe(filtered_db, use_container_width=True, height=450)
     
-    # --- CUSTOM TUBING INPUT FORM (RESTORED) ---
-    with st.expander("➕ Add Custom Tubing Candidate"):
+    with st.expander("Add Custom Tubing Candidate"):
         with st.form("add_candidate_form"):
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -584,7 +642,7 @@ elif page == "3. Candidate Tubing Specs":
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# PAGE 4: ENGINEERING CALCULATIONS (WITH FORMULAS EXPANDER RESTORED)
+# PAGE 4: ENGINEERING CALCULATIONS
 # -----------------------------------------------------------------------------
 elif page == "4. Engineering Calculations":
     st.markdown('<div class="main-header">Step 4: Engineering Calculation Engine</div>', unsafe_allow_html=True)
@@ -606,8 +664,7 @@ elif page == "4. Engineering Calculations":
     
     st.dataframe(display_df, use_container_width=True, height=450)
     
-    # --- FORMULAS & GOVERNING EQUATIONS EXPANDER (RESTORED) ---
-    with st.expander("📐 Show Governing Equations & Technical Correlations"):
+    with st.expander("Show Governing Equations & Technical Correlations"):
         st.markdown("#### 1. Annular Pressure Build-up (APB)")
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
         st.caption("Where $\\alpha_v$ is thermal expansion coefficient and $\\kappa_T$ is fluid isothermal compressibility.")
@@ -625,7 +682,7 @@ elif page == "4. Engineering Calculations":
         st.caption("Calculates minimum gas mixture velocity required to continuously transport liquid droplets to surface.")
 
 # -----------------------------------------------------------------------------
-# PAGE 5: RECOMMENDATION & SENSITIVITY (WITH GEMINI AI & SENSITIVITY PLOTS RESTORED)
+# PAGE 5: RECOMMENDATION & SENSITIVITY
 # -----------------------------------------------------------------------------
 elif page == "5. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 5: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
@@ -634,20 +691,43 @@ elif page == "5. Recommendation & Sensitivity":
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
     passed_candidates = res_df[res_df['Overall_Pass'] == True]
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1.1, 1.9], gap="medium")
     
     with col1:
         if not passed_candidates.empty:
             preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
             
-            st.success("### Preferred Candidate")
-            st.markdown(f"## **{preferred['Name']}**")
-            st.metric("Total Pressure Drop", f"{preferred['dp_total_psi']} psi")
-            st.metric("Flow Velocity", f"{preferred['Velocity_fts']} ft/s")
-            st.metric("Material Grade", f"{preferred['Grade']}")
-            st.metric("Connection Type", f"{preferred['Connection']}")
-            st.metric("Triaxial Safety Factor", f"{preferred['triaxial_sf']} (SF >= 1.25)")
-            st.metric("APB Pressure Rise", f"{preferred['dp_apb_psi']} psi")
+            st.success(f"### Preferred Candidate\n## **{preferred['Name']}**")
+            
+            # Styled Custom Metric Grid
+            st.markdown(f"""
+            <div class="metric-grid">
+                <div class="metric-card-box">
+                    <div class="metric-card-title">Total Pressure Drop</div>
+                    <div class="metric-card-value">{preferred['dp_total_psi']} psi</div>
+                </div>
+                <div class="metric-card-box">
+                    <div class="metric-card-title">Flow Velocity</div>
+                    <div class="metric-card-value">{preferred['Velocity_fts']} ft/s</div>
+                </div>
+                <div class="metric-card-box">
+                    <div class="metric-card-title">Material Grade</div>
+                    <div class="metric-card-value">{preferred['Grade']}</div>
+                </div>
+                <div class="metric-card-box">
+                    <div class="metric-card-title">Connection Type</div>
+                    <div class="metric-card-value">{preferred['Connection']}</div>
+                </div>
+                <div class="metric-card-box">
+                    <div class="metric-card-title">Triaxial SF</div>
+                    <div class="metric-card-value">{preferred['triaxial_sf']}</div>
+                </div>
+                <div class="metric-card-box">
+                    <div class="metric-card-title">APB Rise</div>
+                    <div class="metric-card-value">{preferred['dp_apb_psi']} psi</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.error("### No Candidates Passed All Screenings!")
             st.warning("Consider increasing bottomhole pressure, selecting NACE-compliant grades, or upgrading to premium connections.")
@@ -666,18 +746,18 @@ elif page == "5. Recommendation & Sensitivity":
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, APB, temperature rating, or NACE limits).")
 
     # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE (RESTORED)
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.subheader("🤖 AI-Powered Executive Completion Memo")
+    st.subheader("AI-Powered Executive Completion Memo")
     st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
 
-    if st.button("✨ Generate AI Executive Summary", type="primary"):
+    if st.button("Generate AI Executive Summary", type="primary"):
         raw_key = st.secrets.get("GEMINI_API_KEY", "")
         api_key = raw_key.strip().replace('"', '').replace("'", "")
         
         if not api_key:
-            st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
+            st.error("GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
         elif passed_candidates.empty:
             st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
         else:
@@ -722,7 +802,7 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Use formal engineering phrasing and bold key numeric values.
                     """
 
-                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
@@ -744,11 +824,11 @@ elif page == "5. Recommendation & Sensitivity":
                         res_data = json.loads(response.read().decode('utf-8'))
                         ai_text = res_data['candidates'][0]['content']['parts'][0]['text']
 
-                    st.markdown("""
-                    <div style="background-color: #F0F9FF; border: 1px solid #BAE6FD; border-left: 5px solid #0284C7; border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
-                    """, unsafe_allow_html=True)
-                    st.markdown(ai_text)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    render_card(
+                        "AI Executive Memorandum",
+                        ai_text,
+                        accent_color="#0284C7"
+                    )
 
                 except urllib.error.HTTPError as http_err:
                     error_body = http_err.read().decode('utf-8')
@@ -757,7 +837,7 @@ elif page == "5. Recommendation & Sensitivity":
                     st.error(f"Error calling Gemini API: {str(e)}")
 
     # -------------------------------------------------------------------------
-    # INTERACTIVE SENSITIVITY PLOTS (RESTORED)
+    # INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("Interactive Sensitivity Plots")
