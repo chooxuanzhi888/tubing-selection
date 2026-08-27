@@ -312,19 +312,19 @@ def run_engineering_calculations(inputs, candidate_df):
         material_pass = True
         mat_reason = "Compatible"
         
-        # Explicit NACE MR0175 Qualified List for Sour Service (P_H2S >= 0.05 psia)
-        NACE_APPROVED_GRADES = {
-            "L80-1",
-            "L80-13CR",
-            "S13CR-110",
-            "17CR-110",
-            "22CR-110",
-            "25CR-125",
-            "C95",
-            "T95",
+    # Explicit NACE MR0175 Qualified List for Sour Service (P_H2S >= 0.05 psia)
+    NACE_APPROVED_GRADES = {
+        "L80-1",
+        "L80-13CR",
+        "S13CR-110",
+        "17CR-110",
+        "22CR-110",
+        "25CR-125",
+        "C95",
+        "T95",
 }
 
-        if is_sour_service:
+    if is_sour_service:
         if grade_str not in NACE_APPROVED_GRADES:
             material_pass = False
             mat_reason = (
