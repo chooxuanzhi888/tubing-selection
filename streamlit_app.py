@@ -52,7 +52,7 @@ st.markdown("""
 if 'inputs' not in st.session_state:
     st.session_state.inputs = {
         'well_type': 'Oil Well',
-        'lithology': 'Sandstone',  # <-- ADD THIS LINE
+        'lithology': 'Sandstone',
         'tvd': 8000.0,
         'md': 9500.0,
         'dls': 1.5,
@@ -324,7 +324,7 @@ page = st.sidebar.radio(
     "Select Workflow Step:",
     [
         "1. Introduction & Overview",
-        "2. Calculation Methodology",  # <-- NEW PAGE
+        "2. Calculation Methodology",
         "3. Well & Fluid Inputs",
         "4. Candidate Tubing Specs",
         "5. Engineering Calculations",
@@ -456,7 +456,7 @@ if page == "1. Introduction & Overview":
     if os.path.exists("Figure 4.png"):
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
-# --- ASSUMPTIONS & LIMITATIONS SECTION (FIXED SYMBOLS) ---
+    # --- ASSUMPTIONS & LIMITATIONS SECTION ---
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem;">
         <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">Model Assumptions & Design Limitations</h2>
@@ -556,10 +556,10 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# PAGE 2: WELL & FLUID INPUTS
+# PAGE 3: WELL & FLUID INPUTS
 # -----------------------------------------------------------------------------
-elif page == "2. Well & Fluid Inputs":
-    st.markdown('<div class="main-header">Step 2: Well & Operating Inputs</div>', unsafe_allow_html=True)
+elif page == "3. Well & Fluid Inputs":
+    st.markdown('<div class="main-header">Step 3: Well & Operating Inputs</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Define subsurface geometry, production rates, PVT properties, APB factors, and lifecycle targets.</div>', unsafe_allow_html=True)
     
     well_type = st.radio("Select Operating Well Type:", ["Oil Well", "Gas Well"], horizontal=True, index=0 if st.session_state.inputs['well_type'] == 'Oil Well' else 1)
@@ -574,7 +574,6 @@ elif page == "2. Well & Fluid Inputs":
                 ["Sandstone", "Carbonate (Limestone / Dolomite)"],
                 index=0 if st.session_state.inputs.get('lithology', 'Sandstone') == 'Sandstone' else 1
             )
-            tvd = st.number_input(...)
             tvd = st.number_input("True Vertical Depth (TVD) [ft]", value=st.session_state.inputs['tvd'], min_value=1000.0, max_value=25000.0)
             md = st.number_input("Measured Depth (MD) [ft]", value=st.session_state.inputs['md'], min_value=1000.0, max_value=30000.0)
             dls = st.number_input("Dogleg Severity (DLS) [°/100 ft]", value=st.session_state.inputs.get('dls', 1.5), min_value=0.0, max_value=15.0)
@@ -620,7 +619,7 @@ elif page == "2. Well & Fluid Inputs":
             else:
                 st.session_state.inputs.update({
                     'well_type': well_type,
-                    'lithology': lithology,  
+                    'lithology': lithology,
                     'tvd': tvd, 'md': md, 'dls': dls, 'p_wh': p_wh, 'p_bhp': p_bhp, 't_wh': t_wh, 't_bht': t_bht,
                     't_ambient': t_ambient, 'annular_fluid': annular_fluid,
                     'q_liquid': q_liquid, 'water_cut': water_cut, 'gor': gor,
@@ -628,13 +627,13 @@ elif page == "2. Well & Fluid Inputs":
                     'co2_mole_pct': co2_mole_pct, 'h2s_ppm': h2s_ppm, 'ph_val': ph_val, 'chlorides_ppm': chlorides_ppm,
                     'field_life_yrs': field_life_yrs, 'decline_rate': decline_rate
                 })
-                st.success("Inputs saved successfully! Proceed to Page 3 or 4.")
+                st.success("Inputs saved successfully! Proceed to Page 4.")
 
 # -----------------------------------------------------------------------------
-# PAGE 3: CANDIDATE TUBING SPECS (WITH CUSTOM INPUT FORM RESTORED)
+# PAGE 4: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
-elif page == "3. Candidate Tubing Specs":
-    st.markdown('<div class="main-header">Step 3: Candidate Tubing Database</div>', unsafe_allow_html=True)
+elif page == "4. Candidate Tubing Specs":
+    st.markdown('<div class="main-header">Step 4: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
     
     st.subheader("🔍 Database Filter Controls")
@@ -659,7 +658,6 @@ elif page == "3. Candidate Tubing Specs":
     
     st.dataframe(filtered_db, use_container_width=True, height=450)
     
-    # --- CUSTOM TUBING INPUT FORM (RESTORED) ---
     with st.expander("➕ Add Custom Tubing Candidate"):
         with st.form("add_candidate_form"):
             col1, col2, col3 = st.columns(3)
@@ -692,10 +690,10 @@ elif page == "3. Candidate Tubing Specs":
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# PAGE 4: ENGINEERING CALCULATIONS (WITH FORMULAS EXPANDER RESTORED)
+# PAGE 5: ENGINEERING CALCULATIONS
 # -----------------------------------------------------------------------------
-elif page == "4. Engineering Calculations":
-    st.markdown('<div class="main-header">Step 4: Engineering Calculation Engine</div>', unsafe_allow_html=True)
+elif page == "5. Engineering Calculations":
+    st.markdown('<div class="main-header">Step 5: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, NACE MR0175 sour service, and Lubinski stress.</div>', unsafe_allow_html=True)
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
@@ -714,7 +712,6 @@ elif page == "4. Engineering Calculations":
     
     st.dataframe(display_df, use_container_width=True, height=450)
     
-    # --- FORMULAS & GOVERNING EQUATIONS EXPANDER (RESTORED) ---
     with st.expander("📐 Show Governing Equations & Technical Correlations"):
         st.markdown("#### 1. Annular Pressure Build-up (APB)")
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
@@ -733,10 +730,10 @@ elif page == "4. Engineering Calculations":
         st.caption("Calculates minimum gas mixture velocity required to continuously transport liquid droplets to surface.")
 
 # -----------------------------------------------------------------------------
-# PAGE 5: RECOMMENDATION & SENSITIVITY (WITH GEMINI AI & SENSITIVITY PLOTS RESTORED)
+# PAGE 6: RECOMMENDATION & SENSITIVITY
 # -----------------------------------------------------------------------------
-elif page == "5. Recommendation & Sensitivity":
-    st.markdown('<div class="main-header">Step 5: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
+elif page == "6. Recommendation & Sensitivity":
+    st.markdown('<div class="main-header">Step 6: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
@@ -774,7 +771,7 @@ elif page == "5. Recommendation & Sensitivity":
             st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, APB, temperature rating, or NACE limits).")
 
     # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE (RESTORED)
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
@@ -803,6 +800,7 @@ elif page == "5. Recommendation & Sensitivity":
 
                     WELL & OPERATIONAL PARAMETERS:
                     - Well Type: {st.session_state.inputs['well_type']}
+                    - Reservoir Lithology: {st.session_state.inputs.get('lithology', 'Sandstone')}
                     - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft (Dogleg Severity: {st.session_state.inputs['dls']} deg/100ft)
                     - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
                     - Annular Fluid & APB Pressure Build-up: {st.session_state.inputs['annular_fluid']} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
@@ -830,7 +828,7 @@ elif page == "5. Recommendation & Sensitivity":
                     5. Use formal engineering phrasing and bold key numeric values.
                     """
 
-                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
@@ -865,7 +863,7 @@ elif page == "5. Recommendation & Sensitivity":
                     st.error(f"Error calling Gemini API: {str(e)}")
 
     # -------------------------------------------------------------------------
-    # INTERACTIVE SENSITIVITY PLOTS (RESTORED)
+    # INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("Interactive Sensitivity Plots")
@@ -920,4 +918,3 @@ elif page == "5. Recommendation & Sensitivity":
             "* **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.\n"
             "* **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance."
         )
-
