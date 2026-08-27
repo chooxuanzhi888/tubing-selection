@@ -163,14 +163,21 @@ ANNULAR_FLUID_PROPS = {
 }
 
 def compute_dynamic_z_factor(p_psi, t_deg_r, gas_sg):
-    p_pc = 756.8 - 131.07 * gas_sg - 3.6 * (gas_sg ** 2)
-    t_pc = 169.2 + 349.5 * gas_sg - 74.0 * (gas_sg ** 2)
+    p_pc = 677.0 + 15.0 * gas_sg - 37.5 * (gas_sg**2)
+    t_pc = 168.0 + 325.0 * gas_sg - 12.5 * (gas_sg**2)
     p_pr = p_psi / p_pc
     t_pr = t_deg_r / t_pc
-    t_r = 1.0 / t_pr
-    a = 0.06125 * t_r * np.exp(-1.2 * (1.0 - t_r)**2)
-    y = 0.0125 * p_pr * t_r
-    z = a * p_pr / y if y > 0 else 0.88
+
+    A = 1.39 * (t_pr - 0.92) ** 0.5 - 0.36 * t_pr - 0.101
+    E = 9.0 * (t_pr - 1.0)
+    F = 0.310 - 0.49 * t_pr + 0.1 * (t_pr**2)
+    Y = 0.27 * p_pr / t_pr
+
+    z = A + (1.0 - A) / np.exp(E) + F * (Y**D if 'D' in locals() else Y**1.2)
+    # Standard Papay Explicit Formulation:
+    z = 1.0 - (3.52 * p_pr / (10 ** (0.9813 * t_pr))) + (
+        0.274 * (p_pr**2) / (10 ** (0.8157 * t_pr))
+    )
     return float(np.clip(z, 0.65, 1.25))
 
 def run_engineering_calculations(inputs, candidate_df):
@@ -259,7 +266,11 @@ def run_engineering_calculations(inputs, candidate_df):
         velocity_pass = v_critical_loading < v_m < v_erosional
         late_life_pass = v_m_late >= v_critical_loading
         
-        rho_buoy_factor = (1.0 - (rho_m / 490.0))
+        rho_annulus = fluid_props.get(
+            'density_lbft3', 62.4
+        )  # e.g., 62.4 lb/ft3 for light brine
+        rho_buoy_factor = 1.0 - (rho_annulus / 490.0)
+        f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
         f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular
         f_piston_lbs = (inputs['p_bhp'] * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
@@ -301,10 +312,25 @@ def run_engineering_calculations(inputs, candidate_df):
         material_pass = True
         mat_reason = "Compatible"
         
+        # Explicit NACE MR0175 Qualified List for Sour Service (P_H2S >= 0.05 psia)
+        NACE_APPROVED_GRADES = {
+            "L80-1",
+            "L80-13CR",
+            "S13CR-110",
+            "17CR-110",
+            "22CR-110",
+            "25CR-125",
+            "C95",
+            "T95",
+}
+
         if is_sour_service:
-            if grade_str in ["J-55", "J55", "N-80", "N80", "P-110", "P110"]:
-                material_pass = False
-                mat_reason = f"Fail: Sour Service (pH2S = {round(p_h2s_psia,3)} psia >= 0.05). Requires L80-1 (26 HRC Max) or CRA."
+        if grade_str not in NACE_APPROVED_GRADES:
+            material_pass = False
+            mat_reason = (
+                f"Fail: NACE MR0175 violation (pH2S = {round(p_h2s_psia, 3)} psia >="
+                f" 0.05). Grade {grade_str} is not SSC resistant."
+            )
 
         conn_reasons = []
         needs_premium = False
