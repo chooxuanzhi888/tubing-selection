@@ -52,6 +52,7 @@ st.markdown("""
 if 'inputs' not in st.session_state:
     st.session_state.inputs = {
         'well_type': 'Oil Well',
+        'lithology': 'Sandstone',  # <-- ADD THIS LINE
         'tvd': 8000.0,
         'md': 9500.0,
         'dls': 1.5,
@@ -180,7 +181,10 @@ def run_engineering_calculations(inputs, candidate_df):
         dp_fric = (f * inputs['md'] * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
         dp_total = dp_hydro + dp_fric
         
-        c_factor = 120.0 if inputs['well_type'] == 'Gas Well' else 140.0
+        if inputs.get('lithology', 'Sandstone') == 'Sandstone':
+            c_factor = 100.0 if inputs['well_type'] == 'Gas Well' else 120.0
+        else:
+            c_factor = 125.0 if inputs['well_type'] == 'Gas Well' else 150.0 
         v_erosional = c_factor / np.sqrt(rho_m)
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
@@ -535,6 +539,7 @@ elif page == "2. Calculation Methodology":
         
         st.markdown("**API RP 14E Erosional Velocity (Max Limit):** Prevents pipe wall erosion.")
         st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}}")
+        st.caption("Note: C-factor automatically adjusts based on lithology (C = 100–120 for Sandstone sand risk vs. C = 125–150 for clean Carbonate matrix).")
 
         st.markdown("---")
 
@@ -564,6 +569,12 @@ elif page == "2. Well & Fluid Inputs":
         
         with col1:
             st.subheader("📍 Well & Thermal Conditions")
+            lithology = st.selectbox(
+                "Reservoir Rock Type (Lithology):",
+                ["Sandstone", "Carbonate (Limestone / Dolomite)"],
+                index=0 if st.session_state.inputs.get('lithology', 'Sandstone') == 'Sandstone' else 1
+            )
+            tvd = st.number_input(...)
             tvd = st.number_input("True Vertical Depth (TVD) [ft]", value=st.session_state.inputs['tvd'], min_value=1000.0, max_value=25000.0)
             md = st.number_input("Measured Depth (MD) [ft]", value=st.session_state.inputs['md'], min_value=1000.0, max_value=30000.0)
             dls = st.number_input("Dogleg Severity (DLS) [°/100 ft]", value=st.session_state.inputs.get('dls', 1.5), min_value=0.0, max_value=15.0)
@@ -609,6 +620,7 @@ elif page == "2. Well & Fluid Inputs":
             else:
                 st.session_state.inputs.update({
                     'well_type': well_type,
+                    'lithology': lithology,  
                     'tvd': tvd, 'md': md, 'dls': dls, 'p_wh': p_wh, 'p_bhp': p_bhp, 't_wh': t_wh, 't_bht': t_bht,
                     't_ambient': t_ambient, 'annular_fluid': annular_fluid,
                     'q_liquid': q_liquid, 'water_cut': water_cut, 'gor': gor,
