@@ -396,6 +396,9 @@ def run_engineering_calculations(inputs, candidate_df):
             "H40", "L80-1", "L80-13CR", "S13CR-110", "17CR-110", "22CR-110", 
             "25CR-125", "N80", "C95", "T95", "P105", "P110", "Q125"
         ]
+
+        grade_str = str(row['Grade']).upper().strip()
+
         if t_bht_c >= CONSTANTS["TEMP_LIMIT_SEVERE_C"] and grade_str not in ["Q125"]:
             temp_pass = False
             temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= {CONSTANTS['TEMP_LIMIT_SEVERE_C']}°C) requires Grade Q125"
