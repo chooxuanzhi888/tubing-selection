@@ -339,8 +339,8 @@ if page == "1. Introduction & Overview":
     st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
     
-    if os.path.exists("image.png"):
-        st.image("image.png", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
+    if os.path.exists("cover.jpg"):
+        st.image("cover.jpg", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
     
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
