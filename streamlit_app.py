@@ -487,72 +487,164 @@ if page == "1. Introduction & Overview":
 # PAGE 2: CALCULATION METHODOLOGY
 # -----------------------------------------------------------------------------
 elif page == "2. Calculation Methodology":
-    st.markdown('<div class="main-header">Step 2: Calculation Methodology & Workflow</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Overview of governing engineering equations, fluid property correlations, and screening logic.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and integrity screening.</div>', unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
+    # -------------------------------------------------------------------------
+    # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
+    # -------------------------------------------------------------------------
+    st.markdown("""
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.5rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
+        <p style="font-size: 0.95rem; color: #334155; line-height: 1.5; margin-bottom: 0.5rem;">
+            Every numerical input provided in <b>Step 3</b> flows directly into deterministic engineering models. Here is how user inputs feed the governing equations:
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    with col1:
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    with col_m1:
+        st.info("**1. PVT & Density**\n\n* **Inputs:** API, Gas SG, P_bhp, P_wh, Temp\n* **Feeds:** $R_s$, $B_o$, $Z$-factor, $\\rho_m$")
+    with col_m2:
+        st.info("**2. Flow & Hydraulics**\n\n* **Inputs:** Liquid Rate, Water Cut, GOR, Lithology\n* **Feeds:** $v_m$, Reynolds ($Re$), $f$, $\\Delta P_{fric}$, $v_{crit}, v_{eros}$")
+    with col_m3:
+        st.info("**3. Loads & Stress**\n\n* **Inputs:** TVD, MD, DLS, Fluid Type, Temp\n* **Feeds:** $F_{axial}$, $\\Delta P_{APB}$, $\\sigma_{hoop}, \\sigma_z$, $\\sigma_{VME}$")
+    with col_m4:
+        st.info("**4. Environmental**\n\n* **Inputs:** H₂S, CO₂, pH, Temp, Lithology\n* **Feeds:** $p_{H_2S}$, $p_{CO_2}$, Material Grade, Connection Profile")
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------------
+    # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 1: Fluid Thermodynamics & In-Situ Density Model")
+    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature to model accurate flow velocities and hydrostatic heads.")
+    
+    col1_1, col1_2 = st.columns(2)
+    with col1_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">1. PVT & Multiphase Hydraulics</h3>
-            <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
-                Evaluates total pressure losses balancing hydrostatic head and skin friction:
-            </p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR ($R_s$) & FVF ($B_o$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature ($T_{avg}$) and pressure ($P_{avg}$):</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\Delta P_{total} = \frac{\rho_m \cdot TVD}{144} + \frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}")
+        st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
+        st.latex(r"B_o = 0.9759 + 0.000120 \left[ R_s \left( \frac{\gamma_g}{\gamma_o} \right)^{0.5} + 1.25 \cdot T_{avg} \right]^{1.2}")
+        st.caption("• **Engine Purpose:** Accounts for volume expansion of live oil downhole before computing mixture density.")
+
+    with col1_2:
         st.markdown("""
-        <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem; line-height: 1.6;">
-            <li><b>Z-Factor:</b> Computed via Standing-Katz correlations.</li>
-            <li><b>Live Oil Props:</b> Standing's correlations for solution GOR (<i>R<sub>s</sub></i>) and oil formation volume factor (<i>B<sub>o</sub></i>).</li>
-            <li><b>Friction Factor (<i>f</i>):</b> Derived using explicit Colebrook-White formulations for turbulent pipe flow.</li>
-        </ul>
+        <div class="card" style="border-top: 3px solid #3B82F6;">
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density ($\rho_m$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas $Z$-factor to determine in-situ phase densities:</p>
+        </div>
         """, unsafe_allow_html=True)
+        st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg, R}}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
+        st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
+        st.caption("• **Engine Purpose:** Homogenizes multiphase fluid into an effective mixture density $\\rho_m$ for hydraulics.")
 
-        st.markdown("---")
+    st.markdown("---")
 
+    # -------------------------------------------------------------------------
+    # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 2: Multiphase Hydraulics & Velocity Operating Window")
+    st.caption("Purpose: Ensure the tubing ID allows fluids to flow within safe velocity boundaries while minimizing pressure loss.")
+
+    col2_1, col2_2 = st.columns(2)
+    with col2_1:
+        st.markdown("""
+        <div class="card" style="border-top: 3px solid #F59E0B;">
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss ($\Delta P_{total}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor ($f$):</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
+        st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right]")
+        st.caption("• **Screening Criteria:** Pass if $\\Delta P_{total} \\le P_{bhp} - P_{wh}$ (Available Reservoir Drawdown).")
+
+    with col2_2:
+        st.markdown("""
+        <div class="card" style="border-top: 3px solid #F59E0B;">
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity ($v_m$) between droplet lift minimums and lithology-adjusted erosion limits:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
+        st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}} \quad \text{(API RP 14E Limit: } C_{sandstone}=120, C_{carbonate}=150\text{)}")
+        st.caption("• **Screening Criteria:** Pass if $v_{critical} < v_m < v_{erosional}$ for both Initial and Year-15 Late-Life flow.")
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------------
+    # STEP 3: STRUCTURAL LOAD BALANCE & TRIAXIAL STRESS MATRIX
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 3: Lubinski Net Load Balance & von Mises Triaxial Stress")
+    st.caption("Purpose: Verify structural integrity of the tubing string under combined tension, thermal expansion, pressure differential, and dogleg bending.")
+
+    col3_1, col3_2 = st.columns(2)
+    with col3_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
-            <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">3. Structural Stress Analysis (Lubinski & VME)</h3>
-            <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
-                Net axial load integrates buoyed weight, thermal expansion, piston/seal forces, ballooning, and fluid drag:
-            </p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.1 Lubinski Net Axial Force Balance ($F_{axial}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Summates 5 discrete mechanical forces acting along the tubing string length:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
-        st.caption("Triaxial equivalent stress (VME) must satisfy target safety margins (SF ≥ 1.25):")
-        st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2}\left[(\sigma_\theta-\sigma_r)^2 + (\sigma_r-\sigma_z)^2 + (\sigma_z-\sigma_\theta)^2\right]}")
-
-    with col2:
         st.markdown("""
-        <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">2. Velocity Operating Window</h3>
-            <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
-                Ensures operating velocity (<i>v<sub>m</sub></i>) remains between liquid loading and erosional limits:
-            </p>
+        <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.5;">
+            <li><b>Gravity ($F_g$):</b> Pipe weight corrected for fluid buoyancy factor $(1 - \rho_m/\rho_{steel})$.</li>
+            <li><b>Thermal ($F_{th}$):</b> Constrained thermal expansion force: $E \cdot A_{steel} \cdot \alpha \cdot \Delta T$.</li>
+            <li><b>Piston ($F_p$):</b> Pressure differential acting across seal/packer cross-sectional areas.</li>
+            <li><b>Ballooning ($F_b$):</b> Radial expansion shortening derived from Poisson's ratio ($\nu = 0.3$).</li>
+            <li><b>Fluid Drag ($F_d$):</b> Wall skin friction generated by high-velocity fluid flow.</li>
+        </ul>
+        """, unsafe_allow_html=True)
+
+    with col3_2:
+        st.markdown("""
+        <div class="card" style="border-top: 3px solid #10B981;">
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.2 Lamé Thick-Wall & Triaxial Stress ($\sigma_{VME}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial $\sigma_z$, Hoop $\sigma_\theta$, Radial $\sigma_r$) including dogleg curvature bending:</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("**Turner Liquid Loading (Min Limit):** Prevents liquid accumulation downhole.")
-        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}")
-        
-        st.markdown("**API RP 14E Erosional Velocity (Max Limit):** Prevents pipe wall erosion.")
-        st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}}")
-        st.caption("Note: C-factor automatically adjusts based on lithology (C = 100–120 for Sandstone sand risk vs. C = 125–150 for clean Carbonate matrix).")
+        st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
+        st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
+        st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]}")
+        st.caption("• **Screening Criteria:** Triaxial Safety Factor $SF_{triaxial} = \frac{Y_{yield}}{\sigma_{VME}} \ge 1.25$.")
 
-        st.markdown("---")
+    st.markdown("---")
 
+    # -------------------------------------------------------------------------
+    # STEP 4: ENVIRONMENTAL INTEGRITY & MATERIAL SCREENING
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 4: Environmental Integrity, APB & Metallurgy Screening")
+    st.caption("Purpose: Prevent catastrophic corrosion, thermal over-pressurization, or thread seal leakage throughout well life.")
+
+    col4_1, col4_2 = st.columns(2)
+    with col4_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
-            <h3 style="color: #1E3A8A; font-size: 1.2rem; font-weight: 700;">4. Environmental & Connection Screening</h3>
-            <ul style="font-size: 0.9rem; color: #475569; padding-left: 1.2rem; line-height: 1.6;">
-                <li><b>Annular Pressure Build-up (APB):</b> Trapped annular pressure rise:
-                <br><i>ΔP<sub>APB</sub> = (α<sub>v</sub> / κ<sub>T</sub>) · ΔT</i></li>
-                <li><b>NACE MR0175 Compliance:</b> Sour service flagged when partial pressure <i>p<sub>H<sub>2</sub>S</sub> ≥ 0.05 psia</i>. Non-compliant carbon steels are filtered out.</li>
-                <li><b>Connection Selection:</b> Recommends gas-tight Premium connections for high GOR, severe APB (&gt;1500 psi), deep vertical depths (&gt;10,000 ft), or CRA metallurgy.</li>
-            </ul>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Annular Pressure Build-up (APB)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Trapped packer fluid expansion creates severe pressure rise in unvented annuli:</p>
         </div>
+        """, unsafe_allow_html=True)
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
+        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\alpha_v$) and isothermal compressibility ($\kappa_T$) for water, heavy brine, or OBM fluids.")
+
+    with col4_2:
+        st.markdown("""
+        <div class="card" style="border-top: 3px solid #8B5CF6;">
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.2 NACE MR0175 & Connection Logic</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Screens material degradation and mandates gas-tight thread profiles:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("""
+        <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.6;">
+            <li><b>Sour Service Screening:</b> Flags NACE compliance when partial pressure $p_{H_2S} = P_{bhp} \cdot [H_2S] \ge 0.05\text{ psia}$. Standard carbon steels (J55, N80, P110) fail; L80-1 or CRA materials are enforced.</li>
+            <li><b>Temperature Derating:</b> BHT thresholds enforce high-performance metallurgy ($>65^\circ C \rightarrow \text{N80/C95}$, $>80^\circ C \rightarrow \text{P110}$, $>107^\circ C \rightarrow \text{Q125}$).</li>
+            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, APB $> 1500\text{ psi}$, Depth $> 10,000\text{ ft}$, or CRA metallurgy.</li>
+        </ul>
         """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
