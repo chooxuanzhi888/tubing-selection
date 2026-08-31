@@ -666,7 +666,7 @@ elif page == "2. Calculation Methodology":
         st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
         st.caption("• **Engine Purpose:** Homogenizes multiphase fluid into an effective mixture density $\\rho_m$ for hydraulics.")
 
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
     # -------------------------------------------------------------------------
     st.markdown("### Step 2: Multiphase Hydraulics & Velocity Operating Window")
@@ -676,8 +676,8 @@ elif page == "2. Calculation Methodology":
     with col2_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss ($\Delta P_{total}$)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor ($f$):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss (&Delta;P<sub>total</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor (f):</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
@@ -688,7 +688,7 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity ($v_m$) between droplet lift minimums and lithology-adjusted erosion limits:</p>
+            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between droplet lift minimums and lithology-adjusted erosion limits:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
@@ -707,7 +707,7 @@ elif page == "2. Calculation Methodology":
     with col3_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.1 Lubinski Net Axial Force Balance ($F_{axial}$)</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.1 Lubinski Net Axial Force Balance (F<sub>axial</sub>)</h4>
             <p style="font-size: 0.9rem; color: #475569;">Summates 5 discrete mechanical forces acting along the tubing string length:</p>
         </div>
         """, unsafe_allow_html=True)
@@ -721,16 +721,14 @@ elif page == "2. Calculation Methodology":
     with col3_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.2 Lamé Thick-Wall & Triaxial Stress ($\sigma_{VME}$)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial $\sigma_z$, Hoop $\sigma_\theta$, Radial $\sigma_r$) including dogleg curvature bending:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.2 Lamé Thick-Wall & Triaxial Stress (&sigma;<sub>VME</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial &sigma;<sub>z</sub>, Hoop &sigma;<sub>&theta;</sub>, Radial &sigma;<sub>r</sub>) including dogleg curvature bending:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
         st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]}")
         st.caption("• **Screening Criteria:** Triaxial Safety Factor $SF_{triaxial} = Y_{yield} / \\sigma_{VME} \\ge 1.25$.")
-
-    st.markdown("---")
 
     # -------------------------------------------------------------------------
     # STEP 4: ENVIRONMENTAL INTEGRITY & MATERIAL SCREENING
