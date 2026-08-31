@@ -491,141 +491,134 @@ elif page == "2. Calculation Methodology":
     st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and integrity screening.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL
+    # WORKFLOW OVERVIEW CARD
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 0.3rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.3rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Tubing selection is an iterative elimination process. All candidates from the database enter at Step 1, where thermodynamic fluid properties are calculated. Candidates then pass sequentially through hydraulic velocity windows, Lubinski structural load balances, and environmental compliance limits until the single most optimal candidate is identified.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-# Graphviz Sequential Funnel Diagram (Restored 1.25x Size, Fixed Unicode Subscripts, Centered Layout)
-# -------------------------------------------------------------------------
-    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL (CSS FLEXBOX)
     # -------------------------------------------------------------------------
-    st.markdown("""
-    <style>
-        .funnel-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin: 1.5rem auto 2.5rem auto;
-            max-width: 650px;
-            width: 100%;
-        }
-        .funnel-box {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 0.88rem;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-        .funnel-arrow-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 38px;
-            position: relative;
-            width: 100%;
-        }
-        .funnel-arrow-line {
-            width: 2px;
-            height: 100%;
-            background-color: #64748B;
-        }
-        .funnel-arrow-head {
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 6px solid #64748B;
-            position: absolute;
-            bottom: 0;
-        }
-        .funnel-arrow-label {
-            position: absolute;
-            left: calc(50% + 15px);
-            font-size: 0.8rem;
-            color: #475569;
-            white-space: nowrap;
-            font-weight: 500;
-        }
-    </style>
+    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL (PURE HTML/CSS)
+    # -------------------------------------------------------------------------
+    diagram_html = """
+<style>
+    .funnel-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 1.2rem auto 2rem auto;
+        max-width: 620px;
+        width: 100%;
+    }
+    .funnel-card {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.88rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.08);
+        box-sizing: border-box;
+    }
+    .funnel-connector {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        position: relative;
+        width: 100%;
+    }
+    .funnel-line {
+        width: 2px;
+        height: 100%;
+        background-color: #64748B;
+    }
+    .funnel-head {
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid #64748B;
+        position: absolute;
+        bottom: 0;
+    }
+    .funnel-text {
+        position: absolute;
+        left: calc(50% + 14px);
+        font-size: 0.8rem;
+        color: #475569;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+</style>
 
-    <div class="funnel-container">
-        <div class="funnel-box" style="background-color: #E2E8F0; color: #0F172A; border-radius: 20px; font-weight: 600;">
-            Candidate Database (All Sizes & Grades)
-        </div>
-        
-        <div class="funnel-arrow-container">
-            <div class="funnel-arrow-line"></div>
-            <div class="funnel-arrow-head"></div>
-            <div class="funnel-arrow-label">Operations & PVT Inputs</div>
-        </div>
-
-        <div class="funnel-box" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
-            <b>Step 1: PVT & In-Situ Density Model</b><br/>
-            <span style="font-size: 0.8rem;">(Standing R<sub>s</sub>, B<sub>o</sub> & Z-Factor)</span>
-        </div>
-
-        <div class="funnel-arrow-container">
-            <div class="funnel-arrow-line"></div>
-            <div class="funnel-arrow-head"></div>
-            <div class="funnel-arrow-label">Fluid Densities (ρ<sub>m</sub>, ρ<sub>g</sub>)</div>
-        </div>
-
-        <div class="funnel-box" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
-            <b>Step 2: Flow Dynamics & Velocity Operating Window</b><br/>
-            <span style="font-size: 0.8rem;">Filter: ΔP<sub>total</sub> ≤ ΔP<sub>avail</sub> & v<sub>crit</sub> < v<sub>m</sub> < v<sub>eros</sub></span>
-        </div>
-
-        <div class="funnel-arrow-container">
-            <div class="funnel-arrow-line"></div>
-            <div class="funnel-arrow-head"></div>
-            <div class="funnel-arrow-label">Valid Hydraulic Sizes</div>
-        </div>
-
-        <div class="funnel-box" style="background-color: #D1FAE5; color: #065F46; border-left: 4px solid #10B981;">
-            <b>Step 3: Lubinski Stress & Yield Integrity</b><br/>
-            <span style="font-size: 0.8rem;">Filter: von Mises SF<sub>triaxial</sub> ≥ 1.25</span>
-        </div>
-
-        <div class="funnel-arrow-container">
-            <div class="funnel-arrow-line"></div>
-            <div class="funnel-arrow-head"></div>
-            <div class="funnel-arrow-label">Structurally Sound Pipe</div>
-        </div>
-
-        <div class="funnel-box" style="background-color: #EDE9FE; color: #5B21B6; border-left: 4px solid #8B5CF6;">
-            <b>Step 4: Environmental Integrity & Metallurgy Gate</b><br/>
-            <span style="font-size: 0.8rem;">Filter: NACE Sour Service, BHT Derating & Connection Profile</span>
-        </div>
-
-        <div class="funnel-arrow-container">
-            <div class="funnel-arrow-line"></div>
-            <div class="funnel-arrow-head"></div>
-            <div class="funnel-arrow-label">Compliant Candidate</div>
-        </div>
-
-        <div class="funnel-box" style="background-color: #059669; color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">
-            Optimal Preferred Tubing Candidate
-        </div>
+<div class="funnel-wrapper">
+    <div class="funnel-card" style="background-color: #E2E8F0; color: #0F172A; border-radius: 20px; font-weight: 600;">
+        Candidate Database (All Sizes & Grades)
     </div>
-    """, unsafe_allow_html=True)
+    <div class="funnel-connector">
+        <div class="funnel-line"></div>
+        <div class="funnel-head"></div>
+        <div class="funnel-text">Operations & PVT Inputs</div>
+    </div>
+    <div class="funnel-card" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
+        <b>Step 1: PVT & In-Situ Density Model</b><br/>
+        <span style="font-size: 0.8rem;">(Standing R<sub>s</sub>, B<sub>o</sub> & Z-Factor)</span>
+    </div>
+    <div class="funnel-connector">
+        <div class="funnel-line"></div>
+        <div class="funnel-head"></div>
+        <div class="funnel-text">Fluid Densities (&rho;<sub>m</sub>, &rho;<sub>g</sub>)</div>
+    </div>
+    <div class="funnel-card" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
+        <b>Step 2: Flow Dynamics & Velocity Operating Window</b><br/>
+        <span style="font-size: 0.8rem;">Filter: &Delta;P<sub>total</sub> &le; &Delta;P<sub>avail</sub> & v<sub>crit</sub> < v<sub>m</sub> < v<sub>eros</sub></span>
+    </div>
+    <div class="funnel-connector">
+        <div class="funnel-line"></div>
+        <div class="funnel-head"></div>
+        <div class="funnel-text">Valid Hydraulic Sizes</div>
+    </div>
+    <div class="funnel-card" style="background-color: #D1FAE5; color: #065F46; border-left: 4px solid #10B981;">
+        <b>Step 3: Lubinski Stress & Yield Integrity</b><br/>
+        <span style="font-size: 0.8rem;">Filter: von Mises SF<sub>triaxial</sub> &ge; 1.25</span>
+    </div>
+    <div class="funnel-connector">
+        <div class="funnel-line"></div>
+        <div class="funnel-head"></div>
+        <div class="funnel-text">Structurally Sound Pipe</div>
+    </div>
+    <div class="funnel-card" style="background-color: #EDE9FE; color: #5B21B6; border-left: 4px solid #8B5CF6;">
+        <b>Step 4: Environmental Integrity & Metallurgy Gate</b><br/>
+        <span style="font-size: 0.8rem;">Filter: NACE Sour Service, BHT Derating & Connection Profile</span>
+    </div>
+    <div class="funnel-connector">
+        <div class="funnel-line"></div>
+        <div class="funnel-head"></div>
+        <div class="funnel-text">Compliant Candidate</div>
+    </div>
+    <div class="funnel-card" style="background-color: #059669; color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">
+        Optimal Preferred Tubing Candidate
+    </div>
+</div>
+"""
+    st.markdown(diagram_html, unsafe_allow_html=True)
+
+    st.markdown("---")
 
     # -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-top: 0.5rem; margin-bottom: 1rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.3rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Every numerical input provided in <b>Step 3</b> flows directly into deterministic engineering models. Here is how user inputs feed the governing equations:
         </p>
