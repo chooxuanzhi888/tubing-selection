@@ -490,7 +490,7 @@ elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and integrity screening.</div>', unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
     # -------------------------------------------------------------------------
     st.markdown("""
@@ -504,15 +504,13 @@ elif page == "2. Calculation Methodology":
 
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
-        st.info("**1. PVT & Density**\n\n* **Inputs:** API, Gas SG, P_bhp, P_wh, Temp\n* **Feeds:** R_s, B_o, Z-factor, ρ_m")
+        st.info("**1. PVT & Density**\n\n* **Inputs:** API, Gas SG, $P_{bhp}$, $P_{wh}$, Temp\n* **Feeds:** $R_s$, $B_o$, $Z$-factor, $\\rho_m$")
     with col_m2:
-        st.info("**2. Flow & Hydraulics**\n\n* **Inputs:** Liquid Rate, Water Cut, GOR, Lithology\n* **Feeds:** v_m, Reynolds (Re), f, ΔP_fric, v_crit, v_eros")
+        st.info("**2. Flow & Hydraulics**\n\n* **Inputs:** Liquid Rate, Water Cut, GOR, Lithology\n* **Feeds:** $v_m$, Reynolds ($Re$), $f$, $\\Delta P_{fric}$, $v_{crit}$, $v_{eros}$")
     with col_m3:
-        st.info("**3. Loads & Stress**\n\n* **Inputs:** TVD, MD, DLS, Fluid Type, Temp\n* **Feeds:** F_axial, ΔP_APB, σ_hoop, σ_z, σ_VME")
+        st.info("**3. Loads & Stress**\n\n* **Inputs:** TVD, MD, DLS, Fluid Type, Temp\n* **Feeds:** $F_{axial}$, $\\Delta P_{APB}$, $\\sigma_{hoop}$, $\\sigma_z$, $\\sigma_{VME}$")
     with col_m4:
-        st.info("**4. Environmental**\n\n* **Inputs:** H₂S, CO₂, pH, Temp, Lithology\n* **Feeds:** p_H2S, p_CO2, Material Grade, Connection Profile")
-
-    st.markdown("---")
+        st.info("**4. Environmental**\n\n* **Inputs:** H₂S, CO₂, pH, Temp, Lithology\n* **Feeds:** $p_{H_2S}$, $p_{CO_2}$, Material Grade, Connection Profile")
 
     # -------------------------------------------------------------------------
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
