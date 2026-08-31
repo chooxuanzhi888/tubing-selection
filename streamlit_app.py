@@ -490,7 +490,44 @@ elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and integrity screening.</div>', unsafe_allow_html=True)
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL
+    # -------------------------------------------------------------------------
+    st.markdown("""
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.5rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
+        <p style="font-size: 0.95rem; color: #334155; line-height: 1.5; margin-bottom: 0.5rem;">
+            Tubing selection is an iterative elimination process. All candidates from the database enter at Step 1, where thermodynamic fluid properties are calculated. Candidates then pass sequentially through hydraulic velocity windows, Lubinski structural load balances, and environmental compliance limits until the single most optimal candidate is identified.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Graphviz Sequential Funnel Diagram
+    funnel_graph = """
+    digraph G {
+        rankdir=TD;
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=11, height=0.5, width=3.5];
+        edge [fontname="Helvetica", fontsize=9, color="#64748B"];
+
+        DB [label="Candidate Database (All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
+        Step1 [label="Step 1: PVT & In-Situ Density Model\n(Standing R_s, B_o & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
+        Step2 [label="Step 2: Flow Dynamics & Velocity Envelope\nFilter: ΔP_total ≤ ΔP_avail & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
+        Step3 [label="Step 3: Lubinski Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
+        Step4 [label="Step 4: Environmental & Material Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
+        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box];
+
+        DB -> Step1 [label=" Input Operations & PVT"];
+        Step1 -> Step2 [label=" Fluid Densities (ρ_m, ρ_g)"];
+        Step2 -> Step3 [label=" Valid Hydraulic Sizes"];
+        Step3 -> Step4 [label=" Structurally Sound Pipe"];
+        Step4 -> Final [label=" Compliant Preferred Candidate"];
+    }
+    """
+    st.graphviz_chart(funnel_graph, use_container_width=True)
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
     # -------------------------------------------------------------------------
     st.markdown("""
@@ -512,6 +549,8 @@ elif page == "2. Calculation Methodology":
     with col_m4:
         st.info("**4. Environmental**\n\n* **Inputs:** H₂S, CO₂, pH, Temp, Lithology\n* **Feeds:** $p_{H_2S}$, $p_{CO_2}$, Material Grade, Connection Profile")
 
+    st.markdown("---")
+
     # -------------------------------------------------------------------------
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
     # -------------------------------------------------------------------------
@@ -528,7 +567,7 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
         st.latex(r"B_o = 0.9759 + 0.000120 \left[ R_s \left( \frac{\gamma_g}{\gamma_o} \right)^{0.5} + 1.25 \cdot T_{avg} \right]^{1.2}")
-        st.caption("• **Engine Purpose:** Accounts for volume expansion of live oil downhole before computing mixture density.")
+        st.caption("• **Engine Purpose:** Accounts for volume expansion of live oil downhole before computing mixture density $\\rho_m$.")
 
     with col1_2:
         st.markdown("""
@@ -539,7 +578,7 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg, R}}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
         st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
-        st.caption("• **Engine Purpose:** Homogenizes multiphase fluid into an effective mixture density ρ_m for hydraulics.")
+        st.caption("• **Engine Purpose:** Homogenizes multiphase fluid into an effective mixture density $\\rho_m$ for hydraulics.")
 
     st.markdown("---")
 
@@ -559,7 +598,7 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
         st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right]")
-        st.caption("• **Screening Criteria:** Pass if ΔP_total ≤ P_bhp - P_wh (Available Reservoir Drawdown).")
+        st.caption("• **Screening Criteria:** Pass if $\\Delta P_{total} \\le P_{bhp} - P_{wh}$ (Available Reservoir Drawdown).")
 
     with col2_2:
         st.markdown("""
@@ -570,7 +609,7 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
         st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}} \quad \text{(API RP 14E: } C_{sandstone}=120, C_{carbonate}=150\text{)}")
-        st.caption("• **Screening Criteria:** Pass if v_critical < v_m < v_erosional for both Initial and Year-15 Late-Life flow.")
+        st.caption("• **Screening Criteria:** Pass if $v_{critical} < v_m < v_{erosional}$ for both Initial and Year-15 Late-Life flow.")
 
     st.markdown("---")
 
@@ -592,9 +631,9 @@ elif page == "2. Calculation Methodology":
         st.latex(r"F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
         st.markdown("""
         <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.5;">
-            <li><b>Gravity (F<sub>g</sub>):</b> Buoyed pipe weight = W_lbft · MD · (1 - ρ_m / 490).</li>
+            <li><b>Gravity (F<sub>g</sub>):</b> Buoyed pipe weight = $W_{lbft} \\cdot MD \\cdot (1 - \\rho_m / 490)$.</li>
             <li><b>Piston (F<sub>p</sub>):</b> Pressure area imbalance across packers/seals.</li>
-            <li><b>Ballooning (F<sub>b</sub>):</b> Radial pressure expansion shortening via Poisson's ratio (ν = 0.3).</li>
+            <li><b>Ballooning (F<sub>b</sub>):</b> Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).</li>
             <li><b>Drag (F<sub>d</sub>):</b> Skin friction from high-velocity multiphase flow.</li>
         </ul>
         """, unsafe_allow_html=True)
@@ -609,7 +648,7 @@ elif page == "2. Calculation Methodology":
         st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
         st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]}")
-        st.caption("• **Screening Criteria:** Triaxial Safety Factor SF_triaxial = Yield / σ_VME ≥ 1.25.")
+        st.caption("• **Screening Criteria:** Triaxial Safety Factor $SF_{triaxial} = Y_{yield} / \\sigma_{VME} \\ge 1.25$.")
 
     st.markdown("---")
 
@@ -628,7 +667,7 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
-        st.caption("• **Fluid Parameters:** Uses thermal expansion (α_v) and isothermal compressibility (κ_T) for water, heavy brine, or OBM fluids.")
+        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\alpha_v$) and isothermal compressibility ($\\kappa_T$) for water, heavy brine, or OBM fluids.")
 
     with col4_2:
         st.markdown("""
@@ -640,9 +679,9 @@ elif page == "2. Calculation Methodology":
         st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
         st.markdown("""
         <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.6;">
-            <li><b>Sour Service Screening:</b> Flags sour service if p<sub>H₂S</sub> ≥ 0.05 psia. Standard carbon steels fail; L80-1 or CRA materials are enforced.</li>
-            <li><b>Temperature Derating:</b> BHT thresholds enforce high-performance metallurgy (>65°C → N80/C95, >80°C → P110, >107°C → Q125).</li>
-            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR > 2000, APB > 1500 psi, Depth > 10,000 ft, or CRA metallurgy.</li>
+            <li><b>Sour Service Screening:</b> Flags sour service if $p_{H_2S} \\ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.</li>
+            <li><b>Temperature Derating:</b> BHT thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).</li>
+            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, APB $> 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.</li>
         </ul>
         """, unsafe_allow_html=True)
 
