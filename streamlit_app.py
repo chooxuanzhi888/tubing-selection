@@ -502,29 +502,33 @@ elif page == "2. Calculation Methodology":
     </div>
     """, unsafe_allow_html=True)
 
-    # Compact Graphviz Funnel Diagram with Fixed Unicode Math Notation
+    # Graphviz Sequential Funnel Diagram (Compact, Clean Spacing, True Unicode Subscripts)
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        graph [pad="0.1", ranksep="0.25", nodesep="0.25"];
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, height=0.3, width=2.5, margin="0.1,0.04"];
-        edge [fontname="Helvetica", fontsize=8, color="#64748B"];
+        graph [pad="0.2", ranksep="0.45", nodesep="0.3", dpi=75];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=8, height=0.25, width=2.2, margin="0.08,0.03"];
+        edge [fontname="Helvetica", fontsize=8, color="#475569"];
 
-        DB [label="Candidate Database (All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
-        Step1 [label="Step 1: PVT & In-Situ Density Model\n(Standing Rₛ, Bₒ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
-        Step2 [label="Step 2: Flow Dynamics & Velocity Envelope\nFilter: ΔP_total ≤ ΔP_avail & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
-        Step3 [label="Step 3: Lubinski Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
-        Step4 [label="Step 4: Environmental & Material Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
+        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
+        Step1 [label="Step 1: PVT & Density Model\n(Standing Rₛ, Bₒ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
+        Step2 [label="Step 2: Flow & Velocity Envelope\nFilter: ΔPₜₒₜₐₗ ≤ ΔPₐᵥₐᵢₗ & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
+        Step3 [label="Step 3: Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
+        Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
         Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box];
 
-        DB -> Step1 [label=" Input Operations & PVT"];
-        Step1 -> Step2 [label=" Fluid Densities (ρ_m, ρ_g)"];
-        Step2 -> Step3 [label=" Valid Hydraulic Sizes"];
-        Step3 -> Step4 [label=" Structurally Sound Pipe"];
-        Step4 -> Final [label=" Compliant Preferred Candidate"];
+        DB -> Step1 [label="  1. Operations & PVT Inputs  "];
+        Step1 -> Step2 [label="  2. Fluid Densities (ρₘ, ρ_g)  "];
+        Step2 -> Step3 [label="  3. Valid Hydraulic Sizes  "];
+        Step3 -> Step4 [label="  4. Structurally Sound Pipe  "];
+        Step4 -> Final [label="  5. Compliant Candidate  "];
     }
     """
-    st.graphviz_chart(funnel_graph, use_container_width=True)
+    
+    # Render Funnel in a controlled narrow column to force compact display
+    col_f1, col_f2, col_f3 = st.columns([1, 3, 1])
+    with col_f2:
+        st.graphviz_chart(funnel_graph, use_container_width=True)
 
     st.markdown("---")
 
@@ -630,14 +634,10 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
         st.latex(r"F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
-        st.markdown("""
-        <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.5;">
-            <li><b>Gravity ($F_g$):</b> Buoyed pipe weight = $W_{lbft} \\cdot MD \\cdot (1 - \\rho_m / 490)$.</li>
-            <li><b>Piston ($F_p$):</b> Pressure area imbalance across packers/seals.</li>
-            <li><b>Ballooning ($F_b$):</b> Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).</li>
-            <li><b>Drag ($F_d$):</b> Skin friction from high-velocity multiphase flow.</li>
-        </ul>
-        """, unsafe_allow_html=True)
+        st.markdown("* **Gravity ($F_g$):** Buoyed pipe weight $W_{lbft} \cdot MD \cdot (1 - \\rho_m / 490)$.")
+        st.markdown("* **Piston ($F_p$):** Pressure area imbalance across packers/seals.")
+        st.markdown("* **Ballooning ($F_b$):** Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).")
+        st.markdown("* **Drag ($F_d$):** Skin friction from high-velocity multiphase flow.")
 
     with col3_2:
         st.markdown("""
@@ -668,7 +668,7 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
-        st.caption("• **Fluid Parameters:** Uses thermal expansion coefficient $\\alpha_v$ and isothermal compressibility $\\kappa_T$ for water, heavy brine, or OBM fluids.")
+        st.markdown("• **Fluid Parameters:** Uses thermal expansion coefficient $\\alpha_v$ and isothermal compressibility $\\kappa_T$ for water, heavy brine, or OBM fluids.")
 
     with col4_2:
         st.markdown("""
@@ -678,13 +678,11 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
-        st.markdown("""
-        <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.6;">
-            <li><b>Sour Service Screening:</b> Flags sour service if $p_{H_2S} \\ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.</li>
-            <li><b>Temperature Derating:</b> Bottomhole temperature (BHT) thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).</li>
-            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.</li>
-        </ul>
-        """, unsafe_allow_html=True)
+        
+        # Native Streamlit markdown ensures Latex expressions render cleanly without X_X bugs
+        st.markdown("* **Sour Service Screening:** Flags sour service if $p_{H_2S} \ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.")
+        st.markdown("* **Temperature Derating:** Bottomhole temperature (BHT) thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).")
+        st.markdown("* **Premium Connection Enforcer:** Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.")
 
 # -----------------------------------------------------------------------------
 # PAGE 3: WELL & FLUID INPUTS
