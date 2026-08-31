@@ -503,32 +503,122 @@ elif page == "2. Calculation Methodology":
     """, unsafe_allow_html=True)
 
 # Graphviz Sequential Funnel Diagram (Restored 1.25x Size, Fixed Unicode Subscripts, Centered Layout)
-    funnel_graph = """
-    digraph G {
-        rankdir=TD;
-        graph [margin="15,15", pad="0.3", ranksep="0.55", nodesep="0.35", dpi=150, splines=spline, align=center];
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=10, width=4.5, height=0.65, margin="0.2,0.1"];
-        edge [fontname="Helvetica", fontsize=9, color="#475569", labelangle=0, labeldistance=2.5];
+# -------------------------------------------------------------------------
+    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL (CSS FLEXBOX)
+    # -------------------------------------------------------------------------
+    st.markdown("""
+    <style>
+        .funnel-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 1.5rem auto 2.5rem auto;
+            max-width: 650px;
+            width: 100%;
+        }
+        .funnel-box {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.88rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+        .funnel-arrow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 38px;
+            position: relative;
+            width: 100%;
+        }
+        .funnel-arrow-line {
+            width: 2px;
+            height: 100%;
+            background-color: #64748B;
+        }
+        .funnel-arrow-head {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #64748B;
+            position: absolute;
+            bottom: 0;
+        }
+        .funnel-arrow-label {
+            position: absolute;
+            left: calc(50% + 15px);
+            font-size: 0.8rem;
+            color: #475569;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+    </style>
 
-        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, width=3.2, height=0.55];
-        Step1 [label="Step 1: PVT & Density Model\n(Standing Rₛ, B⒪ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
-        Step2 [label="Step 2: Flow & Velocity Envelope\nFilter: ΔPₜₒₜₐₗ ≤ ΔPₐᵥₐᵢₗ & v_crit < vₘ < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
-        Step3 [label="Step 3: Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
-        Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
-        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=4.5, height=0.65];
+    <div class="funnel-container">
+        <div class="funnel-box" style="background-color: #E2E8F0; color: #0F172A; border-radius: 20px; font-weight: 600;">
+            Candidate Database (All Sizes & Grades)
+        </div>
+        
+        <div class="funnel-arrow-container">
+            <div class="funnel-arrow-line"></div>
+            <div class="funnel-arrow-head"></div>
+            <div class="funnel-arrow-label">Operations & PVT Inputs</div>
+        </div>
 
-        DB -> Step1 [label="     Operations & PVT Inputs", labelfloat=true];
-        Step1 -> Step2 [label="     Fluid Densities (ρₘ, ρ₉)", labelfloat=true];
-        Step2 -> Step3 [label="     Valid Hydraulic Sizes", labelfloat=true];
-        Step3 -> Step4 [label="     Structurally Sound Pipe", labelfloat=true];
-        Step4 -> Final [label="     Compliant Candidate", labelfloat=true];
-    }
-    """
-    
-    # Render Funnel with container width enabled for full-scale centering + bottom margin padding
-    st.markdown('<div style="margin-top: 0.5rem; margin-bottom: 2rem;">', unsafe_allow_html=True)
-    st.graphviz_chart(funnel_graph, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        <div class="funnel-box" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
+            <b>Step 1: PVT & In-Situ Density Model</b><br/>
+            <span style="font-size: 0.8rem;">(Standing R<sub>s</sub>, B<sub>o</sub> & Z-Factor)</span>
+        </div>
+
+        <div class="funnel-arrow-container">
+            <div class="funnel-arrow-line"></div>
+            <div class="funnel-arrow-head"></div>
+            <div class="funnel-arrow-label">Fluid Densities (ρ<sub>m</sub>, ρ<sub>g</sub>)</div>
+        </div>
+
+        <div class="funnel-box" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
+            <b>Step 2: Flow Dynamics & Velocity Operating Window</b><br/>
+            <span style="font-size: 0.8rem;">Filter: ΔP<sub>total</sub> ≤ ΔP<sub>avail</sub> & v<sub>crit</sub> < v<sub>m</sub> < v<sub>eros</sub></span>
+        </div>
+
+        <div class="funnel-arrow-container">
+            <div class="funnel-arrow-line"></div>
+            <div class="funnel-arrow-head"></div>
+            <div class="funnel-arrow-label">Valid Hydraulic Sizes</div>
+        </div>
+
+        <div class="funnel-box" style="background-color: #D1FAE5; color: #065F46; border-left: 4px solid #10B981;">
+            <b>Step 3: Lubinski Stress & Yield Integrity</b><br/>
+            <span style="font-size: 0.8rem;">Filter: von Mises SF<sub>triaxial</sub> ≥ 1.25</span>
+        </div>
+
+        <div class="funnel-arrow-container">
+            <div class="funnel-arrow-line"></div>
+            <div class="funnel-arrow-head"></div>
+            <div class="funnel-arrow-label">Structurally Sound Pipe</div>
+        </div>
+
+        <div class="funnel-box" style="background-color: #EDE9FE; color: #5B21B6; border-left: 4px solid #8B5CF6;">
+            <b>Step 4: Environmental Integrity & Metallurgy Gate</b><br/>
+            <span style="font-size: 0.8rem;">Filter: NACE Sour Service, BHT Derating & Connection Profile</span>
+        </div>
+
+        <div class="funnel-arrow-container">
+            <div class="funnel-arrow-line"></div>
+            <div class="funnel-arrow-head"></div>
+            <div class="funnel-arrow-label">Compliant Candidate</div>
+        </div>
+
+        <div class="funnel-box" style="background-color: #059669; color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">
+            Optimal Preferred Tubing Candidate
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
