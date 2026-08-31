@@ -502,13 +502,13 @@ elif page == "2. Calculation Methodology":
     </div>
     """, unsafe_allow_html=True)
 
-    # Graphviz Sequential Funnel Diagram (Compact, Clean Spacing, True Unicode Subscripts)
+    # Graphviz Sequential Funnel Diagram (Labels Shifted to Avoid Arrow Overlaps)
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        graph [pad="0.2", ranksep="0.45", nodesep="0.3", dpi=75];
+        graph [pad="0.2", ranksep="0.55", nodesep="0.4", dpi=80];
         node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=8, height=0.25, width=2.2, margin="0.08,0.03"];
-        edge [fontname="Helvetica", fontsize=8, color="#475569"];
+        edge [fontname="Helvetica", fontsize=8, color="#475569", labelangle=35, labeldistance=2.2];
 
         DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
         Step1 [label="Step 1: PVT & Density Model\n(Standing Rₛ, Bₒ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
@@ -517,11 +517,11 @@ elif page == "2. Calculation Methodology":
         Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
         Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box];
 
-        DB -> Step1 [label="  1. Operations & PVT Inputs  "];
-        Step1 -> Step2 [label="  2. Fluid Densities (ρₘ, ρ_g)  "];
-        Step2 -> Step3 [label="  3. Valid Hydraulic Sizes  "];
-        Step3 -> Step4 [label="  4. Structurally Sound Pipe  "];
-        Step4 -> Final [label="  5. Compliant Candidate  "];
+        DB -> Step1 [headlabel="Operations & PVT Inputs"];
+        Step1 -> Step2 [headlabel="Fluid Densities (ρₘ, ρ_g)"];
+        Step2 -> Step3 [headlabel="Valid Hydraulic Sizes"];
+        Step3 -> Step4 [headlabel="Structurally Sound Pipe"];
+        Step4 -> Final [headlabel="Compliant Candidate"];
     }
     """
     
@@ -679,7 +679,6 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
         
-        # Native Streamlit markdown ensures Latex expressions render cleanly without X_X bugs
         st.markdown("* **Sour Service Screening:** Flags sour service if $p_{H_2S} \ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.")
         st.markdown("* **Temperature Derating:** Bottomhole temperature (BHT) thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).")
         st.markdown("* **Premium Connection Enforcer:** Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.")
