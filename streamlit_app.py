@@ -494,23 +494,23 @@ elif page == "2. Calculation Methodology":
     # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.5rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
-        <p style="font-size: 0.95rem; color: #334155; line-height: 1.5; margin-bottom: 0.5rem;">
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
+        <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Tubing selection is an iterative elimination process. All candidates from the database enter at Step 1, where thermodynamic fluid properties are calculated. Candidates then pass sequentially through hydraulic velocity windows, Lubinski structural load balances, and environmental compliance limits until the single most optimal candidate is identified.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Graphviz Sequential Funnel Diagram
+    # Graphviz Sequential Funnel Diagram (Compact Sizing & Clean Formatting)
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=11, height=0.5, width=3.5];
-        edge [fontname="Helvetica", fontsize=9, color="#64748B"];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, height=0.3, width=2.8, margin="0.11,0.05"];
+        edge [fontname="Helvetica", fontsize=8, color="#64748B"];
 
         DB [label="Candidate Database (All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
-        Step1 [label="Step 1: PVT & In-Situ Density Model\n(Standing R_s, B_o & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
+        Step1 [label="Step 1: PVT & In-Situ Density Model\n(Standing Rₛ, Bₒ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
         Step2 [label="Step 2: Flow Dynamics & Velocity Envelope\nFilter: ΔP_total ≤ ΔP_avail & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
         Step3 [label="Step 3: Lubinski Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
         Step4 [label="Step 4: Environmental & Material Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
@@ -532,8 +532,8 @@ elif page == "2. Calculation Methodology":
     # -------------------------------------------------------------------------
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.3rem; margin-bottom: 0.5rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
-        <p style="font-size: 0.95rem; color: #334155; line-height: 1.5; margin-bottom: 0.5rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
+        <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Every numerical input provided in <b>Step 3</b> flows directly into deterministic engineering models. Here is how user inputs feed the governing equations:
         </p>
     </div>
@@ -561,8 +561,8 @@ elif page == "2. Calculation Methodology":
     with col1_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR (R<sub>s</sub>) & FVF (B<sub>o</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature (T<sub>avg</sub>) and pressure (P<sub>avg</sub>):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR ($R_s$) & FVF ($B_o$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature ($T_{avg}$) and pressure ($P_{avg}$):</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
@@ -572,7 +572,7 @@ elif page == "2. Calculation Methodology":
     with col1_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density (ρ<sub>m</sub>)</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density ($\rho_m$)</h4>
             <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas Z-factor to determine in-situ phase densities:</p>
         </div>
         """, unsafe_allow_html=True)
@@ -592,8 +592,8 @@ elif page == "2. Calculation Methodology":
     with col2_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss (ΔP<sub>total</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor (f):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss ($\Delta P_{total}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor ($f$):</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
@@ -604,7 +604,7 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between droplet lift minimums and lithology-adjusted erosion limits:</p>
+            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity ($v_m$) between droplet lift minimums and lithology-adjusted erosion limits:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
@@ -623,7 +623,7 @@ elif page == "2. Calculation Methodology":
     with col3_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.1 Lubinski Net Axial Force Balance (F<sub>axial</sub>)</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.1 Lubinski Net Axial Force Balance ($F_{axial}$)</h4>
             <p style="font-size: 0.9rem; color: #475569;">Summates 5 discrete mechanical forces acting along the tubing string length:</p>
         </div>
         """, unsafe_allow_html=True)
@@ -641,8 +641,8 @@ elif page == "2. Calculation Methodology":
     with col3_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #10B981;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.2 Lamé Thick-Wall & Triaxial Stress (σ<sub>VME</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial σ<sub>z</sub>, Hoop σ<sub>θ</sub>, Radial σ<sub>r</sub>) including dogleg curvature bending:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">3.2 Lamé Thick-Wall & Triaxial Stress ($\sigma_{VME}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial $\sigma_z$, Hoop $\sigma_\theta$, Radial $\sigma_r$) including dogleg curvature bending:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
@@ -662,12 +662,12 @@ elif page == "2. Calculation Methodology":
     with col4_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Annular Pressure Build-up (APB)</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Annular Pressure Build-up ($\Delta P_{APB}$)</h4>
             <p style="font-size: 0.9rem; color: #475569;">Trapped packer fluid expansion creates severe pressure rise in unvented annuli:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
-        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\alpha_v$) and isothermal compressibility ($\\kappa_T$) for water, heavy brine, or OBM fluids.")
+        st.caption("• **Fluid Parameters:** Uses thermal expansion coefficient $\\alpha_v$ and isothermal compressibility $\\kappa_T$ for water, heavy brine, or OBM fluids.")
 
     with col4_2:
         st.markdown("""
@@ -680,8 +680,8 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.6;">
             <li><b>Sour Service Screening:</b> Flags sour service if $p_{H_2S} \\ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.</li>
-            <li><b>Temperature Derating:</b> BHT thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).</li>
-            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, APB $> 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.</li>
+            <li><b>Temperature Derating:</b> Bottomhole temperature (BHT) thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).</li>
+            <li><b>Premium Connection Enforcer:</b> Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.</li>
         </ul>
         """, unsafe_allow_html=True)
 
