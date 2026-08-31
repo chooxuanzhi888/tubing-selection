@@ -502,11 +502,12 @@ elif page == "2. Calculation Methodology":
     </div>
     """, unsafe_allow_html=True)
 
-    # Graphviz Sequential Funnel Diagram (Compact Sizing & Clean Formatting)
+    # Compact Graphviz Funnel Diagram with Fixed Unicode Math Notation
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, height=0.3, width=2.8, margin="0.11,0.05"];
+        graph [pad="0.1", ranksep="0.25", nodesep="0.25"];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, height=0.3, width=2.5, margin="0.1,0.04"];
         edge [fontname="Helvetica", fontsize=8, color="#64748B"];
 
         DB [label="Candidate Database (All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse];
@@ -631,10 +632,10 @@ elif page == "2. Calculation Methodology":
         st.latex(r"F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
         st.markdown("""
         <ul style="font-size: 0.85rem; color: #334155; padding-left: 1rem; line-height: 1.5;">
-            <li><b>Gravity (F<sub>g</sub>):</b> Buoyed pipe weight = $W_{lbft} \\cdot MD \\cdot (1 - \\rho_m / 490)$.</li>
-            <li><b>Piston (F<sub>p</sub>):</b> Pressure area imbalance across packers/seals.</li>
-            <li><b>Ballooning (F<sub>b</sub>):</b> Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).</li>
-            <li><b>Drag (F<sub>d</sub>):</b> Skin friction from high-velocity multiphase flow.</li>
+            <li><b>Gravity ($F_g$):</b> Buoyed pipe weight = $W_{lbft} \\cdot MD \\cdot (1 - \\rho_m / 490)$.</li>
+            <li><b>Piston ($F_p$):</b> Pressure area imbalance across packers/seals.</li>
+            <li><b>Ballooning ($F_b$):</b> Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).</li>
+            <li><b>Drag ($F_d$):</b> Skin friction from high-velocity multiphase flow.</li>
         </ul>
         """, unsafe_allow_html=True)
 
