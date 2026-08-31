@@ -637,7 +637,7 @@ elif page == "2. Calculation Methodology":
 
     st.markdown("---")
 
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
     # -------------------------------------------------------------------------
     st.markdown("### Step 1: Fluid Thermodynamics & In-Situ Density Model")
@@ -647,8 +647,8 @@ elif page == "2. Calculation Methodology":
     with col1_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR ($R_s$) & FVF ($B_o$)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature ($T_{avg}$) and pressure ($P_{avg}$):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR (R<sub>s</sub>) & FVF (B<sub>o</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature (T<sub>avg</sub>) and pressure (P<sub>avg</sub>):</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
@@ -658,15 +658,13 @@ elif page == "2. Calculation Methodology":
     with col1_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density ($\rho_m$)</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density (&rho;<sub>m</sub>)</h4>
             <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas Z-factor to determine in-situ phase densities:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg, R}}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
         st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
         st.caption("• **Engine Purpose:** Homogenizes multiphase fluid into an effective mixture density $\\rho_m$ for hydraulics.")
-
-    st.markdown("---")
 
     # -------------------------------------------------------------------------
     # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
