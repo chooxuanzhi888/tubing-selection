@@ -502,31 +502,31 @@ elif page == "2. Calculation Methodology":
     </div>
     """, unsafe_allow_html=True)
 
-    # Graphviz Sequential Funnel Diagram (30% Smaller, Right-Aligned Centered Labels, Expanded Canvas Pad)
+    # Graphviz Sequential Funnel Diagram (Fixed Right-Side Text, No Clipping, Fixed Block Size)
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        graph [pad="0.5", ranksep="0.55", nodesep="0.4", dpi=90];
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=8, height=0.32, width=2.1, margin="0.08,0.04"];
-        edge [fontname="Helvetica", fontsize=8, color="#475569", labelangle=35, labeldistance=3.5];
+        graph [margin="20,20", pad="0.8", ranksep="0.75", nodesep="0.6", dpi=100, splines=spline];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=8, fixedsize=false, width=3.2, height=0.55, margin="0.2,0.1"];
+        edge [fontname="Helvetica", fontsize=8, color="#475569", labelangle=0, labeldistance=3.0];
 
-        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, height=0.3, width=1.8];
+        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, width=2.6, height=0.45];
         Step1 [label="Step 1: PVT & Density Model\n(Standing Rₛ, B⒪ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
         Step2 [label="Step 2: Flow & Velocity Envelope\nFilter: ΔPₜₒₜₐₗ ≤ ΔPₐᵥₐᵢₗ & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
         Step3 [label="Step 3: Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
         Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
-        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, height=0.32, width=2.1];
+        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=3.2, height=0.55];
 
-        DB -> Step1 [headlabel="   Operations & PVT Inputs"];
-        Step1 -> Step2 [headlabel="   Fluid Densities (ρₘ, ρ_g)"];
-        Step2 -> Step3 [headlabel="   Valid Hydraulic Sizes"];
-        Step3 -> Step4 [headlabel="   Structurally Sound Pipe"];
-        Step4 -> Final [headlabel="   Compliant Candidate"];
+        DB -> Step1 [label="     Operations & PVT Inputs", labelfloat=true];
+        Step1 -> Step2 [label="     Fluid Densities (ρₘ, ρ_g)", labelfloat=true];
+        Step2 -> Step3 [label="     Valid Hydraulic Sizes", labelfloat=true];
+        Step3 -> Step4 [label="     Structurally Sound Pipe", labelfloat=true];
+        Step4 -> Final [label="     Compliant Candidate", labelfloat=true];
     }
     """
     
-    # Render Funnel in a balanced column container preventing side boundary clipping
-    col_f1, col_f2, col_f3 = st.columns([1, 6, 1])
+    # Render Funnel in a wide container to prevent right border SVG clipping
+    col_f1, col_f2, col_f3 = st.columns([0.5, 11, 0.5])
     with col_f2:
         st.graphviz_chart(funnel_graph, use_container_width=True)
 
