@@ -506,8 +506,8 @@ elif page == "2. Calculation Methodology":
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        graph [margin="5,2", pad="0.05", ranksep="0.35", nodesep="0.25", dpi=112, splines=spline, align=center];
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, width=3.35, height=0.55, margin="0.15,0.08"];
+        graph [margin="20,20", pad="0.3", ranksep="0.5", nodesep="0.3", dpi=110, splines=spline, align=center];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, width=3.4, height=0.55, margin="0.15,0.08"];
         edge [fontname="Helvetica", fontsize=8, color="#475569", labelangle=0, labeldistance=2.5];
 
         DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, width=2.6, height=0.45];
@@ -515,7 +515,7 @@ elif page == "2. Calculation Methodology":
         Step2 [label="Step 2: Flow & Velocity Envelope\nFilter: ΔPₜₒₜₐₗ ≤ ΔPₐᵥₐᵢₗ & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
         Step3 [label="Step 3: Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
         Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
-        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=3.35, height=0.55];
+        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=3.4, height=0.55];
 
         DB -> Step1 [label="     Operations & PVT Inputs", labelfloat=true];
         Step1 -> Step2 [label="     Fluid Densities (ρₘ, ρ_g)", labelfloat=true];
@@ -525,9 +525,11 @@ elif page == "2. Calculation Methodology":
     }
     """
     
-    # Render Funnel in a centered container with minimal vertical spacing
-    st.markdown('<div style="display: flex; justify-content: center; margin-top: -0.5rem; margin-bottom: -0.5rem;">', unsafe_allow_html=True)
-    st.graphviz_chart(funnel_graph, use_container_width=True)
+    # Centered container wrapper with explicit bottom margin buffer
+    st.markdown('<div style="margin-top: 0.5rem; margin-bottom: 2rem;">', unsafe_allow_html=True)
+    col_f1, col_f2, col_f3 = st.columns([1, 8, 1])
+    with col_f2:
+        st.graphviz_chart(funnel_graph)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
