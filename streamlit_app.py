@@ -494,28 +494,28 @@ elif page == "2. Calculation Methodology":
     # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 0.3rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.3rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Tubing selection is an iterative elimination process. All candidates from the database enter at Step 1, where thermodynamic fluid properties are calculated. Candidates then pass sequentially through hydraulic velocity windows, Lubinski structural load balances, and environmental compliance limits until the single most optimal candidate is identified.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Graphviz Sequential Funnel Diagram (75% Compact Scale, Perfectly Centered, Zero Clipping)
+    # Graphviz Sequential Funnel Diagram (125% Scale, Centered HTML Wrapper, Tight Vertical Gaps)
     funnel_graph = """
     digraph G {
         rankdir=TD;
-        graph [margin="10,5", pad="0.1", ranksep="0.5", nodesep="0.3", dpi=90, splines=spline, align=center];
-        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=8, width=2.7, height=0.45, margin="0.15,0.08"];
+        graph [margin="5,2", pad="0.05", ranksep="0.35", nodesep="0.25", dpi=112, splines=spline, align=center];
+        node [fontname="Helvetica", shape=box, style="filled,rounded", fontsize=9, width=3.35, height=0.55, margin="0.15,0.08"];
         edge [fontname="Helvetica", fontsize=8, color="#475569", labelangle=0, labeldistance=2.5];
 
-        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, width=2.2, height=0.38];
+        DB [label="Candidate Database\n(All Sizes & Grades)", fillcolor="#E2E8F0", fontcolor="#0F172A", shape=ellipse, width=2.6, height=0.45];
         Step1 [label="Step 1: PVT & Density Model\n(Standing Rₛ, B⒪ & Z-Factor)", fillcolor="#DBEAFE", fontcolor="#1E3A8A"];
         Step2 [label="Step 2: Flow & Velocity Envelope\nFilter: ΔPₜₒₜₐₗ ≤ ΔPₐᵥₐᵢₗ & v_crit < v_m < v_eros", fillcolor="#FEF3C7", fontcolor="#78350F"];
         Step3 [label="Step 3: Stress & Yield Integrity\nFilter: von Mises SF_triaxial ≥ 1.25", fillcolor="#D1FAE5", fontcolor="#065F46"];
         Step4 [label="Step 4: Environmental Gate\nFilter: NACE Sour Service, BHT & Connection", fillcolor="#EDE9FE", fontcolor="#5B21B6"];
-        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=2.7, height=0.45];
+        Final [label="Optimal Preferred Tubing Candidate", fillcolor="#059669", fontcolor="#FFFFFF", style="filled,bold", shape=box, width=3.35, height=0.55];
 
         DB -> Step1 [label="     Operations & PVT Inputs", labelfloat=true];
         Step1 -> Step2 [label="     Fluid Densities (ρₘ, ρ_g)", labelfloat=true];
@@ -525,17 +525,17 @@ elif page == "2. Calculation Methodology":
     }
     """
     
-    # Render Funnel directly across full width to ensure perfect centering without margin shifts
+    # Render Funnel in a centered container with minimal vertical spacing
+    st.markdown('<div style="display: flex; justify-content: center; margin-top: -0.5rem; margin-bottom: -0.5rem;">', unsafe_allow_html=True)
     st.graphviz_chart(funnel_graph, use_container_width=True)
-
-    st.markdown("---")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
+    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-top: 0.5rem; margin-bottom: 1rem;">
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.3rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
             Every numerical input provided in <b>Step 3</b> flows directly into deterministic engineering models. Here is how user inputs feed the governing equations:
         </p>
