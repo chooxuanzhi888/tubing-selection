@@ -768,7 +768,7 @@ elif page == "2. Calculation Methodology":
 # -----------------------------------------------------------------------------
 # PAGE 3: INPUTS & DUAL-LIFECYCLE SCENARIOS
 # -----------------------------------------------------------------------------
-elif page == "3. Inputs & Candidate Selection":
+elif "3." in page:
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Dual-Lifecycle Inputs</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Specify operational parameters for Early-Life and Late-Life production envelopes to drive candidate filtration.</div>', unsafe_allow_html=True)
 
