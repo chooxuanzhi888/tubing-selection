@@ -770,19 +770,19 @@ elif page == "2. Calculation Methodology":
 # -----------------------------------------------------------------------------
 elif "3." in page:
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Dual-Lifecycle Inputs</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Specify wellbore geometry, fluid PVT, and dual-lifecycle parameters to drive candidate screening.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Specify wellbore geometry, completion targets, fluid PVT, dynamic APB parameters, and dual-lifecycle envelopes.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # TABBED INPUT STRUCTURE
     # -------------------------------------------------------------------------
     tab_geo, tab_early, tab_late = st.tabs([
-        "📐 1. Wellbore Geometry & Fluid PVT", 
+        "📐 1. Architecture, Targets & Annular Fluids", 
         "🚀 2. Early-Life (Initial Production)", 
         "📉 3. Late-Life (Depleted / High Water Cut)"
     ])
 
     # -------------------------------------------------------------------------
-    # TAB 1: WELLBORE GEOMETRY & RESERVOIR FLUID PROPERTIES
+    # TAB 1: WELLBORE ARCHITECTURE, COMPLETION TARGETS & ANNULAR FLUIDS
     # -------------------------------------------------------------------------
     with tab_geo:
         st.markdown("#### Wellbore Architecture & Reservoir Baseline")
@@ -802,6 +802,26 @@ elif "3." in page:
             h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f")
             co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f")
             lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
+
+        st.markdown("---")
+        st.markdown("#### Completion Targets, Safety Limits & Annular Fluid Properties")
+        col_t1, col_t2, col_t3 = st.columns(3)
+
+        with col_t1:
+            target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
+            target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
+
+        with col_t2:
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
+            surf_temp = st.number_input("Surface Ambient Temperature (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
+
+        with col_t3:
+            annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
+                "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
+                "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
+                "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)"
+            ])
+            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
 
     # -------------------------------------------------------------------------
     # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE)
@@ -926,6 +946,9 @@ elif "3." in page:
                 "tvd": tvd, "md": md, "dls": dls,
                 "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg,
                 "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "lithology": lithology,
+                "target_life": target_life, "target_capacity": target_capacity,
+                "sf_triaxial": sf_triaxial, "surf_temp": surf_temp,
+                "annular_fluid": annular_fluid, "casing_id": casing_id,
                 "early": {
                     "p_bhp": p_bhp_early, "p_wh": p_wh_early,
                     "q_liq": q_liq_early, "wc": wc_early,
@@ -937,7 +960,7 @@ elif "3." in page:
                     "gor": gor_late, "bht": bht_late
                 }
             }
-            st.success("✅ Operational inputs saved to model! Ready to run candidate screening.")
+            st.success("✅ Complete operational dataset saved to model! Ready to run candidate screening.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
