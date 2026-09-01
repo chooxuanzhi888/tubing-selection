@@ -773,66 +773,89 @@ elif "3." in page:
     st.markdown('<div class="sub-header">Specify wellbore profile, environmental water chemistry, completion targets, and dual-lifecycle production envelopes.</div>', unsafe_allow_html=True) 
 
     # ------------------------------------------------------------------------- 
-    # TABBED INPUT STRUCTURE 
+    # MAIN NAVIGATION TABS 
     # ------------------------------------------------------------------------- 
     tab_geo, tab_early, tab_late = st.tabs([ 
-        "📐 1. Architecture, Water Chemistry & Targets",  
+        "📐 1. Architecture, Chemistry & Targets",  
         "🚀 2. Early-Life (Initial Production)",  
         "📉 3. Late-Life (Depleted / High Water Cut)"
     ]) 
 
     # ------------------------------------------------------------------------- 
-    # TAB 1: WELLBORE ARCHITECTURE, WATER CHEMISTRY & COMPLETION TARGETS
+    # TAB 1: ARCHITECTURE, PVT, CORROSIVITY & COMPLETION TARGETS
     # ------------------------------------------------------------------------- 
     with tab_geo: 
-        # CATEGORY A: SUBSURFACE WELLBORE PROFILE & FLUID PVT
-        st.markdown("#### 📐 1. Subsurface Wellbore Profile & Fluid PVT Baseline") 
+        # ---------------------------------------------------------------------
+        # CATEGORY 1: SUBSURFACE ARCHITECTURE & CASING GEOMETRY
+        # ---------------------------------------------------------------------
+        st.markdown("#### 📐 1. Subsurface Architecture & Casing Geometry") 
         col_g1, col_g2, col_g3 = st.columns(3) 
          
         with col_g1: 
             well_type = st.selectbox("Well Type Category", ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"])
             tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.000, max_value=30000.000, value=10000.000, step=100.000, format="%.3f") 
+        
+        with col_g2:
             md = st.number_input("Measured Depth - MD (ft)", min_value=1000.000, max_value=35000.000, value=11500.000, step=100.000, format="%.3f") 
             dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.000, max_value=15.000, value=2.000, step=0.100, format="%.3f") 
 
-        with col_g2: 
+        with col_g3:
+            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+
+        st.markdown("---")
+
+        # ---------------------------------------------------------------------
+        # CATEGORY 2: RESERVOIR FLUID PVT & MIXTURE PROPERTIES
+        # ---------------------------------------------------------------------
+        st.markdown("#### 🧪 2. Reservoir Fluid PVT Baseline & Lithology")
+        col_p1, col_p2, col_p3 = st.columns(3)
+
+        with col_p1:
             oil_api = st.number_input("Oil Gravity (°API)", min_value=10.000, max_value=60.000, value=35.000, step=0.100, format="%.3f") 
+        
+        with col_p2:
             gas_sg = st.number_input("Gas Specific Gravity (Air=1.000)", min_value=0.550, max_value=1.200, value=0.650, step=0.001, format="%.3f") 
             water_sg = st.number_input("Formation Water SG (Fresh=1.000)", min_value=1.000, max_value=1.250, value=1.050, step=0.001, format="%.3f") 
 
-        with col_g3: 
-            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f") 
-            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f") 
+        with col_p3:
             lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"]) 
 
         st.markdown("---")
 
-        # CATEGORY B: STRUCTURAL INTEGRITY, WATER CHEMISTRY & COMPLETION TARGETS
-        st.markdown("#### 🛡️ 2. Water Chemistry, Completion Targets & Safety Limits")
-        col_e1, col_e2, col_e3 = st.columns(3)
+        # ---------------------------------------------------------------------
+        # CATEGORY 3: CORROSIVITY & ENVIRONMENTAL CHEMISTRY
+        # ---------------------------------------------------------------------
+        st.markdown("#### ☣️ 3. Environmental Corrosivity & Water Chemistry")
+        col_c1, col_c2, col_c3 = st.columns(3)
 
-        with col_e1:
-            water_chlorides = st.number_input("Water Chlorides Concentration (PPM)", min_value=0.000, max_value=250000.000, value=35000.000, step=1000.000, format="%.3f")
+        with col_c1:
+            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f") 
+            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f") 
+
+        with col_c2:
+            water_chlorides = st.number_input("Water Chlorides Concentration (PPM Cl⁻)", min_value=0.000, max_value=250000.000, value=35000.000, step=1000.000, format="%.3f")
             water_ph = st.number_input("Formation Water pH", min_value=2.000, max_value=10.000, value=6.500, step=0.100, format="%.3f")
 
-        with col_e2:
-            target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
-            target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
-
-        with col_e3:
-            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
+        with col_c3:
+            st.info("💡 **Metallurgical Impact:** H₂S partial pressure governs NACE MR0175 sour service limits, while CO₂ and Chlorides dictate pitting resistance requirements (PREN) for CRA materials.")
 
         st.markdown("---")
 
-        # CATEGORY C: THERMAL & ANNULAR FLUID ENVIRONMENT (APB)
-        st.markdown("#### 🌡️ 3. Thermal Gradient & Annular Fluid Parameters (APB)")
-        col_a1, col_a2, col_a3 = st.columns(3)
+        # ---------------------------------------------------------------------
+        # CATEGORY 4: COMPLETION TARGETS, SAFETY LIMITS & THERMAL APB
+        # ---------------------------------------------------------------------
+        st.markdown("#### 🛡️ 4. Completion Targets, Structural Limits & Annular Thermal APB")
+        col_t1, col_t2, col_t3 = st.columns(3)
 
-        with col_a1:
+        with col_t1:
+            target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
+            target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
+
+        with col_t2:
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
             surf_temp = st.number_input("Surface Ambient Temp (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
-        with col_a2:
-            casing_id = st.number_input("Production Casing ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
-        with col_a3:
+
+        with col_t3:
             annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
                 "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
                 "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
@@ -960,13 +983,11 @@ elif "3." in page:
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
             st.session_state["well_inputs"] = { 
                 "well_type": well_type,
-                "tvd": tvd, "md": md, "dls": dls, 
-                "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg, 
-                "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "lithology": lithology, 
-                "water_chlorides": water_chlorides, "water_ph": water_ph,
+                "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
+                "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg, "lithology": lithology,
+                "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "water_chlorides": water_chlorides, "water_ph": water_ph,
                 "target_life": target_life, "target_capacity": target_capacity,
-                "sf_triaxial": sf_triaxial, "surf_temp": surf_temp,
-                "annular_fluid": annular_fluid, "casing_id": casing_id,
+                "sf_triaxial": sf_triaxial, "surf_temp": surf_temp, "annular_fluid": annular_fluid,
                 "early": { 
                     "p_bhp": p_bhp_early, "p_wh": p_wh_early, 
                     "q_liq": q_liq_early, "wc": wc_early, 
