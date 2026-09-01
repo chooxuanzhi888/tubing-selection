@@ -766,30 +766,96 @@ elif page == "2. Calculation Methodology":
     st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy under peak Early-Life $p_{H_2S}$, flags thermal yield derating, and enforces Premium Connections when APB or gas risk is elevated.")
 
 # ----------------------------------------------------------------------------- 
-# PAGE 3: INPUTS & CANDIDATE SELECTION
+# PAGE 3: INPUTS & CANDIDATE TUBING SELECTION
 # ----------------------------------------------------------------------------- 
 elif "3." in page: 
-    st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Specify wellbore geometry, environmental baseline, dual-lifecycle parameters, and manage candidate tubing specs.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="main-header">Step 3: Wellbore Geometry, Operational Inputs & Tubing Specs</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Manage standard API candidate tubing database, set wellbore geometry, water chemistry, and configure dual-lifecycle production envelopes.</div>', unsafe_allow_html=True) 
+
+    # Ensure tubing database exists in session state
+    if "tubing_db" not in st.session_state:
+        st.error("⚠️ Candidate Tubing Database not initialized. Please load or initialize the dataset first.")
+        st.stop()
 
     # ------------------------------------------------------------------------- 
-    # TABBED INPUT STRUCTURE 
+    # MAIN NAVIGATION TABS
     # ------------------------------------------------------------------------- 
-    tab_geo, tab_early, tab_late, tab_db = st.tabs([ 
-        "📐 1. Geometry, Fluids & Targets",  
-        "🚀 2. Early-Life (Initial Production)",  
-        "📉 3. Late-Life (Depleted / High Water Cut)",
-        "📦 4. Candidate Tubing Database"
+    tab_db, tab_geo, tab_early, tab_late = st.tabs([ 
+        "📦 1. Candidate Tubing Database",
+        "📐 2. Architecture, Water Chemistry & Targets",  
+        "🚀 3. Early-Life (Initial Production)",  
+        "📉 4. Late-Life (Depleted / High Water Cut)"
     ]) 
 
     # ------------------------------------------------------------------------- 
-    # TAB 1: WELLBORE GEOMETRY, ENVIRONMENTAL BASELINE & TARGETS
+    # TAB 1: CANDIDATE TUBING SPECS DATABASE & RESTORED CUSTOM FORM
+    # ------------------------------------------------------------------------- 
+    with tab_db:
+        st.markdown("#### Candidate Tubing Database Controls & Filtering") 
+        st.subheader("🔍 Database Filter Controls") 
+        col_f1, col_f2 = st.columns(2) 
+        with col_f1: 
+            selected_sizes = st.multiselect( 
+                "Filter by Outer Diameter (OD):", 
+                options=sorted(st.session_state.tubing_db['OD_in'].unique()), 
+                default=sorted(st.session_state.tubing_db['OD_in'].unique()) 
+            ) 
+        with col_f2: 
+            selected_grades = st.multiselect( 
+                "Filter by Steel Grade:", 
+                options=sorted(st.session_state.tubing_db['Grade'].unique()), 
+                default=sorted(st.session_state.tubing_db['Grade'].unique()) 
+            ) 
+
+        filtered_db = st.session_state.tubing_db[ 
+            (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) & 
+            (st.session_state.tubing_db['Grade'].isin(selected_grades)) 
+        ] 
+        st.dataframe(filtered_db, use_container_width=True, height=400) 
+
+        # --- CUSTOM TUBING INPUT FORM (RESTORED & ENHANCED) --- 
+        with st.expander("➕ Add Custom Tubing Candidate"): 
+            with st.form("add_candidate_form"): 
+                col1, col2, col3 = st.columns(3) 
+                with col1: 
+                    c_name = st.text_input("Candidate Name", value='3-1/2" P110 (9.2#)') 
+                    c_od = st.number_input("Outer Diameter (OD) [in]", value=3.500, min_value=1.000, max_value=12.000, step=0.001, format="%.3f") 
+                    c_yield = st.number_input("Yield Strength [psi]", value=110000, min_value=30000, max_value=180000, step=1000) 
+                    c_collapse = st.number_input("Collapse Pressure Rating [psi]", value=12200, min_value=1000, max_value=30000, step=100)
+                with col2: 
+                    c_id = st.number_input("Inner Diameter (ID) [in]", value=2.992, min_value=0.500, max_value=11.000, step=0.001, format="%.3f") 
+                    c_weight = st.number_input("Nominal Weight [lb/ft]", value=9.200, min_value=1.000, max_value=100.000, step=0.100, format="%.3f") 
+                    c_burst = st.number_input("Burst Pressure Rating [psi]", value=13970, min_value=1000, max_value=30000, step=100) 
+                    c_tensile = st.number_input("Joint Tensile Strength [lbs]", value=214000, min_value=10000, max_value=1000000, step=1000)
+                with col3: 
+                    c_grade = st.selectbox("Steel Grade", ["H40", "J-55", "K-55", "M65", "C75", "L80-1", "N80", "C95", "T95", "L80-13Cr", "S13Cr-110", "17Cr-110", "22Cr-110", "25Cr-125", "P110", "Q125"]) 
+                    c_mat = st.selectbox("Material Class", ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless", "Super Martensitic CRA", "Enhanced Martensitic CRA", "Duplex Stainless", "Super Duplex CRA", "High-Strength Alloy"]) 
+                    c_conn = st.selectbox("Connection Profile", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"]) 
+                    c_uns = st.text_input("UNS Designation Code", value="K01100") 
+
+                add_sub = st.form_submit_button("Add Candidate to Database") 
+                if add_sub: 
+                    if c_id >= c_od: 
+                        st.error("Validation Error: Inner Diameter (ID) must be strictly less than Outer Diameter (OD).") 
+                    else: 
+                        new_row = pd.DataFrame([{ 
+                            "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight, 
+                            "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn, 
+                            "Yield_psi": c_yield, "Burst_psi": c_burst, "Collapse_psi": c_collapse, "Tensile_lb": c_tensile
+                        }]) 
+                        st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True) 
+                        st.success(f"Added {c_name} ({c_conn}) to active candidate database!") 
+                        st.rerun()
+
+    # ------------------------------------------------------------------------- 
+    # TAB 2: WELLBORE ARCHITECTURE, WATER CHEMISTRY & TARGETS
     # ------------------------------------------------------------------------- 
     with tab_geo: 
-        st.markdown("#### 📐 Wellbore Architecture & Fluid PVT Baseline") 
+        st.markdown("#### 📐 Wellbore Profile, Well Type & Fluid PVT Baseline") 
         col_g1, col_g2, col_g3 = st.columns(3) 
          
         with col_g1: 
+            well_type = st.selectbox("Well Type Category", ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"])
             tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.000, max_value=30000.000, value=10000.000, step=100.000, format="%.3f") 
             md = st.number_input("Measured Depth - MD (ft)", min_value=1000.000, max_value=35000.000, value=11500.000, step=100.000, format="%.3f") 
             dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.000, max_value=15.000, value=2.000, step=0.100, format="%.3f") 
@@ -833,7 +899,7 @@ elif "3." in page:
             ])
 
     # ------------------------------------------------------------------------- 
-    # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE) 
+    # TAB 3: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE) 
     # ------------------------------------------------------------------------- 
     with tab_early: 
         st.markdown("#### Early-Life Operating Conditions (Peak Rates & Pressure)") 
@@ -852,7 +918,7 @@ elif "3." in page:
             bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.000, max_value=400.000, value=210.000, step=0.500, format="%.3f") 
 
     # ------------------------------------------------------------------------- 
-    # TAB 3: LATE-LIFE (PREDICTIVE ENGINE WITH MANUAL OVERRIDE) 
+    # TAB 4: LATE-LIFE (PREDICTIVE ENGINE WITH MANUAL OVERRIDE) 
     # ------------------------------------------------------------------------- 
     with tab_late: 
         st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)") 
@@ -896,66 +962,6 @@ elif "3." in page:
             with col_l3: 
                 gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=pred_gor_late, step=10.000, format="%.3f") 
                 bht_late = st.number_input("Late BHT (°F)", min_value=80.000, max_value=400.000, value=pred_bht_late, step=0.500, format="%.3f") 
-
-    # ------------------------------------------------------------------------- 
-    # TAB 4: CANDIDATE TUBING DATABASE & CUSTOM INPUT FORM (RESTORED)
-    # ------------------------------------------------------------------------- 
-    with tab_db:
-        st.markdown("#### 📦 Candidate Tubing Specifications Database")
-        st.subheader("🔍 Database Filter Controls") 
-        col_f1, col_f2 = st.columns(2) 
-        with col_f1: 
-            selected_sizes = st.multiselect( 
-                "Filter by Outer Diameter (OD):", 
-                options=sorted(st.session_state.tubing_db['OD_in'].unique()), 
-                default=sorted(st.session_state.tubing_db['OD_in'].unique()) 
-            ) 
-        with col_f2: 
-            selected_grades = st.multiselect( 
-                "Filter by Steel Grade:", 
-                options=sorted(st.session_state.tubing_db['Grade'].unique()), 
-                default=sorted(st.session_state.tubing_db['Grade'].unique()) 
-            ) 
-
-        filtered_db = st.session_state.tubing_db[ 
-            (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) & 
-            (st.session_state.tubing_db['Grade'].isin(selected_grades)) 
-        ] 
-        st.dataframe(filtered_db, use_container_width=True, height=400) 
-
-        # --- CUSTOM TUBING INPUT FORM --- 
-        with st.expander("➕ Add Custom Tubing Candidate"): 
-            with st.form("add_candidate_form"): 
-                col1, col2, col3 = st.columns(3) 
-                with col1: 
-                    c_name = st.text_input("Candidate Name", value='3-1/2" P110 (9.2#)') 
-                    c_od = st.number_input("Outer Diameter (OD) [in]", value=3.500, min_value=1.000, max_value=12.000, step=0.001, format="%.3f") 
-                    c_yield = st.number_input("Yield Strength [psi]", value=110000, min_value=30000, max_value=180000, step=1000) 
-                    c_collapse = st.number_input("Collapse Pressure Rating [psi]", value=12200, min_value=1000, max_value=30000, step=100)
-                with col2: 
-                    c_id = st.number_input("Inner Diameter (ID) [in]", value=2.992, min_value=0.500, max_value=11.000, step=0.001, format="%.3f") 
-                    c_weight = st.number_input("Nominal Weight [lb/ft]", value=9.200, min_value=1.000, max_value=100.000, step=0.100, format="%.3f") 
-                    c_burst = st.number_input("Burst Pressure Rating [psi]", value=13970, min_value=1000, max_value=30000, step=100) 
-                    c_tensile = st.number_input("Joint Tensile Strength [lbs]", value=214000, min_value=10000, max_value=1000000, step=1000)
-                with col3: 
-                    c_grade = st.selectbox("Steel Grade", ["H40", "J-55", "K-55", "M65", "C75", "L80-1", "N80", "C95", "T95", "L80-13Cr", "S13Cr-110", "17Cr-110", "22Cr-110", "25Cr-125", "P110", "Q125"]) 
-                    c_mat = st.selectbox("Material Class", ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless", "Super Martensitic CRA", "Enhanced Martensitic CRA", "Duplex Stainless", "Super Duplex CRA", "High-Strength Alloy"]) 
-                    c_conn = st.selectbox("Connection Profile", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"]) 
-                    c_uns = st.text_input("UNS Designation Code", value="K01100") 
-
-                add_sub = st.form_submit_button("Add Candidate to Database") 
-                if add_sub: 
-                    if c_id >= c_od: 
-                        st.error("Validation Error: Inner Diameter (ID) must be strictly less than Outer Diameter (OD).") 
-                    else: 
-                        new_row = pd.DataFrame([{ 
-                            "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight, 
-                            "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn, 
-                            "Yield_psi": c_yield, "Burst_psi": c_burst, "Collapse_psi": c_collapse, "Tensile_lb": c_tensile
-                        }]) 
-                        st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True) 
-                        st.success(f"Added {c_name} ({c_conn}) to active candidate database!") 
-                        st.rerun()
 
     st.markdown("---") 
 
@@ -1012,6 +1018,7 @@ elif "3." in page:
     with col_btn2: 
         if st.button("💾 Save & Run Screening Model", type="primary", use_container_width=True): 
             st.session_state["well_inputs"] = { 
+                "well_type": well_type,
                 "tvd": tvd, "md": md, "dls": dls, 
                 "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg, 
                 "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "lithology": lithology, 
@@ -1030,7 +1037,7 @@ elif "3." in page:
                     "gor": gor_late, "bht": bht_late 
                 } 
             } 
-            st.success("✅ Complete operational inputs & candidate database saved! Ready to run screening.")
+            st.success("✅ Complete operational inputs & candidate database saved! Ready to execute candidate screening.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
