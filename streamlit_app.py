@@ -770,7 +770,7 @@ elif page == "2. Calculation Methodology":
 # -----------------------------------------------------------------------------
 elif "3." in page:
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Dual-Lifecycle Inputs</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Specify wellbore geometry, completion targets, fluid PVT, dynamic APB parameters, and dual-lifecycle envelopes.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Specify wellbore geometry, structural safety targets, thermal PVT parameters, and dual-lifecycle envelopes.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # TABBED INPUT STRUCTURE
@@ -785,7 +785,8 @@ elif "3." in page:
     # TAB 1: WELLBORE ARCHITECTURE, COMPLETION TARGETS & ANNULAR FLUIDS
     # -------------------------------------------------------------------------
     with tab_geo:
-        st.markdown("#### Wellbore Architecture & Reservoir Baseline")
+        # CATEGORY A: WELLBORE GEOMETRY & RESERVOIR PVT
+        st.markdown("#### 📐 1. Subsurface Wellbore Profile & Fluid PVT")
         col_g1, col_g2, col_g3 = st.columns(3)
         
         with col_g1:
@@ -804,24 +805,34 @@ elif "3." in page:
             lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
 
         st.markdown("---")
-        st.markdown("#### Completion Targets, Safety Limits & Annular Fluid Properties")
-        col_t1, col_t2, col_t3 = st.columns(3)
 
-        with col_t1:
+        # CATEGORY B: STRUCTURAL INTEGRITY & COMPLETION TARGETS
+        st.markdown("#### 🛡️ 2. Structural Safety Limits & Completion Targets")
+        col_s1, col_s2, col_s3 = st.columns(3)
+
+        with col_s1:
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
+        with col_s2:
             target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
+        with col_s3:
             target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
 
-        with col_t2:
-            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
-            surf_temp = st.number_input("Surface Ambient Temperature (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
+        st.markdown("---")
 
-        with col_t3:
+        # CATEGORY C: THERMAL & ANNULAR FLUID ENVIRONMENT
+        st.markdown("#### 🌡️ 3. Thermal Gradient & Annular Fluid Parameters (APB)")
+        col_a1, col_a2, col_a3 = st.columns(3)
+
+        with col_a1:
+            surf_temp = st.number_input("Surface Ambient Temp (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
+        with col_a2:
+            casing_id = st.number_input("Production Casing ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+        with col_a3:
             annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
                 "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
                 "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
                 "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)"
             ])
-            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
 
     # -------------------------------------------------------------------------
     # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE)
