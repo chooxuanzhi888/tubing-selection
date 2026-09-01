@@ -765,97 +765,272 @@ elif page == "2. Calculation Methodology":
 
     st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy under peak Early-Life $p_{H_2S}$, flags thermal yield derating, and enforces Premium Connections when APB or gas risk is elevated.")
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
 # PAGE 3: INPUTS & CANDIDATE SELECTION
-# -----------------------------------------------------------------------------
-elif "3." in page:
-    st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Specify wellbore geometry, reservoir fluids, operational limits, and annular properties to drive tubing screening.</div>', unsafe_allow_html=True)
+# ----------------------------------------------------------------------------- 
+elif "3." in page: 
+    st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore geometry, environmental baseline, dual-lifecycle parameters, and manage candidate tubing specs.</div>', unsafe_allow_html=True) 
 
-    # -------------------------------------------------------------------------
-    # TAB 1: WELLBORE ARCHITECTURE & RESERVOIR BASELINE
-    # -------------------------------------------------------------------------
-    st.markdown("#### 📐 1. Subsurface Profile & Reservoir Fluid PVT")
-    col_g1, col_g2, col_g3 = st.columns(3)
-    
-    with col_g1:
-        tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.000, max_value=30000.000, value=10000.000, step=100.000, format="%.3f")
-        md = st.number_input("Measured Depth - MD (ft)", min_value=1000.000, max_value=35000.000, value=11500.000, step=100.000, format="%.3f")
-        dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.000, max_value=15.000, value=2.000, step=0.100, format="%.3f")
+    # ------------------------------------------------------------------------- 
+    # TABBED INPUT STRUCTURE 
+    # ------------------------------------------------------------------------- 
+    tab_geo, tab_early, tab_late, tab_db = st.tabs([ 
+        "📐 1. Geometry, Fluids & Targets",  
+        "🚀 2. Early-Life (Initial Production)",  
+        "📉 3. Late-Life (Depleted / High Water Cut)",
+        "📦 4. Candidate Tubing Database"
+    ]) 
 
-    with col_g2:
-        oil_api = st.number_input("Oil Gravity (°API)", min_value=10.000, max_value=60.000, value=35.000, step=0.100, format="%.3f")
-        gas_sg = st.number_input("Gas Specific Gravity (Air=1.000)", min_value=0.550, max_value=1.200, value=0.650, step=0.001, format="%.3f")
-        water_sg = st.number_input("Formation Water SG (Fresh=1.000)", min_value=1.000, max_value=1.250, value=1.050, step=0.001, format="%.3f")
+    # ------------------------------------------------------------------------- 
+    # TAB 1: WELLBORE GEOMETRY, ENVIRONMENTAL BASELINE & TARGETS
+    # ------------------------------------------------------------------------- 
+    with tab_geo: 
+        st.markdown("#### 📐 Wellbore Architecture & Fluid PVT Baseline") 
+        col_g1, col_g2, col_g3 = st.columns(3) 
+         
+        with col_g1: 
+            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.000, max_value=30000.000, value=10000.000, step=100.000, format="%.3f") 
+            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.000, max_value=35000.000, value=11500.000, step=100.000, format="%.3f") 
+            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.000, max_value=15.000, value=2.000, step=0.100, format="%.3f") 
 
-    with col_g3:
-        h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f")
-        co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f")
-        lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
+        with col_g2: 
+            oil_api = st.number_input("Oil Gravity (°API)", min_value=10.000, max_value=60.000, value=35.000, step=0.100, format="%.3f") 
+            gas_sg = st.number_input("Gas Specific Gravity (Air=1.000)", min_value=0.550, max_value=1.200, value=0.650, step=0.001, format="%.3f") 
+            water_sg = st.number_input("Formation Water SG (Fresh=1.000)", min_value=1.000, max_value=1.250, value=1.050, step=0.001, format="%.3f") 
 
-    st.markdown("---")
+        with col_g3: 
+            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f") 
+            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f") 
+            lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"]) 
 
-    # -------------------------------------------------------------------------
-    # TAB 2: PRODUCTION OPERATIONS & FLUID RATES
-    # -------------------------------------------------------------------------
-    st.markdown("#### ⚡ 2. Production Operations & Wellhead Hydraulics")
-    col_p1, col_p2, col_p3 = st.columns(3)
+        st.markdown("---")
+        st.markdown("#### 🛡️ Environmental Water Chemistry, Targets & Safety Limits")
+        col_e1, col_e2, col_e3 = st.columns(3)
 
-    with col_p1:
-        p_bhp = st.number_input("Bottomhole Pressure - BHP (psi)", min_value=500.000, max_value=20000.000, value=4500.000, step=10.000, format="%.3f")
-        p_wh = st.number_input("Wellhead Pressure - WHP (psi)", min_value=50.000, max_value=5000.000, value=800.000, step=10.000, format="%.3f")
+        with col_e1:
+            water_chlorides = st.number_input("Water Chlorides Concentration (PPM)", min_value=0.000, max_value=250000.000, value=35000.000, step=1000.000, format="%.3f")
+            water_ph = st.number_input("Formation Water pH", min_value=2.000, max_value=10.000, value=6.500, step=0.100, format="%.3f")
 
-    with col_p2:
-        q_liq = st.number_input("Liquid Production Rate (STB/D)", min_value=100.000, max_value=30000.000, value=5000.000, step=50.000, format="%.3f")
-        water_cut = st.number_input("Water Cut (%)", min_value=0.000, max_value=100.000, value=5.000, step=0.100, format="%.3f")
+        with col_e2:
+            target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
+            target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
 
-    with col_p3:
-        gor = st.number_input("Producing Gas-Oil Ratio - GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=800.000, step=10.000, format="%.3f")
-        bht = st.number_input("Bottomhole Temperature - BHT (°F)", min_value=80.000, max_value=400.000, value=210.000, step=0.500, format="%.3f")
+        with col_e3:
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
+            surf_temp = st.number_input("Surface Ambient Temperature (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
 
-    st.markdown("---")
+        st.markdown("---")
+        st.markdown("#### 🌡️ Annular Packer Fluid & Casing Geometry")
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+        with col_a2:
+            annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
+                "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
+                "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
+                "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)"
+            ])
 
-    # -------------------------------------------------------------------------
-    # TAB 3: COMPLETION TARGETS, SAFETY LIMITS & ANNULAR FLUIDS
-    # -------------------------------------------------------------------------
-    st.markdown("#### 🛡️ 3. Completion Targets, Safety Factors & Annular Properties")
-    col_c1, col_c2, col_c3 = st.columns(3)
+    # ------------------------------------------------------------------------- 
+    # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE) 
+    # ------------------------------------------------------------------------- 
+    with tab_early: 
+        st.markdown("#### Early-Life Operating Conditions (Peak Rates & Pressure)") 
+        col_e1, col_e2, col_e3 = st.columns(3) 
 
-    with col_c1:
-        target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
-        target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
+        with col_e1: 
+            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.000, max_value=20000.000, value=4500.000, step=10.000, format="%.3f") 
+            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.000, max_value=5000.000, value=800.000, step=10.000, format="%.3f") 
 
-    with col_c2:
-        sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
-        surf_temp = st.number_input("Surface Ambient Temperature (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
+        with col_e2: 
+            q_liq_early = st.number_input("Early Liquid Production Rate (STB/D)", min_value=100.000, max_value=30000.000, value=5000.000, step=50.000, format="%.3f") 
+            wc_early = st.number_input("Early Water Cut (%)", min_value=0.000, max_value=100.000, value=5.000, step=0.100, format="%.3f") 
 
-    with col_c3:
-        annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
-            "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
-            "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
-            "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)"
-        ])
-        casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+        with col_e3: 
+            gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=800.000, step=10.000, format="%.3f") 
+            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.000, max_value=400.000, value=210.000, step=0.500, format="%.3f") 
 
-    st.markdown("---")
+    # ------------------------------------------------------------------------- 
+    # TAB 3: LATE-LIFE (PREDICTIVE ENGINE WITH MANUAL OVERRIDE) 
+    # ------------------------------------------------------------------------- 
+    with tab_late: 
+        st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)") 
+         
+        # Predictive Defaults Calculation Logic 
+        pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3)) 
+        pred_p_wh_late = float(round(p_wh_early * 0.40, 3)) 
+        pred_q_liq_late = float(round(q_liq_early * 0.40, 3)) 
+        pred_wc_late = 75.000 if wc_early < 20.0 else float(round(min(95.0, wc_early + 30.0), 3)) 
+        pred_gor_late = float(round(gor_early * 0.60, 3)) 
+        pred_bht_late = float(round(bht_early - 30.0, 3)) 
 
-    # -------------------------------------------------------------------------
-    # ACTION BUTTON: SAVE & RUN MODEL
-    # -------------------------------------------------------------------------
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-    with col_btn2:
-        if st.button("💾 Save & Run Screening Model", type="primary", use_container_width=True):
-            st.session_state["well_inputs"] = {
-                "tvd": tvd, "md": md, "dls": dls,
-                "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg,
-                "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "lithology": lithology,
-                "p_bhp": p_bhp, "p_wh": p_wh, "q_liq": q_liq,
-                "water_cut": water_cut, "gor": gor, "bht": bht,
+        manual_override = st.toggle("🛠️ Enable Manual Override for Late-Life Parameters", value=False) 
+
+        col_l1, col_l2, col_l3 = st.columns(3) 
+
+        if not manual_override: 
+            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using standard reservoir depletion multipliers. Toggle above to adjust manually.") 
+             
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", value=pred_p_bhp_late, disabled=True, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=pred_p_wh_late, disabled=True, format="%.3f") 
+
+            with col_l2: 
+                q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=pred_q_liq_late, disabled=True, format="%.3f") 
+                wc_late = st.number_input("Late Water Cut (%)", value=pred_wc_late, disabled=True, format="%.3f") 
+
+            with col_l3: 
+                gor_late = st.number_input("Late Producing GOR (scf/STB)", value=pred_gor_late, disabled=True, format="%.3f") 
+                bht_late = st.number_input("Late BHT (°F)", value=pred_bht_late, disabled=True, format="%.3f") 
+
+        else: 
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.000, max_value=20000.000, value=pred_p_bhp_late, step=10.000, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.000, max_value=5000.000, value=pred_p_wh_late, step=10.000, format="%.3f") 
+
+            with col_l2: 
+                q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.000, max_value=30000.000, value=pred_q_liq_late, step=50.000, format="%.3f") 
+                wc_late = st.number_input("Late Water Cut (%)", min_value=0.000, max_value=100.000, value=pred_wc_late, step=0.100, format="%.3f") 
+
+            with col_l3: 
+                gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=pred_gor_late, step=10.000, format="%.3f") 
+                bht_late = st.number_input("Late BHT (°F)", min_value=80.000, max_value=400.000, value=pred_bht_late, step=0.500, format="%.3f") 
+
+    # ------------------------------------------------------------------------- 
+    # TAB 4: CANDIDATE TUBING DATABASE & CUSTOM INPUT FORM (RESTORED)
+    # ------------------------------------------------------------------------- 
+    with tab_db:
+        st.markdown("#### 📦 Candidate Tubing Specifications Database")
+        st.subheader("🔍 Database Filter Controls") 
+        col_f1, col_f2 = st.columns(2) 
+        with col_f1: 
+            selected_sizes = st.multiselect( 
+                "Filter by Outer Diameter (OD):", 
+                options=sorted(st.session_state.tubing_db['OD_in'].unique()), 
+                default=sorted(st.session_state.tubing_db['OD_in'].unique()) 
+            ) 
+        with col_f2: 
+            selected_grades = st.multiselect( 
+                "Filter by Steel Grade:", 
+                options=sorted(st.session_state.tubing_db['Grade'].unique()), 
+                default=sorted(st.session_state.tubing_db['Grade'].unique()) 
+            ) 
+
+        filtered_db = st.session_state.tubing_db[ 
+            (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) & 
+            (st.session_state.tubing_db['Grade'].isin(selected_grades)) 
+        ] 
+        st.dataframe(filtered_db, use_container_width=True, height=400) 
+
+        # --- CUSTOM TUBING INPUT FORM --- 
+        with st.expander("➕ Add Custom Tubing Candidate"): 
+            with st.form("add_candidate_form"): 
+                col1, col2, col3 = st.columns(3) 
+                with col1: 
+                    c_name = st.text_input("Candidate Name", value='3-1/2" P110 (9.2#)') 
+                    c_od = st.number_input("Outer Diameter (OD) [in]", value=3.500, min_value=1.000, max_value=12.000, step=0.001, format="%.3f") 
+                    c_yield = st.number_input("Yield Strength [psi]", value=110000, min_value=30000, max_value=180000, step=1000) 
+                    c_collapse = st.number_input("Collapse Pressure Rating [psi]", value=12200, min_value=1000, max_value=30000, step=100)
+                with col2: 
+                    c_id = st.number_input("Inner Diameter (ID) [in]", value=2.992, min_value=0.500, max_value=11.000, step=0.001, format="%.3f") 
+                    c_weight = st.number_input("Nominal Weight [lb/ft]", value=9.200, min_value=1.000, max_value=100.000, step=0.100, format="%.3f") 
+                    c_burst = st.number_input("Burst Pressure Rating [psi]", value=13970, min_value=1000, max_value=30000, step=100) 
+                    c_tensile = st.number_input("Joint Tensile Strength [lbs]", value=214000, min_value=10000, max_value=1000000, step=1000)
+                with col3: 
+                    c_grade = st.selectbox("Steel Grade", ["H40", "J-55", "K-55", "M65", "C75", "L80-1", "N80", "C95", "T95", "L80-13Cr", "S13Cr-110", "17Cr-110", "22Cr-110", "25Cr-125", "P110", "Q125"]) 
+                    c_mat = st.selectbox("Material Class", ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless", "Super Martensitic CRA", "Enhanced Martensitic CRA", "Duplex Stainless", "Super Duplex CRA", "High-Strength Alloy"]) 
+                    c_conn = st.selectbox("Connection Profile", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"]) 
+                    c_uns = st.text_input("UNS Designation Code", value="K01100") 
+
+                add_sub = st.form_submit_button("Add Candidate to Database") 
+                if add_sub: 
+                    if c_id >= c_od: 
+                        st.error("Validation Error: Inner Diameter (ID) must be strictly less than Outer Diameter (OD).") 
+                    else: 
+                        new_row = pd.DataFrame([{ 
+                            "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight, 
+                            "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn, 
+                            "Yield_psi": c_yield, "Burst_psi": c_burst, "Collapse_psi": c_collapse, "Tensile_lb": c_tensile
+                        }]) 
+                        st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True) 
+                        st.success(f"Added {c_name} ({c_conn}) to active candidate database!") 
+                        st.rerun()
+
+    st.markdown("---") 
+
+    # ------------------------------------------------------------------------- 
+    # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX 
+    # ------------------------------------------------------------------------- 
+    st.markdown("### 📊 Dual Operational Envelope Summary") 
+     
+    summary_html = f""" 
+    <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.88rem;"> 
+        <thead> 
+            <tr style="background-color: #1E3A8A; color: white; text-align: left;"> 
+                <th style="padding: 10px; border-radius: 4px 0 0 0;">Parameter</th> 
+                <th style="padding: 10px;">🚀 Early-Life Baseline</th> 
+                <th style="padding: 10px;">📉 Late-Life Baseline</th> 
+                <th style="padding: 10px; border-radius: 0 4px 0 0;">Governing Design Challenge</th> 
+            </tr> 
+        </thead> 
+        <tbody> 
+            <tr style="border-bottom: 1px solid #E2E8F0;"> 
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Pressure (P<sub>bhp</sub>)</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.3f} psi</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_bhp_late:.3f} psi</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Hydrostatic head drawdown (Late)</td> 
+            </tr> 
+            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
+                <td style="padding: 10px; font-weight: 600;">Liquid Rate & Water Cut</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{q_liq_early:.3f} STB/D ({wc_early:.3f}% WC)</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{q_liq_late:.3f} STB/D ({wc_late:.3f}% WC)</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Erosion limits v<sub>m</sub> &lt; v<sub>eros</sub> (Early) vs. Liquid loading v<sub>m</sub> &gt; v<sub>crit</sub> (Late)</td> 
+            </tr> 
+            <tr style="border-bottom: 1px solid #E2E8F0;"> 
+                <td style="padding: 10px; font-weight: 600;">Producing GOR</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{gor_early:.3f} scf/STB</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{gor_late:.3f} scf/STB</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Multiphase fluid density homogenization (&rho;<sub>m</sub>)</td> 
+            </tr> 
+            <tr style="background-color: #F8FAFC;"> 
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Temp & APB</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{bht_early:.3f} °F</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{bht_late:.3f} °F</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Thermal expansion & APB load (Early) vs. Tubing cooling contraction (Late)</td> 
+            </tr> 
+        </tbody> 
+    </table> 
+    """ 
+    st.markdown(summary_html, unsafe_allow_html=True) 
+    st.markdown("<br/>", unsafe_allow_html=True) 
+
+    # ------------------------------------------------------------------------- 
+    # ACTION BUTTON: SAVE & RUN MODEL 
+    # ------------------------------------------------------------------------- 
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
+    with col_btn2: 
+        if st.button("💾 Save & Run Screening Model", type="primary", use_container_width=True): 
+            st.session_state["well_inputs"] = { 
+                "tvd": tvd, "md": md, "dls": dls, 
+                "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg, 
+                "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "lithology": lithology, 
+                "water_chlorides": water_chlorides, "water_ph": water_ph,
                 "target_life": target_life, "target_capacity": target_capacity,
                 "sf_triaxial": sf_triaxial, "surf_temp": surf_temp,
-                "annular_fluid": annular_fluid, "casing_id": casing_id
-            }
-            st.success("✅ Operational inputs saved to session state! Ready to run candidate screening.")
+                "annular_fluid": annular_fluid, "casing_id": casing_id,
+                "early": { 
+                    "p_bhp": p_bhp_early, "p_wh": p_wh_early, 
+                    "q_liq": q_liq_early, "wc": wc_early, 
+                    "gor": gor_early, "bht": bht_early 
+                }, 
+                "late": { 
+                    "p_bhp": p_bhp_late, "p_wh": p_wh_late, 
+                    "q_liq": q_liq_late, "wc": wc_late, 
+                    "gor": gor_late, "bht": bht_late 
+                } 
+            } 
+            st.success("✅ Complete operational inputs & candidate database saved! Ready to run screening.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
