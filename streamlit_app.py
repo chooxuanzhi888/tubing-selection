@@ -488,16 +488,16 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and integrity screening.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and dual-lifecycle screening.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # WORKFLOW OVERVIEW CARD
     # -------------------------------------------------------------------------
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Candidate Screening Workflow & Filtration Funnel</h3>
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Dual-Lifecycle Candidate Screening Workflow</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
-            Tubing selection is an iterative elimination process. All candidates from the database enter at Step 1, where thermodynamic fluid properties are calculated. Candidates then pass sequentially through hydraulic velocity windows, Lubinski structural load balances, and environmental compliance limits until the single most optimal candidate is identified.
+            Tubing selection requires evaluating candidates against a <b>Dual Operational Envelope</b>: <i>Early-Life (Peak Production)</i> and <i>Late-Life (Depleted Reservoir / High Water Cut)</i>. Candidates pass sequentially through thermodynamic fluid models, hydraulic velocity envelopes, Lubinski load balances, and environmental gates. A tubing string achieves a final status of <b>PASS</b> only if it satisfies all engineering criteria across <b>BOTH</b> lifecycle phases.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -513,7 +513,7 @@ elif page == "2. Calculation Methodology":
         align-items: center;
         justify-content: center;
         margin: 1.2rem auto 2rem auto;
-        max-width: 620px;
+        max-width: 640px;
         width: 100%;
     }
     .funnel-card {
@@ -561,34 +561,34 @@ elif page == "2. Calculation Methodology":
 
 <div class="funnel-wrapper">
     <div class="funnel-card" style="background-color: #E2E8F0; color: #0F172A; border-radius: 20px; font-weight: 600;">
-        Candidate Database (All Sizes & Grades)
+        Candidate Database (All Sizes, Weights & Steel Grades)
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
         <div class="funnel-head"></div>
-        <div class="funnel-text">Operations & PVT Inputs</div>
+        <div class="funnel-text">Early & Late Life PVT Inputs</div>
     </div>
     <div class="funnel-card" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
-        <b>Step 1: PVT & In-Situ Density Model</b><br/>
-        <span style="font-size: 0.8rem;">(Standing R<sub>s</sub>, B<sub>o</sub> & Z-Factor)</span>
+        <b>Step 1: In-Situ Fluid PVT & Density Engine</b><br/>
+        <span style="font-size: 0.8rem;">Evaluates live oil & brine mixture density (&rho;<sub>m</sub>) across both lifecycle phases</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
         <div class="funnel-head"></div>
-        <div class="funnel-text">Fluid Densities (&rho;<sub>m</sub>, &rho;<sub>g</sub>)</div>
+        <div class="funnel-text">Phase Densities (&rho;<sub>m</sub>, &rho;<sub>g</sub>)</div>
     </div>
     <div class="funnel-card" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
-        <b>Step 2: Flow Dynamics & Velocity Operating Window</b><br/>
-        <span style="font-size: 0.8rem;">Filter: &Delta;P<sub>total</sub> &le; &Delta;P<sub>avail</sub> & v<sub>crit</sub> < v<sub>m</sub> < v<sub>eros</sub></span>
+        <b>Step 2: Flow Dynamics & Dual Velocity Operating Envelope</b><br/>
+        <span style="font-size: 0.8rem;">Early: v<sub>m</sub> < v<sub>erosional</sub> &nbsp;|&nbsp; Late: v<sub>m</sub> > v<sub>critical</sub> (Droplet Lift)</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
         <div class="funnel-head"></div>
-        <div class="funnel-text">Valid Hydraulic Sizes</div>
+        <div class="funnel-text">Hydraulically Compliant Sizes</div>
     </div>
     <div class="funnel-card" style="background-color: #D1FAE5; color: #065F46; border-left: 4px solid #10B981;">
-        <b>Step 3: Lubinski Stress & Yield Integrity</b><br/>
-        <span style="font-size: 0.8rem;">Filter: von Mises SF<sub>triaxial</sub> &ge; 1.25</span>
+        <b>Step 3: Lubinski Net Load Balance & Triaxial Yield Matrix</b><br/>
+        <span style="font-size: 0.8rem;">Early: Thermal Expansion & APB &nbsp;|&nbsp; Late: Cooling Contraction & Differential Drawdown</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
@@ -596,16 +596,16 @@ elif page == "2. Calculation Methodology":
         <div class="funnel-text">Structurally Sound Pipe</div>
     </div>
     <div class="funnel-card" style="background-color: #EDE9FE; color: #5B21B6; border-left: 4px solid #8B5CF6;">
-        <b>Step 4: Environmental Integrity & Metallurgy Gate</b><br/>
-        <span style="font-size: 0.8rem;">Filter: NACE Sour Service, BHT Derating & Connection Profile</span>
+        <b>Step 4: Environmental Integrity, APB & Metallurgy Gate</b><br/>
+        <span style="font-size: 0.8rem;">Filter: NACE Sour Service (p<sub>H2S</sub>), BHT Yield Derating & Connection Profile</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
         <div class="funnel-head"></div>
-        <div class="funnel-text">Compliant Candidate</div>
+        <div class="funnel-text">Dual-Lifecycle Compliant Candidate</div>
     </div>
     <div class="funnel-card" style="background-color: #059669; color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">
-        Optimal Preferred Tubing Candidate
+        Optimal Preferred Tubing Candidate (Passes Early & Late Life)
     </div>
 </div>
 """
@@ -618,22 +618,22 @@ elif page == "2. Calculation Methodology":
     # -------------------------------------------------------------------------
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Input-to-Calculation Mapping Matrix</h3>
+        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Dual Lifecycle Parameter Mapping</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
-            Every numerical input provided in <b>Step 3</b> flows directly into deterministic engineering models. Here is how user inputs feed the governing equations:
+            Operational parameters evolve over well life. Here is how early-life inputs and predicted late-life degradation drive the engineering engines:
         </p>
     </div>
     """, unsafe_allow_html=True)
 
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
-        st.info("**1. PVT & Density**\n\n* **Inputs:** API, Gas SG, $P_{bhp}$, $P_{wh}$, Temp\n* **Feeds:** $R_s$, $B_o$, $Z$-factor, $\\rho_m$")
+        st.info("**1. PVT & Density**\n\n* **Early:** High $P_{bhp}$, live oil expansion ($B_o$).\n* **Late:** Lower $P_{bhp}$, high water cut ($f_w$), heavy mixture density ($\\rho_m$).")
     with col_m2:
-        st.info("**2. Flow & Hydraulics**\n\n* **Inputs:** Liquid Rate, Water Cut, GOR, Lithology\n* **Feeds:** $v_m$, Reynolds ($Re$), $f$, $\\Delta P_{fric}$, $v_{crit}$, $v_{eros}$")
+        st.info("**2. Flow & Hydraulics**\n\n* **Early:** Peak rates risk pipe wall erosion ($v_m > v_{eros}$).\n* **Late:** Low gas rates risk liquid loading ($v_m < v_{crit}$).")
     with col_m3:
-        st.info("**3. Loads & Stress**\n\n* **Inputs:** TVD, MD, DLS, Fluid Type, Temp\n* **Feeds:** $F_{axial}$, $\\Delta P_{APB}$, $\\sigma_{hoop}$, $\\sigma_z$, $\\sigma_{VME}$")
+        st.info("**3. Loads & Stress**\n\n* **Early:** High BHT causes thermal expansion ($F_{thermal}$) & APB.\n* **Late:** Well cooling causes tubing tension & differential collapse.")
     with col_m4:
-        st.info("**4. Environmental**\n\n* **Inputs:** H₂S, CO₂, pH, Temp, Lithology\n* **Feeds:** $p_{H_2S}$, $p_{CO_2}$, Material Grade, Connection Profile")
+        st.info("**4. Environmental**\n\n* **Early:** Peak $P_{bhp}$ maximizes $H_2S$ partial pressure ($p_{H_2S}$).\n* **Late:** High water production increases scaling/corrosion risk.")
 
     st.markdown("---")
 
@@ -641,14 +641,14 @@ elif page == "2. Calculation Methodology":
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
     # -------------------------------------------------------------------------
     st.markdown("### Step 1: Fluid Thermodynamics & In-Situ Density Model")
-    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature to model accurate flow velocities and hydrostatic heads.")
+    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature across both Early-Life and Late-Life operational states.")
     
     col1_1, col1_2 = st.columns(2)
     with col1_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR (R<sub>s</sub>) & FVF (B<sub>o</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate gas dissolved in oil at average temperature (T<sub>avg</sub>) and pressure (P<sub>avg</sub>):</p>
+            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate dissolved gas and oil volume expansion at average wellbore conditions:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
@@ -658,21 +658,21 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density (&rho;<sub>m</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas Z-factor to determine in-situ phase densities:</p>
+            <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas compressibility Z-factor and multiphase density:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg, R}}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
         st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
 
-    st.info("🎯 **Step 1 Candidate Gate:** Validates initial fluid parameters. Drops non-convergent PVT states or non-physical density inputs across candidates.")
+    st.info("🎯 **Step 1 Candidate Gate:** Validates thermodynamic fluid state convergence for both Early-Life and Late-Life reservoir conditions.")
 
     st.markdown("---")
 
     # -------------------------------------------------------------------------
     # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
     # -------------------------------------------------------------------------
-    st.markdown("### Step 2: Multiphase Hydraulics & Velocity Operating Window")
-    st.caption("Purpose: Ensure the tubing ID allows fluids to flow within safe velocity boundaries while minimizing pressure loss.")
+    st.markdown("### Step 2: Multiphase Hydraulics & Dual-Velocity Operating Window")
+    st.caption("Purpose: Ensure the tubing ID allows fluids to flow within safe velocity boundaries in Early-Life while avoiding liquid loading in Late-Life.")
 
     col2_1, col2_2 = st.columns(2)
     with col2_1:
@@ -689,13 +689,13 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between droplet lift minimums and lithology-adjusted erosion limits:</p>
+            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between Turner droplet lift minimums and lithology-adjusted erosion limits:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
         st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}} \quad \text{(API RP 14E: } C_{sandstone}=120, C_{carbonate}=150\text{)}")
 
-    st.warning("🚫 **Step 2 Candidate Gate:** Eliminates **undersized pipes** (where $v_m > v_{erosional}$ or friction loss exceeds drawdown) and **oversized pipes** (where $v_m < v_{critical}$ causing liquid loading).")
+    st.warning("🚫 **Step 2 Candidate Gate:** Rejects candidates if Early-Life rate causes pipe erosion ($v_m > v_{erosional}$) OR if Late-Life rate drops below liquid lift velocity ($v_m < v_{critical}$).")
 
     st.markdown("---")
 
@@ -703,7 +703,7 @@ elif page == "2. Calculation Methodology":
     # STEP 3: STRUCTURAL LOAD BALANCE & TRIAXIAL STRESS MATRIX
     # -------------------------------------------------------------------------
     st.markdown("### Step 3: Lubinski Net Load Balance & von Mises Triaxial Stress")
-    st.caption("Purpose: Verify structural integrity of the tubing string under combined tension, thermal expansion, pressure differential, and dogleg bending.")
+    st.caption("Purpose: Verify structural integrity under peak Early-Life thermal expansion/APB and Late-Life cooling tension/differential collapse.")
 
     col3_1, col3_2 = st.columns(2)
     with col3_1:
@@ -718,7 +718,6 @@ elif page == "2. Calculation Methodology":
         st.markdown("* **Gravity ($F_g$):** Buoyed pipe weight $W_{lbft} \cdot MD \cdot (1 - \\rho_m / 490)$.")
         st.markdown("* **Piston ($F_p$):** Pressure area imbalance across packers/seals.")
         st.markdown("* **Ballooning ($F_b$):** Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).")
-        st.markdown("* **Drag ($F_d$):** Skin friction from high-velocity multiphase flow.")
 
     with col3_2:
         st.markdown("""
@@ -731,41 +730,40 @@ elif page == "2. Calculation Methodology":
         st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]}")
 
-    st.success("🛡️ **Step 3 Candidate Gate:** Rejects low-yield steel grades or thin wall-thickness candidates failing structural yield limits ($SF_{triaxial} < 1.25$).")
+    st.success("🛡️ **Step 3 Candidate Gate:** Rejects candidates failing minimum safety factor limits ($SF_{triaxial} < 1.25$) in either Early-Life expansion or Late-Life contraction.")
 
     st.markdown("---")
 
     # -------------------------------------------------------------------------
     # STEP 4: ENVIRONMENTAL INTEGRITY & MATERIAL SCREENING
     # -------------------------------------------------------------------------
-    st.markdown("### Step 4: Environmental Integrity, APB & Metallurgy Screening")
-    st.caption("Purpose: Prevent catastrophic corrosion, thermal over-pressurization, or thread seal leakage throughout well life.")
+    st.markdown("### Step 4: Dynamic APB, Metallurgy & Connection Screening")
+    st.caption("Purpose: Model thermal annular pressure build-up, prevent NACE corrosion cracking, and enforce gas-tight thread profiles.")
 
     col4_1, col4_2 = st.columns(2)
     with col4_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Annular Pressure Build-up (&Delta;P<sub>APB</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Trapped packer fluid expansion creates severe pressure rise in unvented annuli:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Dynamic Annular Pressure Build-up (&Delta;P<sub>APB</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Calculates thermal fluid expansion pressure rise in unvented annuli during Early-Life production:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
-        st.markdown("• **Fluid Parameters:** Uses thermal expansion coefficient $\\alpha_v$ and isothermal compressibility $\\kappa_T$ for water, heavy brine, or OBM fluids.")
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \cdot \Delta T_{annular}")
+        st.latex(r"\Delta T_{annular} = T_{producing\_avg} - T_{geothermal\_avg}")
+        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\alpha_v$) and isothermal compressibility ($\kappa_T$) for trapped annular brine/OBM.")
 
     with col4_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.2 NACE MR0175 & Connection Logic</h4>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.2 NACE MR0175 & Premium Connection Logic</h4>
             <p style="font-size: 0.9rem; color: #475569;">Screens material degradation and mandates gas-tight thread profiles:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
-        
+        st.latex(r"p_{H_2S} = P_{bhp, early} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
         st.markdown("* **Sour Service Screening:** Flags sour service if $p_{H_2S} \ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.")
-        st.markdown("* **Temperature Derating:** Bottomhole temperature (BHT) thresholds enforce high-performance metallurgy ($>65^\\circ\\text{C} \\rightarrow \\text{N80/C95}$, $>80^\\circ\\text{C} \\rightarrow \\text{P110}$, $>107^\\circ\\text{C} \\rightarrow \\text{Q125}$).")
         st.markdown("* **Premium Connection Enforcer:** Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.")
 
-    st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy in sour environments, flags thermal yield deratings, and mandates Premium Connections over standard API threads.")
+    st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy under peak Early-Life $p_{H_2S}$, flags thermal yield derating, and enforces Premium Connections when APB or gas risk is elevated.")
 
 # -----------------------------------------------------------------------------
 # PAGE 3: WELL & FLUID INPUTS
