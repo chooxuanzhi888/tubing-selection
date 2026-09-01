@@ -750,8 +750,8 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \cdot \Delta T_{annular}")
         st.latex(r"\Delta T_{annular} = T_{producing\_avg} - T_{geothermal\_avg}")
-        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\alpha_v$) and isothermal compressibility ($\kappa_T$) for trapped annular brine/OBM.")
-
+        st.caption("• **Fluid Parameters:** Uses thermal expansion (&alpha;<sub>v</sub>) and isothermal compressibility (&kappa;<sub>T</sub>) for trapped annular brine/OBM.")
+        
     with col4_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
