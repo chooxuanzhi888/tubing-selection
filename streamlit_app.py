@@ -766,14 +766,14 @@ elif page == "2. Calculation Methodology":
     st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy under peak Early-Life $p_{H_2S}$, flags thermal yield derating, and enforces Premium Connections when APB or gas risk is elevated.")
 
 # ----------------------------------------------------------------------------- 
-# PAGE 3: WELLBORE & LIFECYCLE OPERATIONAL INPUTS
+# PAGE 3: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
 # ----------------------------------------------------------------------------- 
 elif "3." in page: 
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Specify wellbore profile, water chemistry, completion targets, and dual-lifecycle production envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental water chemistry, completion targets, and dual-lifecycle production envelopes.</div>', unsafe_allow_html=True) 
 
     # ------------------------------------------------------------------------- 
-    # MAIN NAVIGATION TABS 
+    # TABBED INPUT STRUCTURE 
     # ------------------------------------------------------------------------- 
     tab_geo, tab_early, tab_late = st.tabs([ 
         "📐 1. Architecture, Water Chemistry & Targets",  
@@ -782,10 +782,11 @@ elif "3." in page:
     ]) 
 
     # ------------------------------------------------------------------------- 
-    # TAB 1: WELLBORE ARCHITECTURE, WATER CHEMISTRY & TARGETS
+    # TAB 1: WELLBORE ARCHITECTURE, WATER CHEMISTRY & COMPLETION TARGETS
     # ------------------------------------------------------------------------- 
     with tab_geo: 
-        st.markdown("#### 📐 1. Wellbore Profile, Well Type & Fluid PVT Baseline") 
+        # CATEGORY A: SUBSURFACE WELLBORE PROFILE & FLUID PVT
+        st.markdown("#### 📐 1. Subsurface Wellbore Profile & Fluid PVT Baseline") 
         col_g1, col_g2, col_g3 = st.columns(3) 
          
         with col_g1: 
@@ -805,6 +806,8 @@ elif "3." in page:
             lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"]) 
 
         st.markdown("---")
+
+        # CATEGORY B: STRUCTURAL INTEGRITY, WATER CHEMISTRY & COMPLETION TARGETS
         st.markdown("#### 🛡️ 2. Water Chemistry, Completion Targets & Safety Limits")
         col_e1, col_e2, col_e3 = st.columns(3)
 
@@ -818,14 +821,18 @@ elif "3." in page:
 
         with col_e3:
             sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
-            surf_temp = st.number_input("Surface Ambient Temperature (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
 
         st.markdown("---")
-        st.markdown("#### 🌡️ 3. Annular Packer Fluid & Casing Geometry")
-        col_a1, col_a2 = st.columns(2)
+
+        # CATEGORY C: THERMAL & ANNULAR FLUID ENVIRONMENT (APB)
+        st.markdown("#### 🌡️ 3. Thermal Gradient & Annular Fluid Parameters (APB)")
+        col_a1, col_a2, col_a3 = st.columns(3)
+
         with col_a1:
-            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+            surf_temp = st.number_input("Surface Ambient Temp (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
         with col_a2:
+            casing_id = st.number_input("Production Casing ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
+        with col_a3:
             annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
                 "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
                 "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
@@ -836,7 +843,7 @@ elif "3." in page:
     # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE) 
     # ------------------------------------------------------------------------- 
     with tab_early: 
-        st.markdown("#### Early-Life Operating Conditions (Peak Rates & Pressure)") 
+        st.markdown("#### Early-Life Operating Conditions (Peak Rates & Thermal Loads)") 
         col_e1, col_e2, col_e3 = st.columns(3) 
 
         with col_e1: 
@@ -971,7 +978,7 @@ elif "3." in page:
                     "gor": gor_late, "bht": bht_late 
                 } 
             } 
-            st.success("✅ Operational inputs & dual-lifecycle parameters saved! You can now proceed to Page 4 to manage tubing candidates or run screening.")
+            st.success("✅ Operational inputs saved! Proceed to Page 4 to run candidate screening.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
