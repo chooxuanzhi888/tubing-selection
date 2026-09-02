@@ -335,10 +335,37 @@ def run_engineering_calculations(inputs, candidate_df):
     p_co2_psia = p_bhp_val * (co2_pct_val / 100.0)
     is_sour_service = p_h2s_psia >= 0.05
     
-    decline_val = inputs.get('decline_rate', 8.0)
-    field_life_val = inputs.get('field_life_yrs', 20)
-    decline_factor = (1.0 - (decline_val / 100.0)) ** field_life_val
-    q_m_late = q_m_ft3s * decline_factor
+    # Calculate Late-Life volumetric rate using stored Late-Life parameters
+    p_bhp_late = inputs.get('p_bhp_late', p_bhp_val * 0.5)
+    p_wh_late = inputs.get('p_wh_late', p_wh_val * 0.4)
+    p_avg_late_psia = (p_wh_late + p_bhp_late) / 2.0 + 14.7
+    t_bht_late = inputs.get('bht_late', t_bht_val)
+    t_avg_late_r = (t_wh_val + t_bht_late) / 2.0 + 459.67
+    z_late = compute_dynamic_z_factor(p_avg_late_psia, t_avg_late_r, gas_sg_val)
+    
+    if is_gas_well:
+        q_g_scf_d_late = inputs.get('q_gas_late', inputs.get('q_gas_mmscfd', 15.0) * 0.5) * 1e6
+        q_cond_late = inputs.get('q_gas_late', 15.0) * inputs.get('cgr_late', inputs.get('cgr_stb_mmscf', 25.0))
+        q_wat_late = inputs.get('q_gas_late', 15.0) * inputs.get('wgr_late', inputs.get('wgr_bbl_mmscf', 5.0))
+        q_l_ft3s_late = ((q_cond_late + q_wat_late) * 5.615) / 86400.0
+        q_g_ft3s_late = (q_g_scf_d_late * 14.7 * t_avg_late_r * z_late) / (p_avg_late_psia * 520.0 * 86400.0)
+    else:
+        q_liq_late_val = inputs.get('q_liq_late', q_liq_stbd * 0.5)
+        wc_late_frac = inputs.get('wc_late', inputs.get('water_cut', 5.0)) / 100.0
+        gor_late_val = inputs.get('gor_late', inputs.get('gor', 800.0))
+        rs_late = min(gas_sg_val * (((p_avg_late_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * (t_avg_late_r - 459.67)))) ** 1.2048, gor_late_val)
+        q_l_ft3s_late = (q_liq_late_val * 5.615) / 86400.0
+        free_gas_late = max(gor_late_val - rs_late, 0.0)
+        q_g_scf_d_late = q_liq_late_val * (1.0 - wc_late_frac) * free_gas_late
+        q_g_ft3s_late = (q_g_scf_d_late * 14.7 * t_avg_late_r * z_late) / (p_avg_late_psia * 520.0 * 86400.0)
+        
+    q_m_late = max(q_l_ft3s_late + q_g_ft3s_late, 1e-6)
+
+    # Dynamic static CITHP calculation via barometric gas column model
+    tvd_val = inputs.get('tvd', 10000.0)
+    m_gas = 28.97 * gas_sg_val
+    cithp_calc = p_bhp_val * np.exp(-(m_gas * tvd_val) / (z_factor * 10.731 * t_avg_r))
+    cithp_val = inputs.get('cithp', cithp_calc)
     
     fluid_props = ANNULAR_FLUID_PROPS.get(inputs.get('annular_fluid', ''), ANNULAR_FLUID_PROPS["Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)"])
     alpha_v = fluid_props['alpha_v']
@@ -1448,8 +1475,42 @@ elif page == "3. Well & Fluid Inputs":
         </tbody> 
     </table> 
     """ 
+
     st.markdown(summary_html, unsafe_allow_html=True) 
     st.markdown("<br/>", unsafe_allow_html=True) 
+
+    # Automatically persist all inputs to session state on render
+    st.session_state.inputs.update({ 
+        "well_type": well_type,
+        "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
+        "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
+        "field_life_yrs": field_life, "decline_rate": decline_rate,
+        "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
+        "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
+        "sand_rate_pptb": sand_rate_pptb, "sand_size_microns": sand_size_microns, "sand_sg": sand_sg,
+        "lithology": lithology, 
+        "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
+        "p_bhp_late": p_bhp_late, "p_wh_late": p_wh_late, "bht_late": bht_late,
+        "manual_override_late": manual_override
+    })
+    if "Gas" in well_type:
+        st.session_state.inputs.update({
+            "q_gas_mmscfd": q_gas_early, "cgr_stb_mmscf": cgr_early, "wgr_bbl_mmscf": wgr_early,
+            "q_gas_late": q_gas_late, "cgr_late": cgr_late, "wgr_late": wgr_late
+        })
+    else:
+        st.session_state.inputs.update({
+            "q_liquid": q_liq_early, "water_cut": wc_early, "gor": gor_early,
+            "q_liq_late": q_liq_late, "wc_late": wc_late, "gor_late": gor_late
+        })
+
+    # ------------------------------------------------------------------------- 
+    # ACTION BUTTON: SAVE & RUN MODEL
+    # ------------------------------------------------------------------------- 
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
+    with col_btn2: 
+        if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
+            st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
 
     # ------------------------------------------------------------------------- 
     # ACTION BUTTON: SAVE & RUN MODEL
@@ -1695,10 +1756,11 @@ elif page == "6. Recommendation & Sensitivity":
                     2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulic performance against available drawdown drive under the given rate profile.
                     3. Paragraph 2: Analyze flow velocities (initial vs late-life) against Rubey sand carrying velocity and Salama sand erosion thresholds.
                     4. Paragraph 3: Detail static shut-in CITHP burst safety factor, Lubinski triaxial safety factor (SF_vme), thermal APB expansion, and justify connection selection (API EUE vs Premium metal seal) considering gas tightness and NACE MR0175 sour service requirements.
+
                     5. Use formal petroleum completion engineering phrasing and bold key numeric values.
                     """
 
-                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
