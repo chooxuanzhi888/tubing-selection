@@ -1512,37 +1512,6 @@ elif page == "3. Well & Fluid Inputs":
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
             st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
 
-    # ------------------------------------------------------------------------- 
-    # ACTION BUTTON: SAVE & RUN MODEL
-    # ------------------------------------------------------------------------- 
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
-    with col_btn2: 
-        if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
-            st.session_state.inputs.update({ 
-                "well_type": well_type,
-                "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
-                "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
-                "field_life_yrs": field_life, "decline_rate": decline_rate,
-                "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
-                "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
-                "sand_rate_pptb": sand_rate_pptb, "sand_size_microns": sand_size_microns, "sand_sg": sand_sg,
-                "lithology": lithology, 
-                "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
-                "p_bhp_late": p_bhp_late, "p_wh_late": p_wh_late, "bht_late": bht_late,
-                "manual_override_late": manual_override
-            })
-            if "Gas" in well_type:
-                st.session_state.inputs.update({
-                    "q_gas_mmscfd": q_gas_early, "cgr_stb_mmscf": cgr_early, "wgr_bbl_mmscf": wgr_early,
-                    "q_gas_late": q_gas_late, "cgr_late": cgr_late, "wgr_late": wgr_late
-                })
-            else:
-                st.session_state.inputs.update({
-                    "q_liquid": q_liq_early, "water_cut": wc_early, "gor": gor_early,
-                    "q_liq_late": q_liq_late, "wc_late": wc_late, "gor_late": gor_late
-                })
-            st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
-
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
