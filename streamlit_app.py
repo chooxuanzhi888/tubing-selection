@@ -142,24 +142,107 @@ ANNULAR_FLUID_PROPS = {
     "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)": {"alpha_v": 3.5e-4, "kappa_t": 2.5e-6}
 }
 
-def compute_dynamic_z_factor(p_psi, t_deg_r, gas_sg):
-    p_pc = 756.8 - 131.07 * gas_sg - 3.6 * (gas_sg ** 2)
-    t_pc = 169.2 + 349.5 * gas_sg - 74.0 * (gas_sg ** 2)
-    p_pr = p_psi / p_pc
+def compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg):
+    """Return gas compressibility using the Dranchuk-Abou-Kassem correlation.
+
+    Parameters must be absolute pressure (psia), absolute temperature (°R), and
+    gas specific gravity relative to air. The iterative reduced-density solution
+    avoids the previous algebraic cancellation that made Z independent of pressure.
+    """
+    values = (p_psia, t_deg_r, gas_sg)
+    if not all(np.isfinite(value) for value in values) or p_psia <= 0 or t_deg_r <= 0 or gas_sg <= 0:
+        raise ValueError("Gas Z-factor requires finite, positive pressure (psia), temperature (°R), and gas specific gravity.")
+
+    p_pc = 756.8 - 131.07 * gas_sg - 3.6 * gas_sg ** 2
+    t_pc = 169.2 + 349.5 * gas_sg - 74.0 * gas_sg ** 2
+    p_pr = p_psia / p_pc
     t_pr = t_deg_r / t_pc
-    t_r = 1.0 / t_pr
-    a = 0.06125 * t_r * np.exp(-1.2 * (1.0 - t_r)**2)
-    y = 0.0125 * p_pr * t_r
-    z = a * p_pr / y if y > 0 else 0.88
-    return float(np.clip(z, 0.65, 1.25))
+    if p_pr <= 0 or t_pr <= 0:
+        raise ValueError("Reduced pressure and temperature must be positive for the Z-factor calculation.")
+
+    a1, a2, a3, a4, a5 = 0.3265, -1.0700, -0.5339, 0.01569, -0.05165
+    a6, a7, a8, a9, a10, a11 = 0.5475, -0.7361, 0.1844, 0.1056, 0.6134, 0.7210
+    reduced_density = 0.27 * p_pr / t_pr
+
+    for _ in range(100):
+        density_sq = reduced_density ** 2
+        z_factor = (
+            1.0
+            + (a1 + a2 / t_pr + a3 / t_pr ** 3 + a4 / t_pr ** 4 + a5 / t_pr ** 5) * reduced_density
+            + (a6 + a7 / t_pr + a8 / t_pr ** 2) * density_sq
+            - a9 * (a7 / t_pr + a8 / t_pr ** 2) * reduced_density ** 5
+            + a10 * (1.0 + a11 * density_sq) * density_sq * np.exp(-a11 * density_sq) / t_pr ** 3
+        )
+        if not np.isfinite(z_factor) or z_factor <= 0:
+            raise ValueError("Z-factor calculation became non-physical; check the pressure, temperature, and gas gravity.")
+
+        updated_density = 0.27 * p_pr / (z_factor * t_pr)
+        if abs(updated_density - reduced_density) < 1e-8:
+            return float(z_factor)
+        reduced_density = 0.5 * (reduced_density + updated_density)
+
+    raise ValueError("Z-factor calculation did not converge; check the gas-property inputs.")
+
+
+def validate_engineering_inputs(inputs, candidate_df):
+    """Raise ValueError before invalid user/session data can enter the model."""
+    numeric_fields = {
+        "wellhead pressure": "p_wh", "bottomhole pressure": "p_bhp", "wellhead temperature": "t_wh",
+        "bottomhole temperature": "t_bht", "TVD": "tvd", "MD": "md", "casing ID": "casing_id",
+        "API gravity": "api_gravity", "gas specific gravity": "gas_sg", "water specific gravity": "water_sg",
+        "oil viscosity": "oil_visc", "sand size": "sand_size_microns", "sand specific gravity": "sand_sg",
+        "field life": "field_life_yrs", "decline rate": "decline_rate", "water cut": "water_cut",
+    }
+    values = {}
+    for label, key in numeric_fields.items():
+        try:
+            values[key] = float(inputs[key])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"{label.capitalize()} must be a finite numeric value.") from None
+        if not np.isfinite(values[key]):
+            raise ValueError(f"{label.capitalize()} must be finite.")
+
+    if values["p_wh"] < 0 or values["p_bhp"] <= values["p_wh"]:
+        raise ValueError("Bottomhole pressure must be greater than or equal to zero and greater than wellhead pressure.")
+    if values["t_wh"] <= -459.67 or values["t_bht"] <= -459.67:
+        raise ValueError("Temperatures must be above absolute zero.")
+    if values["tvd"] <= 0 or values["md"] < values["tvd"]:
+        raise ValueError("Measured depth must be greater than or equal to positive TVD.")
+    if values["casing_id"] <= 0 or values["api_gravity"] <= -131.5 or values["gas_sg"] <= 0:
+        raise ValueError("Casing ID, API gravity, and gas specific gravity are outside valid physical bounds.")
+    if values["water_sg"] <= 0 or values["oil_visc"] <= 0 or values["sand_size_microns"] <= 0 or values["sand_sg"] <= 0:
+        raise ValueError("Fluid and sand properties must be positive.")
+    if not 0 <= values["water_cut"] <= 100 or values["field_life_yrs"] <= 0 or not 0 <= values["decline_rate"] < 100:
+        raise ValueError("Water cut must be 0–100%, field life positive, and annual decline 0–<100%.")
+
+    is_gas_well = "Gas Well" in str(inputs.get("well_type", ""))
+    rate_key = "q_gas_mmscfd" if is_gas_well else "q_liquid"
+    try:
+        rate = float(inputs[rate_key])
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("A valid production rate is required.") from None
+    if not np.isfinite(rate) or rate < 0:
+        raise ValueError("Production rate must be finite and non-negative.")
+
+    required_columns = {"OD_in", "ID_in", "Weight_lbft", "Yield_psi", "Burst_psi"}
+    missing_columns = required_columns - set(candidate_df.columns)
+    if candidate_df.empty or missing_columns:
+        missing = ", ".join(sorted(missing_columns))
+        raise ValueError(f"Candidate database is empty or missing required columns: {missing}.")
+    dimensions = candidate_df[["OD_in", "ID_in", "Weight_lbft", "Yield_psi", "Burst_psi"]].apply(pd.to_numeric, errors="coerce")
+    if not np.isfinite(dimensions.to_numpy()).all() or (dimensions <= 0).any().any() or (dimensions["ID_in"] >= dimensions["OD_in"]).any():
+        raise ValueError("Every tubing candidate needs finite positive ratings and an ID strictly smaller than its OD.")
+
 
 def run_engineering_calculations(inputs, candidate_df):
+    validate_engineering_inputs(inputs, candidate_df)
     results = []
     
     is_gas_well = "Gas Well" in inputs.get('well_type', 'Oil Well')
     p_wh_val = inputs.get('p_wh', 800.0)
     p_bhp_val = inputs.get('p_bhp', 4500.0)
-    p_avg = (p_wh_val + p_bhp_val) / 2.0
+    # UI pressures are gauge pressures; PVT correlations require absolute pressure.
+    p_avg_psia = (p_wh_val + p_bhp_val) / 2.0 + 14.7
     
     t_wh_val = inputs.get('t_wh', 75.0)
     t_bht_val = inputs.get('t_bht', 210.0)
@@ -195,7 +278,7 @@ def run_engineering_calculations(inputs, candidate_df):
         q_liq_stbd = q_liq_val
         wc_val = inputs.get('water_cut', 5.0)
         
-        rs_scf_stb = gas_sg_val * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * t_avg_f))) ** 1.2048
+        rs_scf_stb = gas_sg_val * (((p_avg_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * t_avg_f))) ** 1.2048
         rs_scf_stb = min(rs_scf_stb, gor_val)
         
         bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((gas_sg_val / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
@@ -210,11 +293,11 @@ def run_engineering_calculations(inputs, candidate_df):
         free_gas_gor = max(gor_val - rs_scf_stb, 0.0)
         q_g_scf_d = q_o_stb * free_gas_gor
 
-    z_factor = compute_dynamic_z_factor(p_avg, t_avg_r, gas_sg_val)
-    rho_g = (2.7 * gas_sg_val * p_avg) / (z_factor * t_avg_r)
+    z_factor = compute_dynamic_z_factor(p_avg_psia, t_avg_r, gas_sg_val)
+    rho_g = (2.7 * gas_sg_val * p_avg_psia) / (z_factor * t_avg_r)
     rho_g = max(rho_g, 0.05)
     
-    q_g_ft3s = (q_g_scf_d * 14.7 * t_avg_r * z_factor) / (p_avg * 520.0 * 86400.0)
+    q_g_ft3s = (q_g_scf_d * 14.7 * t_avg_r * z_factor) / (p_avg_psia * 520.0 * 86400.0)
     q_m_ft3s = max(q_l_ft3s + q_g_ft3s, 1e-6)
     
     lambda_l = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 1.0
@@ -471,10 +554,19 @@ if page == "1. Introduction & Overview":
     
     if os.path.exists("cover.jpg"):
         st.image("cover.jpg", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
+
+    st.markdown("""
+    <nav class="card" aria-label="Page 1 bookmarks" style="background-color: #EFF6FF; border-left: 5px solid #2563EB; margin-bottom: 1.25rem;">
+        <div style="font-size: 1.05rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.45rem;">Page 1 Bookmarks</div>
+        <a href="#upper-completion" style="color: #1D4ED8; font-weight: 600; text-decoration: none; margin-right: 1.25rem;">1.0 What is Upper Completion?</a>
+        <a href="#production-tubing" style="color: #1D4ED8; font-weight: 600; text-decoration: none; margin-right: 1.25rem;">1.1 Production Tubing</a>
+        <a href="#model-limitations" style="color: #1D4ED8; font-weight: 600; text-decoration: none;">1.2 Model Assumptions &amp; Limitations</a>
+    </nav>
+    """, unsafe_allow_html=True)
     
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A;">
-        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">What is Upper Completion?</h2>
+    <div id="upper-completion" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; scroll-margin-top: 1rem;">
+        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">1.0 What is Upper Completion?</h2>
         <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
             The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
         </p>
@@ -528,8 +620,8 @@ if page == "1. Introduction & Overview":
 
     st.markdown("---")
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem;">
-        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">Production Tubing: The Flow Path of the Well</h2>
+    <div id="production-tubing" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem; scroll-margin-top: 1rem;">
+        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">1.1 Production Tubing: The Flow Path of the Well</h2>
         <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
             <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
         </p>
@@ -587,8 +679,8 @@ if page == "1. Introduction & Overview":
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
     st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem;">
-        <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">Model Assumptions & Design Limitations</h2>
+    <div id="model-limitations" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem; scroll-margin-top: 1rem;">
+        <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">1.2 Model Assumptions & Design Limitations</h2>
         <div style="display: flex; gap: 1rem;">
             <div style="flex: 1;">
                 <h4 style="color: #991B1B; font-size: 1.1rem; margin-bottom: 0.4rem;">Key Assumptions</h4>
@@ -1428,7 +1520,11 @@ elif page == "5. Engineering Calculations":
     st.markdown('<div class="main-header">Step 5: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
     
-    res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+    try:
+        res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+    except ValueError as error:
+        st.error(f"Input validation failed: {error}")
+        st.stop()
     
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
     
@@ -1451,7 +1547,11 @@ elif page == "6. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 6: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
     
-    res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+    try:
+        res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+    except ValueError as error:
+        st.error(f"Input validation failed: {error}")
+        st.stop()
     passed_candidates = res_df[res_df['Overall_Pass'] == True]
     is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
     
