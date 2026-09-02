@@ -120,15 +120,26 @@ def run_engineering_calculations(inputs, candidate_df):
     results = []
     
     is_gas_well = "Gas Well" in inputs.get('well_type', 'Oil Well')
-    p_avg = (inputs['p_wh'] + inputs['p_bhp']) / 2.0
-    t_avg_f = (inputs['t_wh'] + inputs['t_bht']) / 2.0
+    p_wh_val = inputs.get('p_wh', 800.0)
+    p_bhp_val = inputs.get('p_bhp', 4500.0)
+    p_avg = (p_wh_val + p_bhp_val) / 2.0
+    
+    t_wh_val = inputs.get('t_wh', 75.0)
+    t_bht_val = inputs.get('t_bht', 210.0)
+    t_avg_f = (t_wh_val + t_bht_val) / 2.0
     t_avg_r = t_avg_f + 459.67
-    t_bht_c = (inputs['t_bht'] - 32.0) * (5.0 / 9.0)
+    t_bht_c = (t_bht_val - 32.0) * (5.0 / 9.0)
+    
+    casing_id_val = inputs.get('casing_id', 8.681)
     
     # -------------------------------------------------------------------------
     # FLUID PVT & VOLUMETRIC RATE ENGINE
     # -------------------------------------------------------------------------
-    gamma_o = 141.5 / (131.5 + inputs['api_gravity'])
+    api_val = inputs.get('api_gravity', 35.0)
+    gas_sg_val = inputs.get('gas_sg', 0.65)
+    water_sg_val = inputs.get('water_sg', 1.05)
+    
+    gamma_o = 141.5 / (131.5 + api_val)
     
     if is_gas_well:
         q_g_scf_d = inputs.get('q_gas_mmscfd', 15.0) * 1e6
@@ -138,29 +149,33 @@ def run_engineering_calculations(inputs, candidate_df):
         rs_scf_stb = 0.0
         bo_rb_stb = 1.05
         rho_o_live = 62.4 * gamma_o
-        rho_w = inputs.get('water_sg', 1.05) * 62.4
+        rho_w = water_sg_val * 62.4
         
         q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
         wc_frac = q_wat_stbd / (q_cond_stbd + q_wat_stbd) if (q_cond_stbd + q_wat_stbd) > 0 else 0.0
         rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w if (q_cond_stbd + q_wat_stbd) > 0 else rho_o_live
     else:
-        rs_scf_stb = inputs['gas_sg'] * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * inputs['api_gravity'] - 0.00091 * t_avg_f))) ** 1.2048
-        rs_scf_stb = min(rs_scf_stb, inputs['gor'])
+        gor_val = inputs.get('gor', 800.0)
+        q_liq_val = inputs.get('q_liquid', 5000.0)
+        wc_val = inputs.get('water_cut', 5.0)
         
-        bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((inputs['gas_sg'] / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
-        rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * inputs['gas_sg']) / bo_rb_stb
-        rho_w = inputs.get('water_sg', 1.05) * 62.4
+        rs_scf_stb = gas_sg_val * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * t_avg_f))) ** 1.2048
+        rs_scf_stb = min(rs_scf_stb, gor_val)
         
-        wc_frac = inputs['water_cut'] / 100.0
+        bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((gas_sg_val / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
+        rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * gas_sg_val) / bo_rb_stb
+        rho_w = water_sg_val * 62.4
+        
+        wc_frac = wc_val / 100.0
         rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
         
-        q_l_ft3s = (inputs['q_liquid'] * 5.615) / 86400.0
-        q_o_stb = inputs['q_liquid'] * (1.0 - wc_frac)
-        free_gas_gor = max(inputs['gor'] - rs_scf_stb, 0.0)
+        q_l_ft3s = (q_liq_val * 5.615) / 86400.0
+        q_o_stb = q_liq_val * (1.0 - wc_frac)
+        free_gas_gor = max(gor_val - rs_scf_stb, 0.0)
         q_g_scf_d = q_o_stb * free_gas_gor
 
-    z_factor = compute_dynamic_z_factor(p_avg, t_avg_r, inputs['gas_sg'])
-    rho_g = (2.7 * inputs['gas_sg'] * p_avg) / (z_factor * t_avg_r)
+    z_factor = compute_dynamic_z_factor(p_avg, t_avg_r, gas_sg_val)
+    rho_g = (2.7 * gas_sg_val * p_avg) / (z_factor * t_avg_r)
     rho_g = max(rho_g, 0.05)
     
     q_g_ft3s = (q_g_scf_d * 14.7 * t_avg_r * z_factor) / (p_avg * 520.0 * 86400.0)
@@ -175,22 +190,27 @@ def run_engineering_calculations(inputs, candidate_df):
     mu_m_lbfts = mu_m_cp * 0.000672
     
     # Corrosion & Environmental Limits
-    p_h2s_psia = inputs['p_bhp'] * (inputs['h2s_ppm'] / 1e6)
-    p_co2_psia = inputs['p_bhp'] * (inputs['co2_mole_pct'] / 100.0)
+    h2s_ppm_val = inputs.get('h2s_ppm', 150.0)
+    co2_pct_val = inputs.get('co2_mole_pct', 2.5)
+    p_h2s_psia = p_bhp_val * (h2s_ppm_val / 1e6)
+    p_co2_psia = p_bhp_val * (co2_pct_val / 100.0)
     is_sour_service = p_h2s_psia >= 0.05
     
     # Late Life Hydraulics
-    decline_factor = (1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs']
+    decline_val = inputs.get('decline_rate', 8.0)
+    field_life_val = inputs.get('field_life_yrs', 20)
+    decline_factor = (1.0 - (decline_val / 100.0)) ** field_life_val
     q_m_late = q_m_ft3s * decline_factor
     
     # Dynamic APB Pressure Rise
-    fluid_props = ANNULAR_FLUID_PROPS.get(inputs['annular_fluid'], ANNULAR_FLUID_PROPS["Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)"])
+    fluid_props = ANNULAR_FLUID_PROPS.get(inputs.get('annular_fluid', ''), ANNULAR_FLUID_PROPS["Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)"])
     alpha_v = fluid_props['alpha_v']
     kappa_t = fluid_props['kappa_t']
     
-    delta_t_annular = max(t_avg_f - inputs.get('t_ambient', 75.0), 0.0)
+    t_ambient_val = inputs.get('t_ambient', 75.0)
+    delta_t_annular = max(t_avg_f - t_ambient_val, 0.0)
     dp_apb_psi = (alpha_v / kappa_t) * delta_t_annular
-    p_annular_total_wh = inputs['p_wh'] + dp_apb_psi
+    p_annular_total_wh = p_wh_val + dp_apb_psi
 
     # -------------------------------------------------------------------------
     # CANDIDATE EVALUATION LOOP
@@ -201,6 +221,9 @@ def run_engineering_calculations(inputs, candidate_df):
         area_id_ft2 = (np.pi / 4.0) * (id_ft ** 2)
         area_od_ft2 = (np.pi / 4.0) * (od_ft ** 2)
         area_steel_in2 = (np.pi / 4.0) * (row['OD_in']**2 - row['ID_in']**2)
+        
+        # Casing Clearance Gate
+        casing_clearance_pass = row['OD_in'] < casing_id_val
         
         v_m = q_m_ft3s / area_id_ft2
         v_m_late = q_m_late / area_id_ft2
@@ -213,8 +236,12 @@ def run_engineering_calculations(inputs, candidate_df):
         else:
             f = 64.0 / reynolds if reynolds > 0 else 0.04
             
-        dp_hydro = (rho_m * inputs['tvd']) / 144.0
-        dp_fric = (f * inputs['md'] * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
+        tvd_val = inputs.get('tvd', 10000.0)
+        md_val = inputs.get('md', 11500.0)
+        dls_val = inputs.get('dls', 2.0)
+        
+        dp_hydro = (rho_m * tvd_val) / 144.0
+        dp_fric = (f * md_val * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
         dp_total = dp_hydro + dp_fric
         
         c_factor = 120.0 if "Sandstone" in inputs.get('lithology', 'Sandstone') else 150.0
@@ -225,7 +252,7 @@ def run_engineering_calculations(inputs, candidate_df):
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
         
-        dp_available = inputs['p_bhp'] - inputs['p_wh']
+        dp_available = p_bhp_val - p_wh_val
         
         hydraulics_pass = dp_total <= dp_available
         velocity_pass = v_critical_loading < v_m < v_erosional
@@ -233,19 +260,19 @@ def run_engineering_calculations(inputs, candidate_df):
         
         # Lubinski Force Balance
         rho_buoy_factor = (1.0 - (rho_m / 490.0))
-        f_gravity_lbs = row['Weight_lbft'] * inputs['md'] * rho_buoy_factor
+        f_gravity_lbs = row['Weight_lbft'] * md_val * rho_buoy_factor
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular
-        f_piston_lbs = (inputs['p_bhp'] * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
-        f_ballooning_lbs = 2.0 * 0.3 * ((inputs['p_bhp'] * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
-        f_drag_lbs = (f * rho_m * (v_m ** 2) * np.pi * id_ft * inputs['md']) / (2.0 * 32.174)
-        sigma_bending_psi = 218.0 * row['OD_in'] * inputs['dls']
+        f_piston_lbs = (p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
+        f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
+        f_drag_lbs = (f * rho_m * (v_m ** 2) * np.pi * id_ft * md_val) / (2.0 * 32.174)
+        sigma_bending_psi = 218.0 * row['OD_in'] * dls_val
         
         f_axial_total_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs
         f_axial_total_klbs = f_axial_total_lbs / 1000.0
         
         sigma_axial_psi = (f_axial_total_lbs / area_steel_in2) + sigma_bending_psi
         
-        p_int = inputs['p_bhp']
+        p_int = p_bhp_val
         p_ext = p_annular_total_wh
         r_i = row['ID_in'] / 2.0
         r_o = row['OD_in'] / 2.0
@@ -255,10 +282,11 @@ def run_engineering_calculations(inputs, candidate_df):
         
         vme_stress_psi = np.sqrt(0.5 * ((sigma_hoop_psi - sigma_radial_psi)**2 + (sigma_radial_psi - sigma_axial_psi)**2 + (sigma_axial_psi - sigma_hoop_psi)**2))
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
-        stress_pass = triaxial_sf >= inputs.get('sf_triaxial', 1.25)
+        sf_triaxial_target = inputs.get('sf_triaxial', 1.25)
+        stress_pass = triaxial_sf >= sf_triaxial_target
         
         # Static CITHP Surface Burst Screening
-        cithp_val = inputs.get('cithp', inputs['p_wh'])
+        cithp_val = inputs.get('cithp', p_wh_val)
         burst_sf = row['Burst_psi'] / cithp_val if cithp_val > 0 else 99.0
         burst_pass = burst_sf >= 1.10
 
@@ -306,7 +334,7 @@ def run_engineering_calculations(inputs, candidate_df):
             needs_premium = True
             conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
             
-        if inputs['tvd'] > 10000 or f_axial_total_klbs > 150.0:
+        if tvd_val > 10000 or f_axial_total_klbs > 150.0:
             needs_premium = True
             conn_reasons.append("High Depth / Axial Load")
 
@@ -319,7 +347,7 @@ def run_engineering_calculations(inputs, candidate_df):
         elif needs_premium and 'Premium' in row['Connection']:
             conn_status_msg = "Premium Connection Validated (" + "; ".join(conn_reasons) + ")"
 
-        overall_pass = (hydraulics_pass and velocity_pass and late_life_pass and 
+        overall_pass = (casing_clearance_pass and hydraulics_pass and velocity_pass and late_life_pass and 
                         material_pass and stress_pass and connection_pass and temp_pass and burst_pass)
         
         results.append({
@@ -345,6 +373,7 @@ def run_engineering_calculations(inputs, candidate_df):
             "burst_sf": round(burst_sf, 2),
             "Z_Factor": round(z_factor, 3),
             "Bo_rb_stb": round(bo_rb_stb, 3),
+            "Casing_Clearance_Pass": casing_clearance_pass,
             "Hydraulics_Pass": hydraulics_pass,
             "Velocity_Pass": velocity_pass,
             "Late_Life_Pass": late_life_pass,
@@ -795,10 +824,11 @@ elif page == "2. Calculation Methodology":
 # ----------------------------------------------------------------------------- 
 elif page == "3. Well & Fluid Inputs": 
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Configure wellbore trajectory, fluid PVT mode, dynamic rates, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, completion targets, dynamic rate modes, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
 
-    # Robust pre-initialization of local UI variables to prevent unbound errors
-    well_type = st.session_state.inputs.get('well_type', 'Oil Well (Liquid Dominated)')
+    # Pre-initialize variables cleanly with .get() to prevent UnboundLocalError / KeyError
+    current_inputs = st.session_state.inputs
+    well_type = current_inputs.get('well_type', 'Oil Well (Liquid Dominated)')
     is_gas_type = "Gas" in well_type
 
     tab_geo, tab_early, tab_late = st.tabs([ 
@@ -813,35 +843,34 @@ elif page == "3. Well & Fluid Inputs":
         col_g1, col_g2, col_g3 = st.columns(3) 
          
         with col_g1: 
-            well_type_sel = st.selectbox(
+            well_type = st.selectbox(
                 "Well Type Category", 
                 ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"],
                 index=1 if is_gas_type else 0
             )
-            well_type = well_type_sel
-            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.0, max_value=30000.0, value=float(st.session_state.inputs['tvd']), step=100.0) 
+            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.0, max_value=30000.0, value=float(current_inputs.get('tvd', 10000.0)), step=100.0, format="%.3f") 
         
         with col_g2:
-            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.0, max_value=35000.0, value=float(st.session_state.inputs['md']), step=100.0) 
-            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, value=float(st.session_state.inputs['dls']), step=0.1) 
+            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.0, max_value=35000.0, value=float(current_inputs.get('md', 11500.0)), step=100.0, format="%.3f") 
+            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, value=float(current_inputs.get('dls', 2.0)), step=0.1, format="%.3f") 
 
         with col_g3:
-            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(st.session_state.inputs['casing_id']), step=0.001)
+            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(current_inputs.get('casing_id', 8.681)), step=0.001, format="%.3f")
 
         st.markdown("---")
         st.markdown("#### 🛡️ Shut-In Conditions & Static CITHP Pressure")
         col_s1, col_s2, col_s3 = st.columns(3)
 
         with col_s1:
-            calc_cithp = round(st.session_state.inputs['p_bhp'] * np.exp(-0.000035 * tvd), 1)
-            cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(st.session_state.inputs.get('cithp', calc_cithp)), step=50.0)
+            calc_cithp = round(current_inputs.get('p_bhp', 4500.0) * np.exp(-0.000035 * tvd), 1)
+            cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(current_inputs.get('cithp', calc_cithp)), step=50.0, format="%.3f")
 
         with col_s2:
-            sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.0, value=float(st.session_state.inputs.get('sf_triaxial', 1.25)), step=0.05)
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.0, value=float(current_inputs.get('sf_triaxial', 1.25)), step=0.05, format="%.3f")
 
         with col_s3:
             annular_options = list(ANNULAR_FLUID_PROPS.keys())
-            curr_annular = st.session_state.inputs.get('annular_fluid', annular_options[0])
+            curr_annular = current_inputs.get('annular_fluid', annular_options[0])
             annular_idx = annular_options.index(curr_annular) if curr_annular in annular_options else 0
             annular_fluid = st.selectbox(
                 "Trapped Annular Packer Fluid Type", 
@@ -854,18 +883,18 @@ elif page == "3. Well & Fluid Inputs":
         col_c1, col_c2, col_c3 = st.columns(3)
 
         with col_c1:
-            api_gravity = st.number_input("Oil/Condensate Gravity (°API)", min_value=10.0, max_value=70.0, value=float(st.session_state.inputs['api_gravity']), step=0.5)
-            gas_sg = st.number_input("Gas Specific Gravity (Air=1.00)", min_value=0.50, max_value=1.20, value=float(st.session_state.inputs['gas_sg']), step=0.01)
-            water_sg = st.number_input("Formation Water SG", min_value=1.00, max_value=1.30, value=float(st.session_state.inputs.get('water_sg', 1.05)), step=0.01)
+            api_gravity = st.number_input("Oil/Condensate Gravity (°API)", min_value=10.0, max_value=70.0, value=float(current_inputs.get('api_gravity', 35.0)), step=0.5, format="%.3f")
+            gas_sg = st.number_input("Gas Specific Gravity (Air=1.00)", min_value=0.50, max_value=1.20, value=float(current_inputs.get('gas_sg', 0.65)), step=0.01, format="%.3f")
+            water_sg = st.number_input("Formation Water SG", min_value=1.00, max_value=1.30, value=float(current_inputs.get('water_sg', 1.05)), step=0.01, format="%.3f")
 
         with col_c2:
-            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.0, max_value=100000.0, value=float(st.session_state.inputs['h2s_ppm']), step=10.0)
-            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.0, max_value=50.0, value=float(st.session_state.inputs['co2_mole_pct']), step=0.1)
-            oil_visc = st.number_input("Oil Viscosity (cP)", min_value=0.1, max_value=100.0, value=float(st.session_state.inputs.get('oil_visc', 1.5)), step=0.1)
+            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.0, max_value=100000.0, value=float(current_inputs.get('h2s_ppm', 150.0)), step=10.0, format="%.3f")
+            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.0, max_value=50.0, value=float(current_inputs.get('co2_mole_pct', 2.5)), step=0.1, format="%.3f")
+            oil_visc = st.number_input("Oil Viscosity (cP)", min_value=0.1, max_value=100.0, value=float(current_inputs.get('oil_visc', 1.5)), step=0.1, format="%.3f")
 
         with col_c3:
-            ph_val = st.number_input("Formation Water pH", min_value=2.0, max_value=10.0, value=float(st.session_state.inputs.get('ph_val', 6.5)), step=0.1)
-            chlorides_ppm = st.number_input("Chlorides (PPM Cl⁻)", min_value=0.0, max_value=250000.0, value=float(st.session_state.inputs.get('chlorides_ppm', 35000.0)), step=1000.0)
+            ph_val = st.number_input("Formation Water pH", min_value=2.0, max_value=10.0, value=float(current_inputs.get('ph_val', 6.5)), step=0.1, format="%.3f")
+            chlorides_ppm = st.number_input("Chlorides (PPM Cl⁻)", min_value=0.0, max_value=250000.0, value=float(current_inputs.get('chlorides_ppm', 35000.0)), step=1000.0, format="%.3f")
             lithology = st.selectbox("Reservoir Lithology", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
 
     # TAB 2: EARLY LIFE
@@ -874,25 +903,25 @@ elif page == "3. Well & Fluid Inputs":
         col_e1, col_e2, col_e3 = st.columns(3) 
 
         with col_e1: 
-            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.0, max_value=20000.0, value=float(st.session_state.inputs['p_bhp']), step=50.0) 
-            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.0, max_value=5000.0, value=float(st.session_state.inputs['p_wh']), step=20.0) 
+            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.0, max_value=20000.0, value=float(current_inputs.get('p_bhp', 4500.0)), step=50.0, format="%.3f") 
+            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.0, max_value=5000.0, value=float(current_inputs.get('p_wh', 800.0)), step=20.0, format="%.3f") 
 
         with col_e2: 
             if "Gas" in well_type:
-                q_gas_early = st.number_input("Early Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(st.session_state.inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
-                cgr_early = st.number_input("Early Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(st.session_state.inputs.get('cgr_stb_mmscf', 25.0)), step=1.0)
+                q_gas_early = st.number_input("Early Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(current_inputs.get('q_gas_mmscfd', 15.0)), step=0.5, format="%.3f")
+                cgr_early = st.number_input("Early Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(current_inputs.get('cgr_stb_mmscf', 25.0)), step=1.0, format="%.3f")
                 q_liq_early, wc_early, gor_early = 0.0, 0.0, 0.0
             else:
-                q_liq_early = st.number_input("Early Liquid Rate (STB/D)", min_value=100.0, max_value=50000.0, value=float(st.session_state.inputs['q_liquid']), step=100.0) 
-                wc_early = st.number_input("Early Water Cut (%)", min_value=0.0, max_value=100.0, value=float(st.session_state.inputs['water_cut']), step=0.5) 
+                q_liq_early = st.number_input("Early Liquid Rate (STB/D)", min_value=100.0, max_value=50000.0, value=float(current_inputs.get('q_liquid', 5000.0)), step=100.0, format="%.3f") 
+                wc_early = st.number_input("Early Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('water_cut', 5.0)), step=0.5, format="%.3f") 
                 q_gas_early, cgr_early, wgr_early = 0.0, 0.0, 0.0
 
         with col_e3: 
             if "Gas" in well_type:
-                wgr_early = st.number_input("Early Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(st.session_state.inputs.get('wgr_bbl_mmscf', 5.0)), step=0.5)
+                wgr_early = st.number_input("Early Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(current_inputs.get('wgr_bbl_mmscf', 5.0)), step=0.5, format="%.3f")
             else:
-                gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(st.session_state.inputs['gor']), step=50.0) 
-            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(st.session_state.inputs['t_bht']), step=1.0) 
+                gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor', 800.0)), step=50.0, format="%.3f") 
+            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('t_bht', 210.0)), step=1.0, format="%.3f") 
 
     # TAB 3: LATE LIFE
     with tab_late: 
@@ -900,8 +929,8 @@ elif page == "3. Well & Fluid Inputs":
         col_l1, col_l2, col_l3 = st.columns(3) 
 
         with col_l1: 
-            decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(st.session_state.inputs['decline_rate']), step=0.5)
-            field_life = st.number_input("Target Field Life (Years)", min_value=1, max_value=40, value=int(st.session_state.inputs['field_life_yrs']), step=1)
+            decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(current_inputs.get('decline_rate', 8.0)), step=0.5, format="%.3f")
+            field_life = st.number_input("Target Field Life (Years)", min_value=1, max_value=40, value=int(current_inputs.get('field_life_yrs', 20)), step=1)
 
         with col_l2:
             st.info("💡 Late-life flow rates are automatically estimated using annual reservoir decline multipliers.")
@@ -1046,7 +1075,7 @@ elif page == "5. Engineering Calculations":
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
     
-    st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs['well_type']} Mode)")
+    st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
     
     display_df = res_df[[
         'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts',
@@ -1176,15 +1205,15 @@ elif page == "6. Recommendation & Sensitivity":
                     DO NOT re-calculate or alter any numerical values. Rely STRICTLY on these provided facts:
 
                     WELL & OPERATIONAL PARAMETERS:
-                    - Well Type: {st.session_state.inputs['well_type']}
+                    - Well Type: {st.session_state.inputs.get('well_type', 'Oil Well')}
                     {production_context}
                     - Reservoir Lithology: {st.session_state.inputs.get('lithology', 'Sandstone')}
-                    - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft (Dogleg Severity: {st.session_state.inputs['dls']} deg/100ft)
-                    - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
+                    - Measured Depth / TVD: {st.session_state.inputs.get('md', 11500.0)} ft / {st.session_state.inputs.get('tvd', 10000.0)} ft (Dogleg Severity: {st.session_state.inputs.get('dls', 2.0)} deg/100ft)
+                    - Wellhead / Bottomhole Pressure: {st.session_state.inputs.get('p_wh', 800.0)} psi / {st.session_state.inputs.get('p_bhp', 4500.0)} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
                     - Static Closed-In Tubing Head Pressure (CITHP): {pref['cithp_psi']} psi
-                    - Annular Fluid & APB Pressure Rise: {st.session_state.inputs['annular_fluid']} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
-                    - Target Field Life: {st.session_state.inputs['field_life_yrs']} Years at {st.session_state.inputs['decline_rate']}% Annual Decline Rate
-                    - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_ppm']} PPM H2S
+                    - Annular Fluid & APB Pressure Rise: {st.session_state.inputs.get('annular_fluid', '')} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
+                    - Target Field Life: {st.session_state.inputs.get('field_life_yrs', 20)} Years at {st.session_state.inputs.get('decline_rate', 8.0)}% Annual Decline Rate
+                    - CO2 / H2S Concentrations: {st.session_state.inputs.get('co2_mole_pct', 2.5)} mole% CO2, {st.session_state.inputs.get('h2s_ppm', 150.0)} PPM H2S
 
                     SELECTED PREFERRED TUBING CANDIDATE:
                     - Candidate Name: {pref['Name']}
@@ -1195,7 +1224,7 @@ elif page == "6. Recommendation & Sensitivity":
                     - von Mises Triaxial Stress: {pref['vme_stress_psi']} psi (Triaxial Safety Factor: {pref['triaxial_sf']})
                     - Static Surface Burst Safety Factor (CITHP): {pref['burst_sf']} (Rating: {pref['cithp_psi']} psi CITHP vs Candidate Burst Limit)
                     - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
-                    - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
+                    - Year {st.session_state.inputs.get('field_life_yrs', 20)} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
                     - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
                     - API RP 14E Max Erosional Velocity Limit: {pref['v_erosional']} ft/s
                     - Connection Evaluation Rationale: {pref['Connection_Reason']}
