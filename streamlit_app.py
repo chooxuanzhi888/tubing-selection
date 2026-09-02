@@ -4,6 +4,8 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import os
+import json
+import urllib.request
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
@@ -81,6 +83,10 @@ if 'inputs' not in st.session_state:
         'h2s_ppm': 150.0,
         'ph_val': 6.5,
         'chlorides_ppm': 35000.0,
+        # Production Solids & Sand Specs
+        'sand_rate_pptb': 0.0,
+        'sand_size_microns': 150.0,
+        'sand_sg': 2.65,
         'field_life_yrs': 20,
         'decline_rate': 8.0,
         'sf_triaxial': 1.25
@@ -133,7 +139,7 @@ def run_engineering_calculations(inputs, candidate_df):
     casing_id_val = inputs.get('casing_id', 8.681)
     
     # -------------------------------------------------------------------------
-    # FLUID PVT & VOLUMETRIC RATE ENGINE
+    # FLUID & SLURRY PVT & VOLUMETRIC RATE ENGINE
     # -------------------------------------------------------------------------
     api_val = inputs.get('api_gravity', 35.0)
     gas_sg_val = inputs.get('gas_sg', 0.65)
@@ -145,18 +151,20 @@ def run_engineering_calculations(inputs, candidate_df):
         q_g_scf_d = inputs.get('q_gas_mmscfd', 15.0) * 1e6
         q_cond_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('cgr_stb_mmscf', 25.0)
         q_wat_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('wgr_bbl_mmscf', 5.0)
+        q_liq_stbd = q_cond_stbd + q_wat_stbd
         
         rs_scf_stb = 0.0
         bo_rb_stb = 1.05
         rho_o_live = 62.4 * gamma_o
         rho_w = water_sg_val * 62.4
         
-        q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
-        wc_frac = q_wat_stbd / (q_cond_stbd + q_wat_stbd) if (q_cond_stbd + q_wat_stbd) > 0 else 0.0
-        rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w if (q_cond_stbd + q_wat_stbd) > 0 else rho_o_live
+        q_l_ft3s = (q_liq_stbd * 5.615) / 86400.0
+        wc_frac = q_wat_stbd / q_liq_stbd if q_liq_stbd > 0 else 0.0
+        rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w if q_liq_stbd > 0 else rho_o_live
     else:
         gor_val = inputs.get('gor', 800.0)
         q_liq_val = inputs.get('q_liquid', 5000.0)
+        q_liq_stbd = q_liq_val
         wc_val = inputs.get('water_cut', 5.0)
         
         rs_scf_stb = gas_sg_val * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * t_avg_f))) ** 1.2048
@@ -184,10 +192,33 @@ def run_engineering_calculations(inputs, candidate_df):
     lambda_l = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 1.0
     rho_m = lambda_l * rho_l + (1.0 - lambda_l) * rho_g
     
+    # Solid Particles Slurry Density Integration
+    sand_pptb_val = inputs.get('sand_rate_pptb', 0.0)
+    sand_d_um = inputs.get('sand_size_microns', 150.0)
+    sand_sg_val = inputs.get('sand_sg', 2.65)
+    rho_s_lbft3 = sand_sg_val * 62.4
+    
+    w_s_lb_day = (sand_pptb_val / 1000.0) * q_liq_stbd
+    v_sand_ft3d = w_s_lb_day / rho_s_lbft3 if rho_s_lbft3 > 0 else 0.0
+    v_liq_ft3d = q_liq_stbd * 5.615
+    c_v_solids = v_sand_ft3d / (v_liq_ft3d + v_sand_ft3d) if (v_liq_ft3d + v_sand_ft3d) > 0 else 0.0
+    rho_slurry = (1.0 - c_v_solids) * rho_m + c_v_solids * rho_s_lbft3
+    
     mu_w_cp = 0.5
     mu_l_cp = (1.0 - wc_frac) * inputs.get('oil_visc', 1.5) + wc_frac * mu_w_cp
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
+    
+    # Particle Settling Velocity (Rubey Formula) & Oroskar-Turian Solid Transport Criteria
+    d_p_ft = (sand_d_um * 1e-6) * 3.28084
+    g_const = 32.174
+    delta_rho = max(rho_s_lbft3 - rho_slurry, 0.1)
+    nu_kinematic = (mu_m_lbfts / rho_slurry) if rho_slurry > 0 else 1e-5
+    
+    term1 = (2.0 / 3.0) * g_const * d_p_ft * (delta_rho / rho_slurry)
+    term2 = (36.0 * (nu_kinematic ** 2)) / (d_p_ft ** 2) if d_p_ft > 0 else 0.0
+    v_t_rubey = np.sqrt(term1 + term2) - (6.0 * nu_kinematic / d_p_ft) if d_p_ft > 0 else 0.0
+    v_t_rubey = max(v_t_rubey, 0.0)
     
     # Corrosion & Environmental Limits
     h2s_ppm_val = inputs.get('h2s_ppm', 150.0)
@@ -228,7 +259,7 @@ def run_engineering_calculations(inputs, candidate_df):
         v_m = q_m_ft3s / area_id_ft2
         v_m_late = q_m_late / area_id_ft2
         
-        reynolds = (rho_m * v_m * id_ft) / mu_m_lbfts if mu_m_lbfts > 0 else 10000
+        reynolds = (rho_slurry * v_m * id_ft) / mu_m_lbfts if mu_m_lbfts > 0 else 10000
         relative_roughness = (0.0006 / row['ID_in'])
         
         if reynolds > 2300:
@@ -240,31 +271,40 @@ def run_engineering_calculations(inputs, candidate_df):
         md_val = inputs.get('md', 11500.0)
         dls_val = inputs.get('dls', 2.0)
         
-        dp_hydro = (rho_m * tvd_val) / 144.0
-        dp_fric = (f * md_val * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
+        dp_hydro = (rho_slurry * tvd_val) / 144.0
+        dp_fric = (f * md_val * rho_slurry * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
         dp_total = dp_hydro + dp_fric
         
         c_factor = 120.0 if "Sandstone" in inputs.get('lithology', 'Sandstone') else 150.0
         if is_gas_well:
             c_factor -= 20.0
             
-        v_erosional = c_factor / np.sqrt(rho_m)
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
+        v_carrying = max(v_critical_loading, 1.35 * v_t_rubey)
+        
+        # Sand Erosion Model (Salama 1983) vs Clean API 14E
+        grade_str_upper = str(row['Grade']).upper()
+        if w_s_lb_day > 0.1:
+            c_salama = 450.0 if ("13CR" in grade_str_upper or "22CR" in grade_str_upper or "25CR" in grade_str_upper or "CRA" in str(row['Material']).upper()) else 200.0
+            v_erosional = (c_salama / np.sqrt(rho_slurry)) * np.sqrt(row['ID_in'] / w_s_lb_day)
+            v_erosional = min(v_erosional, c_factor / np.sqrt(rho_m))
+        else:
+            v_erosional = c_factor / np.sqrt(rho_m)
         
         dp_available = p_bhp_val - p_wh_val
         
         hydraulics_pass = dp_total <= dp_available
-        velocity_pass = v_critical_loading < v_m < v_erosional
-        late_life_pass = v_m_late >= v_critical_loading
+        velocity_pass = v_carrying < v_m < v_erosional
+        late_life_pass = v_m_late >= v_carrying
         
         # Lubinski Force Balance
-        rho_buoy_factor = (1.0 - (rho_m / 490.0))
+        rho_buoy_factor = (1.0 - (rho_slurry / 490.0))
         f_gravity_lbs = row['Weight_lbft'] * md_val * rho_buoy_factor
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular
         f_piston_lbs = (p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
-        f_drag_lbs = (f * rho_m * (v_m ** 2) * np.pi * id_ft * md_val) / (2.0 * 32.174)
+        f_drag_lbs = (f * rho_slurry * (v_m ** 2) * np.pi * id_ft * md_val) / (2.0 * 32.174)
         sigma_bending_psi = 218.0 * row['OD_in'] * dls_val
         
         f_axial_total_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs
@@ -361,6 +401,7 @@ def run_engineering_calculations(inputs, candidate_df):
             "v_late_life_fts": round(v_m_late, 2),
             "v_erosional": round(v_erosional, 2),
             "v_critical": round(v_critical_loading, 2),
+            "v_carrying": round(v_carrying, 2),
             "dp_hydro_psi": round(dp_hydro, 1),
             "dp_fric_psi": round(dp_fric, 1),
             "dp_total_psi": round(dp_total, 1),
@@ -564,7 +605,7 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, static CITHP burst, stress analysis, and dual-lifecycle screening.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, sand transport, hydraulics, static CITHP burst, stress analysis, and dual-lifecycle screening.</div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
@@ -639,17 +680,17 @@ elif page == "2. Calculation Methodology":
         <div class="funnel-text">Early & Late Life PVT Inputs</div>
     </div>
     <div class="funnel-card" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
-        <b>Step 1: In-Situ Fluid PVT & Density Engine</b><br/>
-        <span style="font-size: 0.8rem;">Evaluates live oil/brine & gas/condensate mixture density (&rho;<sub>m</sub>) across operational states</span>
+        <b>Step 1: Dynamic Slurry PVT & Density Engine</b><br/>
+        <span style="font-size: 0.8rem;">Evaluates live oil/brine, gas/condensate & solid particles slurry density (&rho;<sub>slurry</sub>)</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
         <div class="funnel-head"></div>
-        <div class="funnel-text">Phase Densities (&rho;<sub>m</sub>, &rho;<sub>g</sub>)</div>
+        <div class="funnel-text">Slurry Densities (&rho;<sub>slurry</sub>, &rho;<sub>g</sub>)</div>
     </div>
     <div class="funnel-card" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
-        <b>Step 2: Flow Dynamics & Dual Velocity Operating Envelope</b><br/>
-        <span style="font-size: 0.8rem;">Early: v<sub>m</sub> < v<sub>erosional</sub> &nbsp;|&nbsp; Late: v<sub>m</sub> > v<sub>critical</sub> (Turner Droplet Lift)</span>
+        <b>Step 2: Flow Dynamics, Sand Erosion & Carrying Velocity</b><br/>
+        <span style="font-size: 0.8rem;">Salama Sand Erosion Limit vs. Rubey & Oroskar-Turian Solid Transport Carrying Velocity</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
@@ -682,31 +723,9 @@ elif page == "2. Calculation Methodology":
     st.markdown(diagram_html, unsafe_allow_html=True)
     st.markdown("---")
 
-    # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
-    st.markdown("""
-    <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
-        <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Dual Lifecycle Parameter Mapping</h3>
-        <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
-            Operational parameters evolve over well life. Here is how early-life inputs and predicted late-life degradation drive the engineering engines:
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        st.info("**1. PVT & Density**\n\n* **Oil Well:** High $P_{bhp}$, live oil expansion ($B_o$).\n* **Gas Well:** Gas density ($\rho_g$) driven by $Q_g$ and $CGR$ condensate drop-out.")
-    with col_m2:
-        st.info("**2. Flow & Hydraulics**\n\n* **Early:** Peak rates risk pipe wall erosion ($v_m > v_{eros}$).\n* **Late:** Low gas rates risk liquid loading ($v_m < v_{crit}$).")
-    with col_m3:
-        st.info("**3. Loads & Stress**\n\n* **Early:** High BHT causes thermal expansion ($F_{thermal}$) & APB.\n* **Shut-In:** CITHP generates peak surface burst load.")
-    with col_m4:
-        st.info("**4. Environmental**\n\n* **Early:** Peak $P_{bhp}$ maximizes $H_2S$ partial pressure ($p_{H_2S}$).\n* **Late:** High water production increases scaling/corrosion risk.")
-
-    st.markdown("---")
-
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
-    st.markdown("### Step 1: Dynamic Fluid PVT & In-Situ Density Engine")
-    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature across Oil Well and Gas/Condensate Well operational modes.")
+    st.markdown("### Step 1: Dynamic Slurry PVT & In-Situ Density Engine")
+    st.caption("Purpose: Determine real fluid and solid slurry properties at subsurface pressure and temperature across operational modes.")
     
     col1_1, col1_2 = st.columns(2)
     with col1_1:
@@ -723,43 +742,41 @@ elif page == "2. Calculation Methodology":
     with col1_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Well Mode (Q<sub>g</sub>, CGR & Standing-Katz Z-Factor)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Converts gas throughput and liquid ratios to in-situ volumetric flow rates:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Well Mode & Bulk Slurry Density ($\rho_{\text{slurry}}$)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Converts gas throughput, liquid ratios, and solid particle concentration ($C_v$) into slurry density:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"q_o = Q_g \times CGR \quad [\text{STB/D}], \quad q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}")
-        st.latex(r"P_{pc} = 756.8 - 131.07 \gamma_g - 3.6 \gamma_g^2, \quad T_{pc} = 169.2 + 349.5 \gamma_g - 74.0 \gamma_g^2")
+        st.latex(r"C_v = \frac{V_{sand}}{V_{liquid} + V_{sand}}, \quad \rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s")
         st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}, \quad \lambda_l = \frac{q_l}{q_l + q_g}, \quad \rho_m = \lambda_l \rho_l + (1-\lambda_l)\rho_g")
 
-    st.info("🎯 **Step 1 Candidate Gate:** Validates thermodynamic fluid state convergence for both Early-Life and Late-Life reservoir conditions.")
+    st.info("🎯 **Step 1 Candidate Gate:** Validates thermodynamic fluid and solid slurry density convergence.")
     st.markdown("---")
 
-    # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
-    st.markdown("### Step 2: Multiphase Hydraulics & Dual-Velocity Operating Window")
-    st.caption("Purpose: Ensure the tubing ID allows fluids to flow within safe velocity boundaries in Early-Life while avoiding liquid loading in Late-Life.")
+    # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW WITH SAND
+    st.markdown("### Step 2: Multiphase Hydraulics, Sand Erosion & Carrying Velocity")
+    st.caption("Purpose: Screen mixture velocity ($v_m$) between minimum solid carrying velocity ($v_{\text{carrying}}$) and Salama sand erosion limit ($v_{\text{erosional}}$).")
 
     col2_1, col2_2 = st.columns(2)
     with col2_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss (&Delta;P<sub>total</sub>) & Friction</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor (f):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Slurry Pressure Loss (&Delta;P<sub>total</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Combines slurry hydrostatic head and turbulent pipe friction:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
-        st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right], \quad Re = \frac{\rho_m v_m d_i}{\mu_m}")
+        st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_{\text{slurry}} \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_{\text{slurry}} \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
 
     with col2_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between Turner droplet lift minimums and lithology erosion limits:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Salama Sand Erosion & Particle Settling Window</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Evaluates sand erosional velocity limit (Salama 1983) and Rubey terminal settling carrying velocity:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift Correlation)}")
-        st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}} \quad \text{(API RP 14E: } C_{sandstone}=120, C_{carbonate}=150\text{)}")
+        st.latex(r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}} \quad (C_{\text{salama, CRA}}=450, C_{\text{salama, CS}}=200)")
+        st.latex(r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + 36 \nu^2} - \frac{6 \nu}{d_p}, \quad v_{\text{carrying}} = \max(v_{\text{critical}}, 1.35 v_t)")
 
-    st.warning("🚫 **Step 2 Candidate Gate:** Rejects candidates if Early-Life rate causes pipe erosion ($v_m > v_{erosional}$) OR if Late-Life rate drops below liquid lift velocity ($v_m < v_{critical}$).")
+    st.warning("🚫 **Step 2 Candidate Gate:** Rejects candidates if Early-Life rate causes pipe sand erosion ($v_m > v_{\text{erosional}}$) OR if Late-Life rate drops below solid transport velocity ($v_m < v_{\text{carrying}}$).")
     st.markdown("---")
 
     # STEP 3: STRUCTURAL LOAD BALANCE & TRIAXIAL STRESS MATRIX
@@ -775,8 +792,7 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
-        st.latex(r"F_{gravity} = W_{lbft} \cdot MD \left(1 - \frac{\rho_m}{490}\right), \quad F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
-        st.latex(r"F_{piston} = P_{bhp} A_{id} - P_{annular} (A_{od} - A_{id}), \quad F_{ballooning} = 2 \nu (P_{bhp} A_{id} - P_{annular} A_{od})")
+        st.latex(r"F_{gravity} = W_{lbft} \cdot MD \left(1 - \frac{\rho_{\text{slurry}}}{490}\right), \quad F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
 
     with col3_2:
         st.markdown("""
@@ -786,7 +802,6 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
-        st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]} \le \frac{Y_{yield}}{SF_{triaxial}}")
 
     st.success("🛡️ **Step 3 Candidate Gate:** Rejects candidates failing minimum safety factor limits ($SF_{triaxial} < 1.25$).")
@@ -805,7 +820,6 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\text{CITHP} = P_{bhp} \cdot e^{-\left(\frac{M \cdot TVD}{Z \cdot R \cdot T_{avg}}\right)}, \quad SF_{burst} = \frac{\text{Candidate Burst Rating [psi]}}{\text{CITHP [psi]}} \ge 1.10")
-        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
 
     with col4_2:
         st.markdown("""
@@ -824,9 +838,8 @@ elif page == "2. Calculation Methodology":
 # ----------------------------------------------------------------------------- 
 elif page == "3. Well & Fluid Inputs": 
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, completion targets, dynamic rate modes, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
 
-    # Pre-initialize variables cleanly with .get() to prevent UnboundLocalError / KeyError
     current_inputs = st.session_state.inputs
     well_type = current_inputs.get('well_type', 'Oil Well (Liquid Dominated)')
     is_gas_type = "Gas" in well_type
@@ -879,23 +892,26 @@ elif page == "3. Well & Fluid Inputs":
             )
 
         st.markdown("---")
-        st.markdown("#### 🧪 Baseline Fluid PVT & Corrosivity")
+        st.markdown("#### 🧪 Baseline Fluid PVT, Solids & Corrosivity")
         col_c1, col_c2, col_c3 = st.columns(3)
 
         with col_c1:
             api_gravity = st.number_input("Oil/Condensate Gravity (°API)", min_value=10.0, max_value=70.0, value=float(current_inputs.get('api_gravity', 35.0)), step=0.5, format="%.3f")
             gas_sg = st.number_input("Gas Specific Gravity (Air=1.00)", min_value=0.50, max_value=1.20, value=float(current_inputs.get('gas_sg', 0.65)), step=0.01, format="%.3f")
             water_sg = st.number_input("Formation Water SG", min_value=1.00, max_value=1.30, value=float(current_inputs.get('water_sg', 1.05)), step=0.01, format="%.3f")
+            sand_rate_pptb = st.number_input("Sand Rate (PPTB - lbs/1000 bbl)", min_value=0.0, max_value=2000.0, value=float(current_inputs.get('sand_rate_pptb', 0.0)), step=5.0, format="%.3f")
 
         with col_c2:
             h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.0, max_value=100000.0, value=float(current_inputs.get('h2s_ppm', 150.0)), step=10.0, format="%.3f")
             co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.0, max_value=50.0, value=float(current_inputs.get('co2_mole_pct', 2.5)), step=0.1, format="%.3f")
             oil_visc = st.number_input("Oil Viscosity (cP)", min_value=0.1, max_value=100.0, value=float(current_inputs.get('oil_visc', 1.5)), step=0.1, format="%.3f")
+            sand_size_microns = st.number_input("Average Grain Size (Microns - µm)", min_value=10.0, max_value=2000.0, value=float(current_inputs.get('sand_size_microns', 150.0)), step=10.0, format="%.3f")
 
         with col_c3:
             ph_val = st.number_input("Formation Water pH", min_value=2.0, max_value=10.0, value=float(current_inputs.get('ph_val', 6.5)), step=0.1, format="%.3f")
             chlorides_ppm = st.number_input("Chlorides (PPM Cl⁻)", min_value=0.0, max_value=250000.0, value=float(current_inputs.get('chlorides_ppm', 35000.0)), step=1000.0, format="%.3f")
             lithology = st.selectbox("Reservoir Lithology", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
+            sand_sg = st.number_input("Solid Particle Density (SG)", min_value=1.5, max_value=5.0, value=float(current_inputs.get('sand_sg', 2.65)), step=0.05, format="%.3f")
 
     # TAB 2: EARLY LIFE
     with tab_early: 
@@ -943,7 +959,7 @@ elif page == "3. Well & Fluid Inputs":
     if "Gas" in well_type:
         rate_summary_early = f"{q_gas_early:.2f} MMscf/D (CGR: {cgr_early:.1f} STB/MMscf)"
         rate_summary_late = f"{(q_gas_early * ((1 - decline_rate/100.0)**field_life)):.2f} MMscf/D"
-        governing_msg = "Erosion limits v_m < v_eros (Early) vs. Liquid loading v_m > v_crit (Late)"
+        governing_msg = "Salama sand erosion v_m < v_eros (Early) vs. Solid transport v_m > v_carrying (Late)"
     else:
         rate_summary_early = f"{q_liq_early:.1f} STB/D ({wc_early:.1f}% WC)"
         rate_summary_late = f"{(q_liq_early * ((1 - decline_rate/100.0)**field_life)):.1f} STB/D"
@@ -967,8 +983,8 @@ elif page == "3. Well & Fluid Inputs":
                 <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Drawdown head limit (Late)</td> 
             </tr> 
             <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
-                <td style="padding: 10px; font-weight: 600;">Flow Rate & Ratios</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early}</td> 
+                <td style="padding: 10px; font-weight: 600;">Flow Rate & Sand PPTB</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early} | Sand: {sand_rate_pptb} PPTB</td> 
                 <td style="padding: 10px; color: #B45309; font-weight: 600;">{rate_summary_late}</td> 
                 <td style="padding: 10px; font-size: 0.82rem; color: #475569;">{governing_msg}</td> 
             </tr> 
@@ -993,6 +1009,7 @@ elif page == "3. Well & Fluid Inputs":
                 "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
                 "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
                 "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
+                "sand_rate_pptb": sand_rate_pptb, "sand_size_microns": sand_size_microns, "sand_sg": sand_sg,
                 "lithology": lithology, "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
                 "decline_rate": decline_rate, "field_life_yrs": field_life
             })
@@ -1078,37 +1095,35 @@ elif page == "5. Engineering Calculations":
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
     
     display_df = res_df[[
-        'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts',
+        'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_erosional',
         'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'vme_stress_psi', 'triaxial_sf', 'burst_sf', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
     
     display_df.columns = [
-        'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)',
+        'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
         'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Burst SF', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
     
     st.dataframe(display_df, use_container_width=True, height=450)
     
     with st.expander("📐 Show Governing Equations & Technical Correlations"):
-        st.markdown("#### 1. Static CITHP Surface Burst Load")
-        st.latex(r"SF_{burst} = \frac{\text{Burst\_psi}}{CITHP} \ge 1.10")
-        st.caption("Validates surface pipe burst rating under static shut-in conditions.")
+        st.markdown("#### 1. Salama Sand Erosion Correlation (1983)")
+        st.latex(r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}}")
+        st.caption("Where $C_{\\text{salama}} = 450$ for 13Cr/CRA and $200$ for Carbon Steel; $W_s$ is sand rate in lb/day.")
 
-        st.markdown("#### 2. Annular Pressure Build-up (APB)")
+        st.markdown("#### 2. Rubey Terminal Settling & Oroskar-Turian Transport Velocity")
+        st.latex(r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + 36 \nu^2} - \frac{6 \nu}{d_p}, \quad v_{\text{carrying}} = \max(v_{\text{critical}}, 1.35 v_t)")
+        st.caption("Calculates particle settling velocity to ensure minimum fluid velocity prevents sand deposition.")
+
+        st.markdown("#### 3. Annular Pressure Build-up (APB)")
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
         st.caption("Where $\\alpha_v$ is thermal expansion coefficient and $\\kappa_T$ is fluid isothermal compressibility.")
         
-        st.markdown("#### 3. Lubinski Total Net Axial Load Balance")
+        st.markdown("#### 4. Lubinski Total Net Axial Load Balance")
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
-        st.caption("Includes buoyed pipe weight, constrained thermal expansion, pressure area changes across seals, radial expansion shortening, and fluid skin friction.")
 
-        st.markdown("#### 4. von Mises Triaxial Equivalent Stress")
+        st.markdown("#### 5. von Mises Triaxial Equivalent Stress")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]} \le \frac{Y_{yield}}{SF_{triaxial}}")
-        st.caption("Requires a minimum triaxial safety factor $SF_{triaxial} \\ge 1.25$ per completion design standards.")
-
-        st.markdown("#### 5. Turner Critical Liquid Loading Velocity")
-        st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25} (\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Correlation, } C=1.3\text{)}")
-        st.caption("Calculates minimum gas mixture velocity required to continuously transport liquid droplets to surface.")
 
 # -----------------------------------------------------------------------------
 # PAGE 6: RECOMMENDATION & SENSITIVITY
@@ -1153,7 +1168,7 @@ elif page == "6. Recommendation & Sensitivity":
             
             st.markdown(f"""
             * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
-            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) and late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above liquid loading limits (**{preferred['v_critical']} ft/s**) and below erosional velocity (**{preferred['v_erosional']} ft/s**).
+            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) and late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and below Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**).
             * **Shut-In CITHP & Surface Integrity:** Closed-In Tubing Head Pressure of **{preferred['cithp_psi']} psi** yields a static burst safety factor of **{preferred['burst_sf']}** (exceeding $SF \ge 1.10$).
             * **NACE & Structural Safety:** Grade **{preferred['Grade']}** ({preferred['Material']}) provides a von Mises triaxial SF of **{preferred['triaxial_sf']}** under Lubinski axial tension (**{preferred['f_axial_klbs']} klbs**) and APB rise (**{preferred['dp_apb_psi']} psi**).
             * **Connection Validation:** {preferred['Connection_Reason']}
@@ -1179,9 +1194,6 @@ elif page == "6. Recommendation & Sensitivity":
         else:
             with st.spinner("Analyzing hydraulics, CITHP burst loads, velocity windows, and NACE compliance via Gemini API..."):
                 try:
-                    import json
-                    import urllib.request
-
                     pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
                     
                     if is_gas:
@@ -1208,6 +1220,7 @@ elif page == "6. Recommendation & Sensitivity":
                     - Well Type: {st.session_state.inputs.get('well_type', 'Oil Well')}
                     {production_context}
                     - Reservoir Lithology: {st.session_state.inputs.get('lithology', 'Sandstone')}
+                    - Sand Production Specs: {st.session_state.inputs.get('sand_rate_pptb', 0.0)} PPTB, Grain Size {st.session_state.inputs.get('sand_size_microns', 150.0)} microns
                     - Measured Depth / TVD: {st.session_state.inputs.get('md', 11500.0)} ft / {st.session_state.inputs.get('tvd', 10000.0)} ft (Dogleg Severity: {st.session_state.inputs.get('dls', 2.0)} deg/100ft)
                     - Wellhead / Bottomhole Pressure: {st.session_state.inputs.get('p_wh', 800.0)} psi / {st.session_state.inputs.get('p_bhp', 4500.0)} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
                     - Static Closed-In Tubing Head Pressure (CITHP): {pref['cithp_psi']} psi
@@ -1225,14 +1238,14 @@ elif page == "6. Recommendation & Sensitivity":
                     - Static Surface Burst Safety Factor (CITHP): {pref['burst_sf']} (Rating: {pref['cithp_psi']} psi CITHP vs Candidate Burst Limit)
                     - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
                     - Year {st.session_state.inputs.get('field_life_yrs', 20)} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
-                    - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
-                    - API RP 14E Max Erosional Velocity Limit: {pref['v_erosional']} ft/s
+                    - Minimum Sand Carrying Limit: {pref['v_carrying']} ft/s
+                    - Salama Max Sand Erosional Velocity Limit: {pref['v_erosional']} ft/s
                     - Connection Evaluation Rationale: {pref['Connection_Reason']}
 
                     INSTRUCTIONS:
                     1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
                     2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulic performance against available drawdown drive under the given rate profile.
-                    3. Paragraph 2: Analyze flow velocities (initial vs late-life) against Turner liquid loading and API RP 14E erosion thresholds.
+                    3. Paragraph 2: Analyze flow velocities (initial vs late-life) against Rubey sand carrying velocity and Salama sand erosion thresholds.
                     4. Paragraph 3: Detail static shut-in CITHP burst safety factor, Lubinski triaxial safety factor (SF_vme), thermal APB expansion, and justify connection selection (API EUE vs Premium metal seal) considering gas tightness and NACE MR0175 sour service requirements.
                     5. Use formal petroleum completion engineering phrasing and bold key numeric values.
                     """
@@ -1304,8 +1317,8 @@ elif page == "6. Recommendation & Sensitivity":
         fig_v = go.Figure()
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
-        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Erosional Limit (Max)', line=dict(dash='dash', color='red')))
-        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_critical'], mode='lines', name='Turner Liquid Loading Limit (Min)', line=dict(dash='dot', color='orange')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Salama Sand Erosional Limit (Max)', line=dict(dash='dash', color='red')))
+        fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_carrying'], mode='lines', name='Min Sand Carrying Limit', line=dict(dash='dot', color='orange')))
         
         fig_v.update_layout(
             title="Flow Velocity Window vs. Tubing Inner Diameter",
@@ -1317,7 +1330,7 @@ elif page == "6. Recommendation & Sensitivity":
         
         st.info(
             "**How to Interpret Graph 2:**\n\n"
-            "* **Upper Red Limit (API RP 14E Erosional Velocity):** Operating above this line causes severe structural pipe wear and wall thinning due to high fluid kinetic energy.\n"
-            "* **Lower Orange Limit (Turner Liquid Loading Velocity):** Operating below this line results in insufficient gas velocity to lift liquid droplets, causing liquid accumulation downhole and shutting in the well.\n"
-            "* **Purple Dashed Line (Late-Life Velocity):** Demonstrates velocity reduction after reservoir decline. Tubing must keep the purple line above the orange limit to ensure long-term well performance."
+            "* **Upper Red Limit (Salama Sand Erosional Velocity):** Operating above this threshold causes severe mechanical wall thinning due to high kinetic sand impact.\n"
+            "* **Lower Orange Limit (Minimum Sand Carrying Velocity):** Operating below this threshold causes solid particle deposition, downhole sand plugging, and SCSSV malfunction.\n"
+            "* **Purple Dashed Line (Late-Life Velocity):** Tubing must keep the purple line above the orange limit across the target field life."
         )
