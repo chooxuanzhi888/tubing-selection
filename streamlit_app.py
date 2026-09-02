@@ -1080,7 +1080,7 @@ elif page == "2. Calculation Methodology":
 # ----------------------------------------------------------------------------- 
 elif page == "3. Well & Fluid Inputs": 
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True) 
 
     current_inputs = st.session_state.inputs
     well_type = current_inputs.get('well_type', 'Oil Well (Liquid Dominated)')
@@ -1092,6 +1092,9 @@ elif page == "3. Well & Fluid Inputs":
         "📉 3. Late-Life (Depleted Envelopes)"
     ]) 
 
+    # ------------------------------------------------------------------------- 
+    # TAB 1: ARCHITECTURE, PVT, CORROSIVITY & COMPLETION TARGETS
+    # ------------------------------------------------------------------------- 
     with tab_geo: 
         st.markdown("#### 📐 Subsurface Geometry & Dynamic Well Mode") 
         col_g1, col_g2, col_g3 = st.columns(3) 
@@ -1112,15 +1115,17 @@ elif page == "3. Well & Fluid Inputs":
             casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(current_inputs.get('casing_id', 8.681)), step=0.001, format="%.3f")
 
         st.markdown("---")
-        st.markdown("#### 🛡️ Shut-In Conditions & Static CITHP Pressure")
+        st.markdown("#### 🛡️ Completion Targets, Shut-In CITHP & Field Lifespan")
         col_s1, col_s2, col_s3 = st.columns(3)
 
         with col_s1:
             calc_cithp = round(current_inputs.get('p_bhp', 4500.0) * np.exp(-0.000035 * tvd), 1)
             cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(current_inputs.get('cithp', calc_cithp)), step=50.0, format="%.3f")
+            field_life = st.number_input("Target Field / Completion Lifespan (Years)", min_value=1, max_value=50, value=int(current_inputs.get('field_life_yrs', 20)), step=1)
 
         with col_s2:
-            sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.0, value=float(current_inputs.get('sf_triaxial', 1.25)), step=0.05, format="%.3f")
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.5, value=float(current_inputs.get('sf_triaxial', 1.25)), step=0.05, format="%.3f")
+            decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(current_inputs.get('decline_rate', 8.0)), step=0.5, format="%.3f")
 
         with col_s3:
             annular_options = list(ANNULAR_FLUID_PROPS.keys())
@@ -1154,6 +1159,9 @@ elif page == "3. Well & Fluid Inputs":
             lithology = st.selectbox("Reservoir Lithology", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
             sand_sg = st.number_input("Solid Particle Density (SG)", min_value=1.5, max_value=5.0, value=float(current_inputs.get('sand_sg', 2.65)), step=0.05, format="%.3f")
 
+    # ------------------------------------------------------------------------- 
+    # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE)
+    # ------------------------------------------------------------------------- 
     with tab_early: 
         st.markdown("#### Early-Life Operating Conditions (Peak Rates & Thermal Loads)") 
         col_e1, col_e2, col_e3 = st.columns(3) 
@@ -1179,28 +1187,94 @@ elif page == "3. Well & Fluid Inputs":
                 gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor', 800.0)), step=50.0, format="%.3f") 
             bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('t_bht', 210.0)), step=1.0, format="%.3f") 
 
+    # ------------------------------------------------------------------------- 
+    # TAB 3: LATE-LIFE (DEPLETED / HIGH WATER CUT ENVELOPES)
+    # ------------------------------------------------------------------------- 
     with tab_late: 
         st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)") 
+
+        manual_override = st.checkbox("🛠️ Enable Manual Override for Late-Life Parameters", value=False) 
+
+        # Auto-Predictive Calculation Logic
+        pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3)) 
+        pred_p_wh_late = float(round(p_wh_early * 0.40, 3)) 
+        pred_bht_late = float(round(max(80.0, bht_early - 30.0), 3)) 
+
+        if "Gas" in well_type:
+            pred_q_gas_late = float(round(q_gas_early * ((1.0 - decline_rate / 100.0) ** field_life), 3))
+            pred_cgr_late = float(round(cgr_early * 0.60, 3))
+            pred_wgr_late = float(round(wgr_early * 2.50, 3))
+        else:
+            pred_q_liq_late = float(round(q_liq_early * ((1.0 - decline_rate / 100.0) ** field_life), 3))
+            pred_wc_late = 75.0 if wc_early < 20.0 else float(round(min(95.0, wc_early + 30.0), 3))
+            pred_gor_late = float(round(gor_early * 0.60, 3))
+
         col_l1, col_l2, col_l3 = st.columns(3) 
 
-        with col_l1: 
-            decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(current_inputs.get('decline_rate', 8.0)), step=0.5, format="%.3f")
-            field_life = st.number_input("Target Field Life (Years)", min_value=1, max_value=40, value=int(current_inputs.get('field_life_yrs', 20)), step=1)
+        if not manual_override: 
+            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using annual field decline rates and reservoir depletion rules. Check above to adjust manually.") 
 
-        with col_l2:
-            st.info("💡 Late-life flow rates are automatically estimated using annual reservoir decline multipliers.")
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), disabled=True, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), disabled=True, format="%.3f") 
+
+            with col_l2: 
+                if "Gas" in well_type:
+                    q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), disabled=True, format="%.3f")
+                    cgr_late = st.number_input("Late CGR (STB/MMscf)", value=float(current_inputs.get('cgr_late', pred_cgr_late)), disabled=True, format="%.3f")
+                    q_liq_late, wc_late, gor_late = 0.0, 0.0, 0.0
+                else:
+                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), disabled=True, format="%.3f") 
+                    wc_late = st.number_input("Late Water Cut (%)", value=float(current_inputs.get('wc_late', pred_wc_late)), disabled=True, format="%.3f") 
+                    q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
+
+            with col_l3: 
+                if "Gas" in well_type:
+                    wgr_late = st.number_input("Late WGR (bbl/MMscf)", value=float(current_inputs.get('wgr_late', pred_wgr_late)), disabled=True, format="%.3f")
+                else:
+                    gor_late = st.number_input("Late Producing GOR (scf/STB)", value=float(current_inputs.get('gor_late', pred_gor_late)), disabled=True, format="%.3f") 
+                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", value=float(current_inputs.get('bht_late', pred_bht_late)), disabled=True, format="%.3f") 
+
+        else: 
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.0, max_value=20000.0, value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), step=50.0, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.0, max_value=5000.0, value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), step=20.0, format="%.3f") 
+
+            with col_l2: 
+                if "Gas" in well_type:
+                    q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), step=0.5, format="%.3f")
+                    cgr_late = st.number_input("Late CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(current_inputs.get('cgr_late', pred_cgr_late)), step=1.0, format="%.3f")
+                    q_liq_late, wc_late, gor_late = 0.0, 0.0, 0.0
+                else:
+                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.0, max_value=50000.0, value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), step=100.0, format="%.3f") 
+                    wc_late = st.number_input("Late Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('wc_late', pred_wc_late)), step=0.5, format="%.3f") 
+                    q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
+
+            with col_l3: 
+                if "Gas" in well_type:
+                    wgr_late = st.number_input("Late WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(current_inputs.get('wgr_late', pred_wgr_late)), step=0.5, format="%.3f")
+                else:
+                    gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor_late', pred_gor_late)), step=50.0, format="%.3f") 
+                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('bht_late', pred_bht_late)), step=1.0, format="%.3f") 
 
     st.markdown("---")
     
+    # ------------------------------------------------------------------------- 
+    # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX
+    # ------------------------------------------------------------------------- 
     st.markdown("### 📊 Dual Operational Envelope Summary")
     
     if "Gas" in well_type:
-        rate_summary_early = f"{q_gas_early:.2f} MMscf/D (CGR: {cgr_early:.1f} STB/MMscf)"
-        rate_summary_late = f"{(q_gas_early * ((1 - decline_rate/100.0)**field_life)):.2f} MMscf/D"
+        rate_summary_early = f"{q_gas_early:.2f} MMscf/D ({cgr_early:.1f} CGR)"
+        rate_summary_late = f"{q_gas_late:.2f} MMscf/D ({cgr_late:.1f} CGR)"
+        ratio_summary_early = f"{wgr_early:.1f} bbl/MMscf WGR"
+        ratio_summary_late = f"{wgr_late:.1f} bbl/MMscf WGR"
         governing_msg = "Salama sand erosion v_m < v_eros (Early) vs. Solid transport v_m > v_carrying (Late)"
     else:
         rate_summary_early = f"{q_liq_early:.1f} STB/D ({wc_early:.1f}% WC)"
-        rate_summary_late = f"{(q_liq_early * ((1 - decline_rate/100.0)**field_life)):.1f} STB/D"
+        rate_summary_late = f"{q_liq_late:.1f} STB/D ({wc_late:.1f}% WC)"
+        ratio_summary_early = f"{gor_early:.1f} scf/STB GOR"
+        ratio_summary_late = f"{gor_late:.1f} scf/STB GOR"
         governing_msg = "Peak production velocity (Early) vs. Hydrostatic head drawdown (Late)"
 
     summary_html = f""" 
@@ -1217,20 +1291,38 @@ elif page == "3. Well & Fluid Inputs":
             <tr style="border-bottom: 1px solid #E2E8F0;"> 
                 <td style="padding: 10px; font-weight: 600;">Bottomhole Pressure (P<sub>bhp</sub>)</td> 
                 <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{(p_bhp_early * 0.5):.1f} psi</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_bhp_late:.1f} psi</td> 
                 <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Drawdown head limit (Late)</td> 
             </tr> 
             <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
+                <td style="padding: 10px; font-weight: 600;">Wellhead Pressure (P<sub>wh</sub>)</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_wh_early:.1f} psi</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_wh_late:.1f} psi</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">High tubing pressure safety (Early) vs. Minimum surface arrival pressure (Late)</td> 
+            </tr> 
+            <tr style="border-bottom: 1px solid #E2E8F0;"> 
                 <td style="padding: 10px; font-weight: 600;">Flow Rate & Sand PPTB</td> 
                 <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early} | Sand: {sand_rate_pptb} PPTB</td> 
                 <td style="padding: 10px; color: #B45309; font-weight: 600;">{rate_summary_late}</td> 
                 <td style="padding: 10px; font-size: 0.82rem; color: #475569;">{governing_msg}</td> 
             </tr> 
+            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
+                <td style="padding: 10px; font-weight: 600;">Producing Ratios</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{ratio_summary_early}</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{ratio_summary_late}</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Multiphase fluid density homogenization (&rho;<sub>m</sub>)</td> 
+            </tr> 
             <tr style="border-bottom: 1px solid #E2E8F0;"> 
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Temp (BHT)</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{bht_early:.1f} °F</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{bht_late:.1f} °F</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Thermal expansion & APB load (Early) vs. Tubing cooling contraction (Late)</td> 
+            </tr> 
+            <tr style="background-color: #F8FAFC;"> 
                 <td style="padding: 10px; font-weight: 600;">Shut-In CITHP</td> 
                 <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{cithp_input:.1f} psi</td> 
                 <td style="padding: 10px; color: #B45309; font-weight: 600;">{(cithp_input * 0.7):.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Static surface pipe burst safety factor (SF_burst >= 1.10)</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Static surface pipe burst safety factor (SF_burst &ge; 1.10)</td> 
             </tr> 
         </tbody> 
     </table> 
@@ -1238,6 +1330,9 @@ elif page == "3. Well & Fluid Inputs":
     st.markdown(summary_html, unsafe_allow_html=True) 
     st.markdown("<br/>", unsafe_allow_html=True) 
 
+    # ------------------------------------------------------------------------- 
+    # ACTION BUTTON: SAVE & RUN MODEL
+    # ------------------------------------------------------------------------- 
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
     with col_btn2: 
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
@@ -1245,19 +1340,24 @@ elif page == "3. Well & Fluid Inputs":
                 "well_type": well_type,
                 "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
                 "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
+                "field_life_yrs": field_life, "decline_rate": decline_rate,
                 "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
                 "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
                 "sand_rate_pptb": sand_rate_pptb, "sand_size_microns": sand_size_microns, "sand_sg": sand_sg,
-                "lithology": lithology, "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
-                "decline_rate": decline_rate, "field_life_yrs": field_life
+                "lithology": lithology, 
+                "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
+                "p_bhp_late": p_bhp_late, "p_wh_late": p_wh_late, "bht_late": bht_late,
+                "manual_override_late": manual_override
             })
             if "Gas" in well_type:
                 st.session_state.inputs.update({
-                    "q_gas_mmscfd": q_gas_early, "cgr_stb_mmscf": cgr_early, "wgr_bbl_mmscf": wgr_early
+                    "q_gas_mmscfd": q_gas_early, "cgr_stb_mmscf": cgr_early, "wgr_bbl_mmscf": wgr_early,
+                    "q_gas_late": q_gas_late, "cgr_late": cgr_late, "wgr_late": wgr_late
                 })
             else:
                 st.session_state.inputs.update({
-                    "q_liquid": q_liq_early, "water_cut": wc_early, "gor": gor_early
+                    "q_liquid": q_liq_early, "water_cut": wc_early, "gor": gor_early,
+                    "q_liq_late": q_liq_late, "wc_late": wc_late, "gor_late": gor_late
                 })
             st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
 
