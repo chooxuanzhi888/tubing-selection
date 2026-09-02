@@ -51,39 +51,30 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 if 'inputs' not in st.session_state:
     st.session_state.inputs = {
-        'well_type': 'Oil Well (Liquid Dominated)',
-        'lithology': 'Sandstone (C=120)',
-        'tvd': 10000.0,
-        'md': 11500.0,
-        'dls': 2.0,
-        'casing_id': 8.681,
-        'p_wh': 800.0,
-        'p_bhp': 4500.0,
-        'cithp': 3800.0,
-        't_wh': 75.0,
-        't_bht': 210.0,
-        't_ambient': 75.0,
-        'annular_fluid': 'Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)',
-        # Oil Well Parameters
-        'q_liquid': 5000.0,
-        'water_cut': 5.0,
-        'gor': 800.0,
-        # Gas Well Parameters
-        'q_gas_mmscfd': 15.0,
-        'cgr_stb_mmscf': 25.0,
-        'wgr_bbl_mmscf': 5.0,
-        # Fluid & Chemical PVT
+        'well_type': 'Oil Well',
+        'lithology': 'Sandstone',
+        'tvd': 8000.0,
+        'md': 9500.0,
+        'dls': 1.5,
+        'p_wh': 500.0,
+        'p_bhp': 3200.0,
+        't_wh': 80.0,
+        't_bht': 180.0,
+        't_ambient': 60.0,
+        'annular_fluid': 'Fresh Water / Light Brine',
+        'q_liquid': 3500.0,
+        'water_cut': 25.0,
+        'gor': 600.0,
         'api_gravity': 35.0,
         'gas_sg': 0.65,
-        'water_sg': 1.05,
+        'water_sg': 1.02,
         'oil_visc': 1.5,
-        'co2_mole_pct': 2.5,
-        'h2s_ppm': 150.0,
-        'ph_val': 6.5,
-        'chlorides_ppm': 35000.0,
-        'field_life_yrs': 20,
-        'decline_rate': 8.0,
-        'sf_triaxial': 1.25
+        'co2_mole_pct': 3.5,
+        'h2s_ppm': 50.0,
+        'ph_val': 5.5,
+        'chlorides_ppm': 25000.0,
+        'field_life_yrs': 15,
+        'decline_rate': 8.0
     }
 
 if 'tubing_db' not in st.session_state:
@@ -92,17 +83,14 @@ if 'tubing_db' not in st.session_state:
     else:
         st.session_state.tubing_db = pd.DataFrame([
             {"Name": '2-3/8" L80-1 (4.6#)', "OD_in": 2.375, "ID_in": 1.995, "Weight_lbft": 4.60, "Grade": "L80-1", "UNS_Code": "K08000", "Material": "NACE Carbon Steel", "Connection": "API EUE", "Yield_psi": 80000, "Burst_psi": 11200},
-            {"Name": '2-7/8" L80-1 (6.5#)', "OD_in": 2.875, "ID_in": 2.441, "Weight_lbft": 6.50, "Grade": "L80-1", "UNS_Code": "K08000", "Material": "NACE Carbon Steel", "Connection": "API EUE", "Yield_psi": 80000, "Burst_psi": 10570},
             {"Name": '3-1/2" L80-13Cr (9.2#)', "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.20, "Grade": "L80-13Cr", "UNS_Code": "S41000", "Material": "Martensitic Stainless", "Connection": "Premium (VAM Top)", "Yield_psi": 80000, "Burst_psi": 10160},
-            {"Name": '3-1/2" P110 (9.2#)', "OD_in": 3.500, "ID_in": 2.992, "Weight_lbft": 9.20, "Grade": "P110", "UNS_Code": "K01100", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 13970},
-            {"Name": '4-1/2" P110 (12.6#)', "OD_in": 4.500, "ID_in": 3.958, "Weight_lbft": 12.60, "Grade": "P110", "UNS_Code": "K01100", "Material": "High-Strength Alloy", "Connection": "Premium (VAM Top)", "Yield_psi": 110000, "Burst_psi": 10690},
             {"Name": '9-5/8" P110 (53.5#)', "OD_in": 9.625, "ID_in": 8.535, "Weight_lbft": 53.50, "Grade": "P110", "UNS_Code": "K01100", "Material": "High-Strength Alloy", "Connection": "Premium (TenarisHydril)", "Yield_psi": 110000, "Burst_psi": 10860}
         ])
 
 ANNULAR_FLUID_PROPS = {
-    "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)": {"alpha_v": 2.1e-4, "kappa_t": 3.0e-6},
-    "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)": {"alpha_v": 7.0e-4, "kappa_t": 5.0e-6},
-    "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)": {"alpha_v": 3.5e-4, "kappa_t": 2.5e-6}
+    "Fresh Water / Light Brine": {"alpha_v": 2.1e-4, "kappa_t": 3.0e-6},
+    "Heavy Brine (CaCl2/ZnBr2)": {"alpha_v": 3.0e-4, "kappa_t": 3.2e-6},
+    "Oil-Based Packer Fluid (OBM)": {"alpha_v": 4.5e-4, "kappa_t": 5.5e-6}
 }
 
 def compute_dynamic_z_factor(p_psi, t_deg_r, gas_sg):
@@ -119,49 +107,30 @@ def compute_dynamic_z_factor(p_psi, t_deg_r, gas_sg):
 def run_engineering_calculations(inputs, candidate_df):
     results = []
     
-    is_gas_well = "Gas Well" in inputs.get('well_type', 'Oil Well')
     p_avg = (inputs['p_wh'] + inputs['p_bhp']) / 2.0
     t_avg_f = (inputs['t_wh'] + inputs['t_bht']) / 2.0
     t_avg_r = t_avg_f + 459.67
     t_bht_c = (inputs['t_bht'] - 32.0) * (5.0 / 9.0)
     
-    # -------------------------------------------------------------------------
-    # FLUID PVT & VOLUMETRIC RATE ENGINE
-    # -------------------------------------------------------------------------
     gamma_o = 141.5 / (131.5 + inputs['api_gravity'])
+    rs_scf_stb = inputs['gas_sg'] * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * inputs['api_gravity'] - 0.00091 * t_avg_f))) ** 1.2048
+    rs_scf_stb = min(rs_scf_stb, inputs['gor'])
     
-    if is_gas_well:
-        q_g_scf_d = inputs.get('q_gas_mmscfd', 15.0) * 1e6
-        q_cond_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('cgr_stb_mmscf', 25.0)
-        q_wat_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('wgr_bbl_mmscf', 5.0)
-        
-        rs_scf_stb = 0.0
-        bo_rb_stb = 1.05
-        rho_o_live = 62.4 * gamma_o
-        rho_w = inputs['water_sg'] * 62.4
-        
-        q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
-        wc_frac = q_wat_stbd / (q_cond_stbd + q_wat_stbd) if (q_cond_stbd + q_wat_stbd) > 0 else 0.0
-        rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w if (q_cond_stbd + q_wat_stbd) > 0 else rho_o_live
-    else:
-        rs_scf_stb = inputs['gas_sg'] * (((p_avg / 18.2) + 1.4) * (10 ** (0.0125 * inputs['api_gravity'] - 0.00091 * t_avg_f))) ** 1.2048
-        rs_scf_stb = min(rs_scf_stb, inputs['gor'])
-        
-        bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((inputs['gas_sg'] / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
-        rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * inputs['gas_sg']) / bo_rb_stb
-        rho_w = inputs['water_sg'] * 62.4
-        
-        wc_frac = inputs['water_cut'] / 100.0
-        rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
-        
-        q_l_ft3s = (inputs['q_liquid'] * 5.615) / 86400.0
-        q_o_stb = inputs['q_liquid'] * (1.0 - wc_frac)
-        free_gas_gor = max(inputs['gor'] - rs_scf_stb, 0.0)
-        q_g_scf_d = q_o_stb * free_gas_gor
-
+    bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((inputs['gas_sg'] / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
+    rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * inputs['gas_sg']) / bo_rb_stb
+    rho_w = inputs['water_sg'] * 62.4
+    
+    wc_frac = inputs['water_cut'] / 100.0
+    rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
+    
     z_factor = compute_dynamic_z_factor(p_avg, t_avg_r, inputs['gas_sg'])
     rho_g = (2.7 * inputs['gas_sg'] * p_avg) / (z_factor * t_avg_r)
     rho_g = max(rho_g, 0.05)
+        
+    q_l_ft3s = (inputs['q_liquid'] * 5.615) / 86400.0
+    q_o_stb = inputs['q_liquid'] * (1.0 - wc_frac)
+    free_gas_gor = max(inputs['gor'] - rs_scf_stb, 0.0)
+    q_g_scf_d = q_o_stb * free_gas_gor
     
     q_g_ft3s = (q_g_scf_d * 14.7 * t_avg_r * z_factor) / (p_avg * 520.0 * 86400.0)
     q_m_ft3s = max(q_l_ft3s + q_g_ft3s, 1e-6)
@@ -170,31 +139,26 @@ def run_engineering_calculations(inputs, candidate_df):
     rho_m = lambda_l * rho_l + (1.0 - lambda_l) * rho_g
     
     mu_w_cp = 0.5
-    mu_l_cp = (1.0 - wc_frac) * inputs.get('oil_visc', 1.5) + wc_frac * mu_w_cp
+    mu_l_cp = (1.0 - wc_frac) * inputs['oil_visc'] + wc_frac * mu_w_cp
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
     
-    # Corrosion & Environmental Limits
+    # Partial Pressures for NACE Screening
     p_h2s_psia = inputs['p_bhp'] * (inputs['h2s_ppm'] / 1e6)
     p_co2_psia = inputs['p_bhp'] * (inputs['co2_mole_pct'] / 100.0)
     is_sour_service = p_h2s_psia >= 0.05
     
-    # Late Life Hydraulics
-    decline_factor = (1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs']
-    q_m_late = q_m_ft3s * decline_factor
+    late_life_q = inputs['q_liquid'] * ((1.0 - (inputs['decline_rate'] / 100.0)) ** inputs['field_life_yrs'])
+    q_m_late = (late_life_q * 5.615 / 86400.0) + q_g_ft3s
     
-    # Dynamic APB Pressure Rise
-    fluid_props = ANNULAR_FLUID_PROPS.get(inputs['annular_fluid'], ANNULAR_FLUID_PROPS["Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)"])
+    fluid_props = ANNULAR_FLUID_PROPS.get(inputs['annular_fluid'], ANNULAR_FLUID_PROPS["Fresh Water / Light Brine"])
     alpha_v = fluid_props['alpha_v']
     kappa_t = fluid_props['kappa_t']
     
     delta_t_annular = max(t_avg_f - inputs['t_ambient'], 0.0)
     dp_apb_psi = (alpha_v / kappa_t) * delta_t_annular
     p_annular_total_wh = inputs['p_wh'] + dp_apb_psi
-
-    # -------------------------------------------------------------------------
-    # CANDIDATE EVALUATION LOOP
-    # -------------------------------------------------------------------------
+    
     for _, row in candidate_df.iterrows():
         id_ft = row['ID_in'] / 12.0
         od_ft = row['OD_in'] / 12.0
@@ -217,10 +181,10 @@ def run_engineering_calculations(inputs, candidate_df):
         dp_fric = (f * inputs['md'] * rho_m * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
         dp_total = dp_hydro + dp_fric
         
-        c_factor = 120.0 if "Sandstone" in inputs.get('lithology', 'Sandstone') else 150.0
-        if is_gas_well:
-            c_factor -= 20.0
-            
+        if inputs.get('lithology', 'Sandstone') == 'Sandstone':
+            c_factor = 100.0 if inputs['well_type'] == 'Gas Well' else 120.0
+        else:
+            c_factor = 125.0 if inputs['well_type'] == 'Gas Well' else 150.0 
         v_erosional = c_factor / np.sqrt(rho_m)
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
@@ -255,13 +219,8 @@ def run_engineering_calculations(inputs, candidate_df):
         
         vme_stress_psi = np.sqrt(0.5 * ((sigma_hoop_psi - sigma_radial_psi)**2 + (sigma_radial_psi - sigma_axial_psi)**2 + (sigma_axial_psi - sigma_hoop_psi)**2))
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
-        stress_pass = triaxial_sf >= inputs.get('sf_triaxial', 1.25)
+        stress_pass = triaxial_sf >= 1.25
         
-        # Static CITHP Surface Burst Screening
-        cithp_val = inputs.get('cithp', inputs['p_wh'])
-        burst_sf = row['Burst_psi'] / cithp_val if cithp_val > 0 else 99.0
-        burst_pass = burst_sf >= 1.10
-
         # Temperature Constraints
         temp_pass = True
         temp_reason = "Compatible"
@@ -290,14 +249,10 @@ def run_engineering_calculations(inputs, candidate_df):
         conn_reasons = []
         needs_premium = False
         
-        if is_gas_well or inputs.get('gor', 0) > 2000 or inputs.get('q_gas_mmscfd', 0) > 10.0:
+        if inputs['well_type'] == 'Gas Well' or inputs['gor'] > 2000:
             needs_premium = True
-            conn_reasons.append("High Gas Stream (Metal-to-Metal Seal Required)")
+            conn_reasons.append("High Gas Ratio (Gas-Tight Metal Seal Required)")
             
-        if cithp_val > 3000:
-            needs_premium = True
-            conn_reasons.append(f"High Static CITHP ({round(cithp_val,0)} psi) - Thread Leak Risk")
-
         if dp_apb_psi > 1500:
             needs_premium = True
             conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi) - Thread Dope Washout Risk")
@@ -320,7 +275,7 @@ def run_engineering_calculations(inputs, candidate_df):
             conn_status_msg = "Premium Connection Validated (" + "; ".join(conn_reasons) + ")"
 
         overall_pass = (hydraulics_pass and velocity_pass and late_life_pass and 
-                        material_pass and stress_pass and connection_pass and temp_pass and burst_pass)
+                        material_pass and stress_pass and connection_pass and temp_pass)
         
         results.append({
             "Name": row['Name'],
@@ -338,11 +293,9 @@ def run_engineering_calculations(inputs, candidate_df):
             "dp_total_psi": round(dp_total, 1),
             "dp_avail_psi": round(dp_available, 1),
             "dp_apb_psi": round(dp_apb_psi, 1),
-            "cithp_psi": round(cithp_val, 1),
             "f_axial_klbs": round(f_axial_total_klbs, 1),
             "vme_stress_psi": round(vme_stress_psi, 0),
             "triaxial_sf": round(triaxial_sf, 2),
-            "burst_sf": round(burst_sf, 2),
             "Z_Factor": round(z_factor, 3),
             "Bo_rb_stb": round(bo_rb_stb, 3),
             "Hydraulics_Pass": hydraulics_pass,
@@ -350,7 +303,6 @@ def run_engineering_calculations(inputs, candidate_df):
             "Late_Life_Pass": late_life_pass,
             "Material_Pass": material_pass,
             "Stress_Pass": stress_pass,
-            "Burst_Pass": burst_pass,
             "Temp_Pass": temp_pass,
             "Connection_Pass": connection_pass,
             "Connection_Reason": conn_status_msg,
@@ -504,6 +456,7 @@ if page == "1. Introduction & Overview":
     if os.path.exists("Figure 4.png"):
         st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
 
+    # --- ASSUMPTIONS & LIMITATIONS SECTION ---
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem;">
         <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">Model Assumptions & Design Limitations</h2>
@@ -535,17 +488,23 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, static CITHP burst, stress analysis, and dual-lifecycle screening.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Step-by-step mathematical guide: mapping wellbore inputs through fluid PVT, hydraulics, stress analysis, and dual-lifecycle screening.</div>', unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # WORKFLOW OVERVIEW CARD
+    # -------------------------------------------------------------------------
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1rem;">
         <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Dual-Lifecycle Candidate Screening Workflow</h3>
         <p style="font-size: 0.9rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
-            Tubing selection requires evaluating candidates against a <b>Dual Operational Envelope</b>: <i>Early-Life (Peak Production)</i> and <i>Late-Life (Depleted Reservoir / High Water Cut)</i>, alongside a static <i>Closed-In Tubing Head Pressure (CITHP)</i> surface burst check.
+            Tubing selection requires evaluating candidates against a <b>Dual Operational Envelope</b>: <i>Early-Life (Peak Production)</i> and <i>Late-Life (Depleted Reservoir / High Water Cut)</i>. Candidates pass sequentially through thermodynamic fluid models, hydraulic velocity envelopes, Lubinski load balances, and environmental gates. A tubing string achieves a final status of <b>PASS</b> only if it satisfies all engineering criteria across <b>BOTH</b> lifecycle phases.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # WORKFLOW OVERVIEW & SEQUENTIAL CANDIDATE SCREENING FUNNEL (HTML/CSS)
+    # -------------------------------------------------------------------------
     diagram_html = """
 <style>
     .funnel-wrapper {
@@ -611,7 +570,7 @@ elif page == "2. Calculation Methodology":
     </div>
     <div class="funnel-card" style="background-color: #DBEAFE; color: #1E3A8A; border-left: 4px solid #3B82F6;">
         <b>Step 1: In-Situ Fluid PVT & Density Engine</b><br/>
-        <span style="font-size: 0.8rem;">Evaluates live oil/brine & gas/condensate mixture density (&rho;<sub>m</sub>) across operational states</span>
+        <span style="font-size: 0.8rem;">Evaluates live oil & brine mixture density (&rho;<sub>m</sub>) across both lifecycle phases</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
@@ -620,7 +579,7 @@ elif page == "2. Calculation Methodology":
     </div>
     <div class="funnel-card" style="background-color: #FEF3C7; color: #78350F; border-left: 4px solid #F59E0B;">
         <b>Step 2: Flow Dynamics & Dual Velocity Operating Envelope</b><br/>
-        <span style="font-size: 0.8rem;">Early: v<sub>m</sub> < v<sub>erosional</sub> &nbsp;|&nbsp; Late: v<sub>m</sub> > v<sub>critical</sub> (Turner Droplet Lift)</span>
+        <span style="font-size: 0.8rem;">Early: v<sub>m</sub> < v<sub>erosional</sub> &nbsp;|&nbsp; Late: v<sub>m</sub> > v<sub>critical</sub> (Droplet Lift)</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
@@ -628,7 +587,7 @@ elif page == "2. Calculation Methodology":
         <div class="funnel-text">Hydraulically Compliant Sizes</div>
     </div>
     <div class="funnel-card" style="background-color: #D1FAE5; color: #065F46; border-left: 4px solid #10B981;">
-        <b>Step 3: Lubinski Load Balance & Triaxial Yield Matrix</b><br/>
+        <b>Step 3: Lubinski Net Load Balance & Triaxial Yield Matrix</b><br/>
         <span style="font-size: 0.8rem;">Early: Thermal Expansion & APB &nbsp;|&nbsp; Late: Cooling Contraction & Differential Drawdown</span>
     </div>
     <div class="funnel-connector">
@@ -637,8 +596,8 @@ elif page == "2. Calculation Methodology":
         <div class="funnel-text">Structurally Sound Pipe</div>
     </div>
     <div class="funnel-card" style="background-color: #EDE9FE; color: #5B21B6; border-left: 4px solid #8B5CF6;">
-        <b>Step 4: Shut-In CITHP Burst, Metallurgy & Connection Gate</b><br/>
-        <span style="font-size: 0.8rem;">Filter: Static CITHP Surface Burst (SF &ge; 1.10), NACE Sour Service (p<sub>H2S</sub>) & Premium Threads</span>
+        <b>Step 4: Environmental Integrity, APB & Metallurgy Gate</b><br/>
+        <span style="font-size: 0.8rem;">Filter: NACE Sour Service (p<sub>H2S</sub>), BHT Yield Derating & Connection Profile</span>
     </div>
     <div class="funnel-connector">
         <div class="funnel-line"></div>
@@ -646,14 +605,17 @@ elif page == "2. Calculation Methodology":
         <div class="funnel-text">Dual-Lifecycle Compliant Candidate</div>
     </div>
     <div class="funnel-card" style="background-color: #059669; color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">
-        Optimal Preferred Tubing Candidate (Passes All Hydraulics, Load & Environmental Screenings)
+        Optimal Preferred Tubing Candidate (Passes Early & Late Life)
     </div>
 </div>
 """
     st.markdown(diagram_html, unsafe_allow_html=True)
+
     st.markdown("---")
 
+    # -------------------------------------------------------------------------
     # SECTION A: INPUT-TO-CALCULATION MAPPING MATRIX
+    # -------------------------------------------------------------------------
     st.markdown("""
     <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
         <h3 style="color: #1E3A8A; font-size: 1.2rem; margin-bottom: 0.4rem; font-weight: 700;">🔗 Dual Lifecycle Parameter Mapping</h3>
@@ -665,26 +627,28 @@ elif page == "2. Calculation Methodology":
 
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
-        st.info("**1. PVT & Density**\n\n* **Oil Well:** High $P_{bhp}$, live oil expansion ($B_o$).\n* **Gas Well:** Gas density ($\rho_g$) driven by $Q_g$ and $CGR$ condensate drop-out.")
+        st.info("**1. PVT & Density**\n\n* **Early:** High $P_{bhp}$, live oil expansion ($B_o$).\n* **Late:** Lower $P_{bhp}$, high water cut ($f_w$), heavy mixture density ($\\rho_m$).")
     with col_m2:
         st.info("**2. Flow & Hydraulics**\n\n* **Early:** Peak rates risk pipe wall erosion ($v_m > v_{eros}$).\n* **Late:** Low gas rates risk liquid loading ($v_m < v_{crit}$).")
     with col_m3:
-        st.info("**3. Loads & Stress**\n\n* **Early:** High BHT causes thermal expansion ($F_{thermal}$) & APB.\n* **Shut-In:** CITHP generates peak surface burst load.")
+        st.info("**3. Loads & Stress**\n\n* **Early:** High BHT causes thermal expansion ($F_{thermal}$) & APB.\n* **Late:** Well cooling causes tubing tension & differential collapse.")
     with col_m4:
         st.info("**4. Environmental**\n\n* **Early:** Peak $P_{bhp}$ maximizes $H_2S$ partial pressure ($p_{H_2S}$).\n* **Late:** High water production increases scaling/corrosion risk.")
 
     st.markdown("---")
 
+    # -------------------------------------------------------------------------
     # STEP 1: FLUID THERMODYNAMICS & IN-SITU DENSITY MODEL
-    st.markdown("### Step 1: Dynamic Fluid PVT Engine")
-    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature across Oil Well and Gas/Condensate Well operational modes.")
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 1: Fluid Thermodynamics & In-Situ Density Model")
+    st.caption("Purpose: Determine real fluid properties at subsurface pressure and temperature across both Early-Life and Late-Life operational states.")
     
     col1_1, col1_2 = st.columns(2)
     with col1_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Oil Well Mode (Standing's Correlations)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Estimates dissolved gas ($R_s$) and oil formation volume factor ($B_o$):</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.1 Live Oil Solution GOR (R<sub>s</sub>) & FVF (B<sub>o</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing's empirical correlations estimate dissolved gas and oil volume expansion at average wellbore conditions:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
@@ -693,17 +657,20 @@ elif page == "2. Calculation Methodology":
     with col1_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Well Mode (Q<sub>g</sub>, CGR & WGR Rates)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Converts gas throughput and liquid ratios directly to volumetric flow rate:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">1.2 Gas Z-Factor & Homogenized Mixture Density (&rho;<sub>m</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Standing-Katz pseudocritical methods compute gas compressibility Z-factor and multiphase density:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"q_o = Q_g \times CGR \quad [\text{STB/D}], \quad q_w = Q_g \times WGR \quad [\text{STB/D}]")
-        st.latex(r"q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}")
+        st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg, R}}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
+        st.latex(r"\rho_m = \lambda_l \rho_l + (1 - \lambda_l) \rho_g \quad \text{where } \lambda_l = \frac{q_l}{q_l + q_g}")
 
     st.info("🎯 **Step 1 Candidate Gate:** Validates thermodynamic fluid state convergence for both Early-Life and Late-Life reservoir conditions.")
+
     st.markdown("---")
 
+    # -------------------------------------------------------------------------
     # STEP 2: FLOW DYNAMICS & DUAL VELOCITY WINDOW
+    # -------------------------------------------------------------------------
     st.markdown("### Step 2: Multiphase Hydraulics & Dual-Velocity Operating Window")
     st.caption("Purpose: Ensure the tubing ID allows fluids to flow within safe velocity boundaries in Early-Life while avoiding liquid loading in Late-Life.")
 
@@ -712,26 +679,29 @@ elif page == "2. Calculation Methodology":
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Pressure Loss (&Delta;P<sub>total</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent friction via Colebrook-White friction factor (f):</p>
+            <p style="font-size: 0.9rem; color: #475569;">Combines hydrostatic head and turbulent pipe friction via Colebrook-White friction factor (f):</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\Delta P_{total} = \frac{\rho_m \cdot TVD}{144} + \frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}")
+        st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_m \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_m \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
         st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right]")
 
     with col2_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
             <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Operating Velocity Envelope Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between Turner droplet lift minimums and lithology erosion limits:</p>
+            <p style="font-size: 0.9rem; color: #475569;">Screens mixture velocity (v<sub>m</sub>) between Turner droplet lift minimums and lithology-adjusted erosion limits:</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Droplet Lift)}")
         st.latex(r"v_{erosional} = \frac{C}{\sqrt{\rho_m}} \quad \text{(API RP 14E: } C_{sandstone}=120, C_{carbonate}=150\text{)}")
 
     st.warning("🚫 **Step 2 Candidate Gate:** Rejects candidates if Early-Life rate causes pipe erosion ($v_m > v_{erosional}$) OR if Late-Life rate drops below liquid lift velocity ($v_m < v_{critical}$).")
+
     st.markdown("---")
 
+    # -------------------------------------------------------------------------
     # STEP 3: STRUCTURAL LOAD BALANCE & TRIAXIAL STRESS MATRIX
+    # -------------------------------------------------------------------------
     st.markdown("### Step 3: Lubinski Net Load Balance & von Mises Triaxial Stress")
     st.caption("Purpose: Verify structural integrity under peak Early-Life thermal expansion/APB and Late-Life cooling tension/differential collapse.")
 
@@ -745,6 +715,9 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
         st.latex(r"F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
+        st.markdown("* **Gravity ($F_g$):** Buoyed pipe weight $W_{lbft} \cdot MD \cdot (1 - \\rho_m / 490)$.")
+        st.markdown("* **Piston ($F_p$):** Pressure area imbalance across packers/seals.")
+        st.markdown("* **Ballooning ($F_b$):** Radial pressure expansion shortening via Poisson's ratio ($\nu = 0.3$).")
 
     with col3_2:
         st.markdown("""
@@ -753,26 +726,31 @@ elif page == "2. Calculation Methodology":
             <p style="font-size: 0.9rem; color: #475569;">Calculates 3D principal stresses (Axial &sigma;<sub>z</sub>, Hoop &sigma;<sub>&theta;</sub>, Radial &sigma;<sub>r</sub>) including dogleg curvature bending:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + 218 \cdot OD \cdot DLS")
+        st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
+        st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]}")
 
-    st.success("🛡️ **Step 3 Candidate Gate:** Rejects candidates failing minimum safety factor limits ($SF_{triaxial} < 1.25$).")
+    st.success("🛡️ **Step 3 Candidate Gate:** Rejects candidates failing minimum safety factor limits ($SF_{triaxial} < 1.25$) in either Early-Life expansion or Late-Life contraction.")
+
     st.markdown("---")
 
-    # STEP 4: ENVIRONMENTAL & SHUT-IN CITHP BURST SCREENING
-    st.markdown("### Step 4: Dynamic APB, Static CITHP Surface Burst & Metallurgy Screening")
-    st.caption("Purpose: Evaluate static CITHP surface burst margins, dynamic APB, NACE MR0175 sour service, and connection profile mandates.")
+    # -------------------------------------------------------------------------
+    # STEP 4: ENVIRONMENTAL INTEGRITY & MATERIAL SCREENING
+    # -------------------------------------------------------------------------
+    st.markdown("### Step 4: Dynamic APB, Metallurgy & Connection Screening")
+    st.caption("Purpose: Model thermal annular pressure build-up, prevent NACE corrosion cracking, and enforce gas-tight thread profiles.")
 
     col4_1, col4_2 = st.columns(2)
     with col4_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #8B5CF6;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Static CITHP Surface Burst Check</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Evaluates surface burst load under static shut-in conditions:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">4.1 Dynamic Annular Pressure Build-up (&Delta;P<sub>APB</sub>)</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Calculates thermal fluid expansion pressure rise in unvented annuli during Early-Life production:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\text{CITHP} = P_{bhp} \cdot e^{-\left(\frac{M \cdot TVD}{Z \cdot R \cdot T_{avg}}\right)}")
-        st.latex(r"SF_{burst} = \frac{\text{Candidate Burst Rating [psi]}}{\text{CITHP [psi]}} \ge 1.10")
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \cdot \Delta T_{annular}")
+        st.latex(r"\Delta T_{annular} = T_{producing\_avg} - T_{geothermal\_avg}")
+        st.caption("• **Fluid Parameters:** Uses thermal expansion ($\\alpha_v$) and isothermal compressibility ($\\kappa_T$) for trapped annular brine/OBM.")
 
     with col4_2:
         st.markdown("""
@@ -781,127 +759,181 @@ elif page == "2. Calculation Methodology":
             <p style="font-size: 0.9rem; color: #475569;">Screens material degradation and mandates gas-tight thread profiles:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
-        st.markdown("* **Premium Connection Mandate:** Required if Gas Well, GOR $> 2000$, $Q_g > 10 \text{ MMscf/D}$, $\text{CITHP} > 3000\text{ psi}$, $\Delta P_{APB} > 1500\text{ psi}$, Depth $> 10,000\text{ ft}$, or CRA metallurgy.")
+        st.latex(r"p_{H_2S} = P_{bhp, early} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
+        st.markdown("* **Sour Service Screening:** Flags sour service if $p_{H_2S} \ge 0.05\\text{ psia}$. Standard carbon steels fail; L80-1 or CRA materials are enforced.")
+        st.markdown("* **Premium Connection Enforcer:** Mandates gas-tight metal-to-metal seals if Gas Well, GOR $> 2000$, $\\Delta P_{APB} > 1500\\text{ psi}$, Depth $> 10,000\\text{ ft}$, or CRA metallurgy.")
 
-    st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy, flags static CITHP burst failures, and enforces Premium Connections when APB or gas leak risk is elevated.")
+    st.error("☣️ **Step 4 Candidate Gate:** Eliminates non-NACE compliant metallurgy under peak Early-Life $p_{H_2S}$, flags thermal yield derating, and enforces Premium Connections when APB or gas risk is elevated.")
 
 # ----------------------------------------------------------------------------- 
 # PAGE 3: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
 # ----------------------------------------------------------------------------- 
-elif page == "3. Well & Fluid Inputs": 
+elif "3." in page: 
     st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
-    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, completion targets, dynamic rate modes, and static CITHP pressure envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental water chemistry, completion targets, and dual-lifecycle production envelopes.</div>', unsafe_allow_html=True) 
 
+    # ------------------------------------------------------------------------- 
+    # MAIN NAVIGATION TABS 
+    # ------------------------------------------------------------------------- 
     tab_geo, tab_early, tab_late = st.tabs([ 
-        "📐 1. Architecture, PVT & Shut-In CITHP",  
+        "📐 1. Architecture, Chemistry & Targets",  
         "🚀 2. Early-Life (Initial Production)",  
-        "📉 3. Late-Life (Depleted Envelopes)"
+        "📉 3. Late-Life (Depleted / High Water Cut)"
     ]) 
 
-    # TAB 1: ARCHITECTURE & SHUT-IN
+    # ------------------------------------------------------------------------- 
+    # TAB 1: ARCHITECTURE, PVT, CORROSIVITY & COMPLETION TARGETS
+    # ------------------------------------------------------------------------- 
     with tab_geo: 
-        st.markdown("#### 📐 Subsurface Geometry & Dynamic Well Mode") 
+        # ---------------------------------------------------------------------
+        # CATEGORY 1: SUBSURFACE ARCHITECTURE & CASING GEOMETRY
+        # ---------------------------------------------------------------------
+        st.markdown("#### 📐 1. Subsurface Architecture & Casing Geometry") 
         col_g1, col_g2, col_g3 = st.columns(3) 
          
         with col_g1: 
-            well_type = st.selectbox(
-                "Well Type Category", 
-                ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"],
-                index=0 if "Oil" in st.session_state.inputs['well_type'] else 1
-            )
-            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.0, max_value=30000.0, value=float(st.session_state.inputs['tvd']), step=100.0) 
+            well_type = st.selectbox("Well Type Category", ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"])
+            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.000, max_value=30000.000, value=10000.000, step=100.000, format="%.3f") 
         
         with col_g2:
-            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.0, max_value=35000.0, value=float(st.session_state.inputs['md']), step=100.0) 
-            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, value=float(st.session_state.inputs['dls']), step=0.1) 
+            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.000, max_value=35000.000, value=11500.000, step=100.000, format="%.3f") 
+            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.000, max_value=15.000, value=2.000, step=0.100, format="%.3f") 
 
         with col_g3:
-            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(st.session_state.inputs['casing_id']), step=0.001)
+            casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.000, max_value=13.375, value=8.681, step=0.001, format="%.3f")
 
         st.markdown("---")
-        st.markdown("#### 🛡️ Shut-In Conditions & Static CITHP Pressure")
-        col_s1, col_s2, col_s3 = st.columns(3)
 
-        with col_s1:
-            calc_cithp = round(st.session_state.inputs['p_bhp'] * np.exp(-0.000035 * tvd), 1)
-            cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(st.session_state.inputs.get('cithp', calc_cithp)), step=50.0)
+        # ---------------------------------------------------------------------
+        # CATEGORY 2: RESERVOIR FLUID PVT & MIXTURE PROPERTIES
+        # ---------------------------------------------------------------------
+        st.markdown("#### 🧪 2. Reservoir Fluid PVT Baseline & Lithology")
+        col_p1, col_p2, col_p3 = st.columns(3)
 
-        with col_s2:
-            sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.0, value=float(st.session_state.inputs.get('sf_triaxial', 1.25)), step=0.05)
+        with col_p1:
+            oil_api = st.number_input("Oil Gravity (°API)", min_value=10.000, max_value=60.000, value=35.000, step=0.100, format="%.3f") 
+        
+        with col_p2:
+            gas_sg = st.number_input("Gas Specific Gravity (Air=1.000)", min_value=0.550, max_value=1.200, value=0.650, step=0.001, format="%.3f") 
+            water_sg = st.number_input("Formation Water SG (Fresh=1.000)", min_value=1.000, max_value=1.250, value=1.050, step=0.001, format="%.3f") 
 
-        with col_s3:
-            annular_fluid = st.selectbox(
-                "Trapped Annular Packer Fluid Type", 
-                list(ANNULAR_FLUID_PROPS.keys()),
-                index=0
-            )
+        with col_p3:
+            lithology = st.selectbox("Reservoir Lithology (Erosion C-Factor)", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"]) 
 
         st.markdown("---")
-        st.markdown("#### 🧪 Baseline Fluid PVT & Corrosivity")
+
+        # ---------------------------------------------------------------------
+        # CATEGORY 3: CORROSIVITY & ENVIRONMENTAL CHEMISTRY
+        # ---------------------------------------------------------------------
+        st.markdown("#### ☣️ 3. Environmental Corrosivity & Water Chemistry")
         col_c1, col_c2, col_c3 = st.columns(3)
 
         with col_c1:
-            api_gravity = st.number_input("Oil/Condensate Gravity (°API)", min_value=10.0, max_value=70.0, value=float(st.session_state.inputs['api_gravity']), step=0.5)
-            gas_sg = st.number_input("Gas Specific Gravity (Air=1.00)", min_value=0.50, max_value=1.20, value=float(st.session_state.inputs['gas_sg']), step=0.01)
+            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.000, max_value=100000.000, value=150.000, step=1.000, format="%.3f") 
+            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.000, max_value=50.000, value=2.500, step=0.100, format="%.3f") 
 
         with col_c2:
-            h2s_ppm = st.number_input("H₂S Concentration (PPM)", min_value=0.0, max_value=100000.0, value=float(st.session_state.inputs['h2s_ppm']), step=10.0)
-            co2_pct = st.number_input("CO₂ Concentration (Mol %)", min_value=0.0, max_value=50.0, value=float(st.session_state.inputs['co2_mole_pct']), step=0.1)
+            water_chlorides = st.number_input("Water Chlorides Concentration (PPM Cl⁻)", min_value=0.000, max_value=250000.000, value=35000.000, step=1000.000, format="%.3f")
+            water_ph = st.number_input("Formation Water pH", min_value=2.000, max_value=10.000, value=6.500, step=0.100, format="%.3f")
 
         with col_c3:
-            lithology = st.selectbox("Reservoir Lithology", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
+            st.info("💡 **Metallurgical Impact:** H₂S partial pressure governs NACE MR0175 sour service limits, while CO₂ and Chlorides dictate pitting resistance requirements (PREN) for CRA materials.")
 
-    # TAB 2: EARLY LIFE
+        st.markdown("---")
+
+        # ---------------------------------------------------------------------
+        # CATEGORY 4: COMPLETION TARGETS, SAFETY LIMITS & THERMAL APB
+        # ---------------------------------------------------------------------
+        st.markdown("#### 🛡️ 4. Completion Targets, Structural Limits & Annular Thermal APB")
+        col_t1, col_t2, col_t3 = st.columns(3)
+
+        with col_t1:
+            target_life = st.number_input("Target Completion Lifespan (Years)", min_value=1.000, max_value=50.000, value=20.000, step=1.000, format="%.3f")
+            target_capacity = st.number_input("Design Production Capacity (STB/D)", min_value=500.000, max_value=50000.000, value=10000.000, step=500.000, format="%.3f")
+
+        with col_t2:
+            sf_triaxial = st.number_input("Min Triaxial Safety Factor (SF_vme)", min_value=1.000, max_value=2.500, value=1.250, step=0.050, format="%.3f")
+            surf_temp = st.number_input("Surface Ambient Temp (°F)", min_value=30.000, max_value=130.000, value=75.000, step=1.000, format="%.3f")
+
+        with col_t3:
+            annular_fluid = st.selectbox("Trapped Annular Packer Fluid Type", [
+                "Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)", 
+                "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)",
+                "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)"
+            ])
+
+    # ------------------------------------------------------------------------- 
+    # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE) 
+    # ------------------------------------------------------------------------- 
     with tab_early: 
         st.markdown("#### Early-Life Operating Conditions (Peak Rates & Thermal Loads)") 
         col_e1, col_e2, col_e3 = st.columns(3) 
 
         with col_e1: 
-            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.0, max_value=20000.0, value=float(st.session_state.inputs['p_bhp']), step=50.0) 
-            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.0, max_value=5000.0, value=float(st.session_state.inputs['p_wh']), step=20.0) 
+            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.000, max_value=20000.000, value=4500.000, step=10.000, format="%.3f") 
+            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.000, max_value=5000.000, value=800.000, step=10.000, format="%.3f") 
 
         with col_e2: 
-            if "Gas" in well_type:
-                q_gas_early = st.number_input("Early Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(st.session_state.inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
-                cgr_early = st.number_input("Early Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(st.session_state.inputs.get('cgr_stb_mmscf', 25.0)), step=1.0)
-            else:
-                q_liq_early = st.number_input("Early Liquid Rate (STB/D)", min_value=100.0, max_value=50000.0, value=float(st.session_state.inputs['q_liquid']), step=100.0) 
-                wc_early = st.number_input("Early Water Cut (%)", min_value=0.0, max_value=100.0, value=float(st.session_state.inputs['water_cut']), step=0.5) 
+            q_liq_early = st.number_input("Early Liquid Production Rate (STB/D)", min_value=100.000, max_value=30000.000, value=5000.000, step=50.000, format="%.3f") 
+            wc_early = st.number_input("Early Water Cut (%)", min_value=0.000, max_value=100.000, value=5.000, step=0.100, format="%.3f") 
 
         with col_e3: 
-            if "Gas" in well_type:
-                wgr_early = st.number_input("Early Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(st.session_state.inputs.get('wgr_bbl_mmscf', 5.0)), step=0.5)
-            else:
-                gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(st.session_state.inputs['gor']), step=50.0) 
-            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(st.session_state.inputs['t_bht']), step=1.0) 
+            gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=800.000, step=10.000, format="%.3f") 
+            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.000, max_value=400.000, value=210.000, step=0.500, format="%.3f") 
 
-    # TAB 3: LATE LIFE
+    # ------------------------------------------------------------------------- 
+    # TAB 3: LATE-LIFE (PREDICTIVE ENGINE WITH MANUAL OVERRIDE) 
+    # ------------------------------------------------------------------------- 
     with tab_late: 
         st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)") 
+         
+        # Predictive Defaults Calculation Logic 
+        pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3)) 
+        pred_p_wh_late = float(round(p_wh_early * 0.40, 3)) 
+        pred_q_liq_late = float(round(q_liq_early * 0.40, 3)) 
+        pred_wc_late = 75.000 if wc_early < 20.0 else float(round(min(95.0, wc_early + 30.0), 3)) 
+        pred_gor_late = float(round(gor_early * 0.60, 3)) 
+        pred_bht_late = float(round(bht_early - 30.0, 3)) 
+
+        manual_override = st.toggle("🛠️ Enable Manual Override for Late-Life Parameters", value=False) 
+
         col_l1, col_l2, col_l3 = st.columns(3) 
 
-        with col_l1: 
-            decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(st.session_state.inputs['decline_rate']), step=0.5)
-            field_life = st.number_input("Target Field Life (Years)", min_value=1, max_value=40, value=int(st.session_state.inputs['field_life_yrs']), step=1)
+        if not manual_override: 
+            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using standard reservoir depletion multipliers. Toggle above to adjust manually.") 
+             
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", value=pred_p_bhp_late, disabled=True, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=pred_p_wh_late, disabled=True, format="%.3f") 
 
-        with col_l2:
-            st.info("💡 Late-life flow rates are automatically estimated using annual reservoir decline multipliers.")
+            with col_l2: 
+                q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=pred_q_liq_late, disabled=True, format="%.3f") 
+                wc_late = st.number_input("Late Water Cut (%)", value=pred_wc_late, disabled=True, format="%.3f") 
 
-    st.markdown("---")
-    
-    # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX
-    st.markdown("### 📊 Dual Operational Envelope Summary")
-    
-    if "Gas" in well_type:
-        rate_summary_early = f"{q_gas_early:.2f} MMscf/D (CGR: {cgr_early:.1f} STB/MMscf)"
-        rate_summary_late = f"{(q_gas_early * ((1 - decline_rate/100.0)**field_life)):.2f} MMscf/D"
-        governing_msg = "Erosion limits v_m < v_eros (Early) vs. Liquid loading v_m > v_crit (Late)"
-    else:
-        rate_summary_early = f"{q_liq_early:.1f} STB/D ({wc_early:.1f}% WC)"
-        rate_summary_late = f"{(q_liq_early * ((1 - decline_rate/100.0)**field_life)):.1f} STB/D"
-        governing_msg = "Peak production velocity (Early) vs. Hydrostatic head drawdown (Late)"
+            with col_l3: 
+                gor_late = st.number_input("Late Producing GOR (scf/STB)", value=pred_gor_late, disabled=True, format="%.3f") 
+                bht_late = st.number_input("Late BHT (°F)", value=pred_bht_late, disabled=True, format="%.3f") 
 
+        else: 
+            with col_l1: 
+                p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.000, max_value=20000.000, value=pred_p_bhp_late, step=10.000, format="%.3f") 
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.000, max_value=5000.000, value=pred_p_wh_late, step=10.000, format="%.3f") 
+
+            with col_l2: 
+                q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.000, max_value=30000.000, value=pred_q_liq_late, step=50.000, format="%.3f") 
+                wc_late = st.number_input("Late Water Cut (%)", min_value=0.000, max_value=100.000, value=pred_wc_late, step=0.100, format="%.3f") 
+
+            with col_l3: 
+                gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.000, max_value=20000.000, value=pred_gor_late, step=10.000, format="%.3f") 
+                bht_late = st.number_input("Late BHT (°F)", min_value=80.000, max_value=400.000, value=pred_bht_late, step=0.500, format="%.3f") 
+
+    st.markdown("---") 
+
+    # ------------------------------------------------------------------------- 
+    # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX 
+    # ------------------------------------------------------------------------- 
+    st.markdown("### 📊 Dual Operational Envelope Summary") 
+     
     summary_html = f""" 
     <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.88rem;"> 
         <thead> 
@@ -915,21 +947,27 @@ elif page == "3. Well & Fluid Inputs":
         <tbody> 
             <tr style="border-bottom: 1px solid #E2E8F0;"> 
                 <td style="padding: 10px; font-weight: 600;">Bottomhole Pressure (P<sub>bhp</sub>)</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{(p_bhp_early * 0.5):.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Drawdown head limit (Late)</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.3f} psi</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_bhp_late:.3f} psi</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Hydrostatic head drawdown (Late)</td> 
             </tr> 
             <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
-                <td style="padding: 10px; font-weight: 600;">Flow Rate & Ratios</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early}</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{rate_summary_late}</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">{governing_msg}</td> 
+                <td style="padding: 10px; font-weight: 600;">Liquid Rate & Water Cut</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{q_liq_early:.3f} STB/D ({wc_early:.3f}% WC)</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{q_liq_late:.3f} STB/D ({wc_late:.3f}% WC)</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Erosion limits v<sub>m</sub> &lt; v<sub>eros</sub> (Early) vs. Liquid loading v<sub>m</sub> &gt; v<sub>crit</sub> (Late)</td> 
             </tr> 
             <tr style="border-bottom: 1px solid #E2E8F0;"> 
-                <td style="padding: 10px; font-weight: 600;">Shut-In CITHP</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{cithp_input:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{(cithp_input * 0.7):.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Static surface pipe burst safety factor (SF_burst >= 1.10)</td> 
+                <td style="padding: 10px; font-weight: 600;">Producing GOR</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{gor_early:.3f} scf/STB</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{gor_late:.3f} scf/STB</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Multiphase fluid density homogenization (&rho;<sub>m</sub>)</td> 
+            </tr> 
+            <tr style="background-color: #F8FAFC;"> 
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Temp & APB</td> 
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{bht_early:.3f} °F</td> 
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{bht_late:.3f} °F</td> 
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Thermal expansion & APB load (Early) vs. Tubing cooling contraction (Late)</td> 
             </tr> 
         </tbody> 
     </table> 
@@ -937,26 +975,31 @@ elif page == "3. Well & Fluid Inputs":
     st.markdown(summary_html, unsafe_allow_html=True) 
     st.markdown("<br/>", unsafe_allow_html=True) 
 
+    # ------------------------------------------------------------------------- 
+    # ACTION BUTTON: SAVE & RUN MODEL 
+    # ------------------------------------------------------------------------- 
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
     with col_btn2: 
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
-            st.session_state.inputs.update({ 
+            st.session_state["well_inputs"] = { 
                 "well_type": well_type,
                 "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
-                "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
-                "api_gravity": api_gravity, "gas_sg": gas_sg, "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct,
-                "lithology": lithology, "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
-                "decline_rate": decline_rate, "field_life_yrs": field_life
-            })
-            if "Gas" in well_type:
-                st.session_state.inputs.update({
-                    "q_gas_mmscfd": q_gas_early, "cgr_stb_mmscf": cgr_early, "wgr_bbl_mmscf": wgr_early
-                })
-            else:
-                st.session_state.inputs.update({
-                    "q_liquid": q_liq_early, "water_cut": wc_early, "gor": gor_early
-                })
-            st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
+                "oil_api": oil_api, "gas_sg": gas_sg, "water_sg": water_sg, "lithology": lithology,
+                "h2s_ppm": h2s_ppm, "co2_pct": co2_pct, "water_chlorides": water_chlorides, "water_ph": water_ph,
+                "target_life": target_life, "target_capacity": target_capacity,
+                "sf_triaxial": sf_triaxial, "surf_temp": surf_temp, "annular_fluid": annular_fluid,
+                "early": { 
+                    "p_bhp": p_bhp_early, "p_wh": p_wh_early, 
+                    "q_liq": q_liq_early, "wc": wc_early, 
+                    "gor": gor_early, "bht": bht_early 
+                }, 
+                "late": { 
+                    "p_bhp": p_bhp_late, "p_wh": p_wh_late, 
+                    "q_liq": q_liq_late, "wc": wc_late, 
+                    "gor": gor_late, "bht": bht_late 
+                } 
+            } 
+            st.success("✅ Operational inputs saved! Proceed to Page 4 to run candidate screening.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: CANDIDATE TUBING SPECS
@@ -1023,7 +1066,7 @@ elif page == "4. Candidate Tubing Specs":
 # -----------------------------------------------------------------------------
 elif page == "5. Engineering Calculations":
     st.markdown('<div class="main-header">Step 5: Engineering Calculation Engine</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, NACE MR0175 sour service, and Lubinski stress.</div>', unsafe_allow_html=True)
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
     
@@ -1031,34 +1074,30 @@ elif page == "5. Engineering Calculations":
     
     display_df = res_df[[
         'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts',
-        'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'vme_stress_psi', 'triaxial_sf', 'burst_sf', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
+        'dp_total_psi', 'dp_apb_psi', 'f_axial_klbs', 'vme_stress_psi', 'triaxial_sf', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
     
     display_df.columns = [
         'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)',
-        'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Burst SF', 'NACE Status', 'Temp Status', 'Overall Status'
+        'Total dP (psi)', 'APB Pressure (psi)', 'Axial Load (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
     
     st.dataframe(display_df, use_container_width=True, height=450)
     
     with st.expander("📐 Show Governing Equations & Technical Correlations"):
-        st.markdown("#### 1. Static CITHP Surface Burst Load")
-        st.latex(r"SF_{burst} = \frac{\text{Burst\_psi}}{CITHP} \ge 1.10")
-        st.caption("Validates surface pipe burst rating under static shut-in conditions.")
-
-        st.markdown("#### 2. Annular Pressure Build-up (APB)")
+        st.markdown("#### 1. Annular Pressure Build-up (APB)")
         st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
         st.caption("Where $\\alpha_v$ is thermal expansion coefficient and $\\kappa_T$ is fluid isothermal compressibility.")
         
-        st.markdown("#### 3. Lubinski Total Net Axial Load Balance")
+        st.markdown("#### 2. Lubinski Total Net Axial Load Balance")
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
         st.caption("Includes buoyed pipe weight, constrained thermal expansion, pressure area changes across seals, radial expansion shortening, and fluid skin friction.")
 
-        st.markdown("#### 4. von Mises Triaxial Equivalent Stress")
+        st.markdown("#### 3. von Mises Triaxial Equivalent Stress")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]} \le \frac{Y_{yield}}{SF_{triaxial}}")
         st.caption("Requires a minimum triaxial safety factor $SF_{triaxial} \\ge 1.25$ per completion design standards.")
 
-        st.markdown("#### 5. Turner Critical Liquid Loading Velocity")
+        st.markdown("#### 4. Turner Critical Liquid Loading Velocity")
         st.latex(r"v_{critical} = \frac{1.3 \cdot \sigma^{0.25} (\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}} \quad \text{(Turner Correlation, } C=1.3\text{)}")
         st.caption("Calculates minimum gas mixture velocity required to continuously transport liquid droplets to surface.")
 
@@ -1067,11 +1106,10 @@ elif page == "5. Engineering Calculations":
 # -----------------------------------------------------------------------------
 elif page == "6. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 6: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
     
     res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
     passed_candidates = res_df[res_df['Overall_Pass'] == True]
-    is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
     
     col1, col2 = st.columns([1, 2])
     
@@ -1086,32 +1124,23 @@ elif page == "6. Recommendation & Sensitivity":
             st.metric("Material Grade", f"{preferred['Grade']}")
             st.metric("Connection Type", f"{preferred['Connection']}")
             st.metric("Triaxial Safety Factor", f"{preferred['triaxial_sf']} (SF >= 1.25)")
-            st.metric("Surface Burst SF (CITHP)", f"{preferred['burst_sf']} (SF >= 1.10)")
             st.metric("APB Pressure Rise", f"{preferred['dp_apb_psi']} psi")
         else:
             st.error("### No Candidates Passed All Screenings!")
-            st.warning("Consider increasing bottomhole pressure, selecting higher steel grades (e.g., P110/Q125 for CITHP burst), or upgrading to premium connections.")
+            st.warning("Consider increasing bottomhole pressure, selecting NACE-compliant grades, or upgrading to premium connections.")
 
     with col2:
         st.subheader("Engineering Justification Rationale")
         if not passed_candidates.empty:
             preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-            
-            rate_str = (
-                f"**{st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D** gas with **{st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf** condensate"
-                if is_gas else
-                f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
-            )
-            
             st.markdown(f"""
-            * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
-            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) and late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above liquid loading limits (**{preferred['v_critical']} ft/s**) and below erosional velocity (**{preferred['v_erosional']} ft/s**).
-            * **Shut-In CITHP & Surface Integrity:** Closed-In Tubing Head Pressure of **{preferred['cithp_psi']} psi** yields a static burst safety factor of **{preferred['burst_sf']}** (exceeding $SF \ge 1.10$).
-            * **NACE & Structural Safety:** Grade **{preferred['Grade']}** ({preferred['Material']}) provides a von Mises triaxial SF of **{preferred['triaxial_sf']}** under Lubinski axial tension (**{preferred['f_axial_klbs']} klbs**) and APB rise (**{preferred['dp_apb_psi']} psi**).
-            * **Connection Validation:** {preferred['Connection_Reason']}
+            * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) and Bo (**{preferred['Bo_rb_stb']} rb/STB**) confirm live-fluid flow.
+            * **Velocity Window:** Initial mixture flow velocity (**{preferred['Velocity_fts']} ft/s**) and Year {st.session_state.inputs['field_life_yrs']} late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above liquid loading limits (**{preferred['v_critical']} ft/s**).
+            * **NACE & Thermal Compliance:** Grade **{preferred['Grade']}** ({preferred['Material']}) is compliant for operating BHT ({st.session_state.inputs['t_bht']}°F) and sour service limits ($p_{{H_2S}} = {round(st.session_state.inputs['p_bhp'] * (st.session_state.inputs['h2s_ppm']/1e6), 3)}$ psia).
+            * **Structural & APB Integrity:** Total axial tension (**{preferred['f_axial_klbs']} klbs**) and APB pressure (**{preferred['dp_apb_psi']} psi**) yield a von Mises stress of **{preferred['vme_stress_psi']} psi** (Triaxial SF = **{preferred['triaxial_sf']}**).
             """)
         else:
-            st.write("Review the calculation matrix on Page 5 to identify specific failure flags (velocity, hydraulics, APB, CITHP burst, temperature, or NACE sour service).")
+            st.write("Review the calculation page to identify specific failure flags (velocity, hydraulics, APB, temperature rating, or NACE limits).")
 
     # -------------------------------------------------------------------------
     # GEMINI AI EXECUTIVE SUMMARY ENGINE
@@ -1129,28 +1158,13 @@ elif page == "6. Recommendation & Sensitivity":
         elif passed_candidates.empty:
             st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
         else:
-            with st.spinner("Analyzing hydraulics, CITHP burst loads, velocity windows, and NACE compliance via Gemini API..."):
+            with st.spinner("Analyzing hydraulics, velocity limits, APB, and NACE compliance via Gemini API..."):
                 try:
                     import json
                     import urllib.request
 
                     pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
                     
-                    if is_gas:
-                        production_context = f"""
-                        - Operating Mode: Gas / Condensate Well
-                        - Gas Production Rate (Qg): {st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D
-                        - Condensate-Gas Ratio (CGR): {st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf
-                        - Water-Gas Ratio (WGR): {st.session_state.inputs.get('wgr_bbl_mmscf', 5.0)} bbl/MMscf
-                        """
-                    else:
-                        production_context = f"""
-                        - Operating Mode: Oil Well (Liquid Dominated)
-                        - Liquid Production Rate (Qliq): {st.session_state.inputs.get('q_liquid', 5000.0)} STB/D
-                        - Water Cut: {st.session_state.inputs.get('water_cut', 5.0)} %
-                        - Producing GOR: {st.session_state.inputs.get('gor', 800.0)} scf/STB
-                        """
-
                     prompt_text = f"""
                     You are a Senior Completion Engineer writing an executive technical recommendation memo for an asset manager.
                     Synthesize the following PRE-CALCULATED Python engineering data into a concise, professional technical assessment.
@@ -1158,14 +1172,12 @@ elif page == "6. Recommendation & Sensitivity":
 
                     WELL & OPERATIONAL PARAMETERS:
                     - Well Type: {st.session_state.inputs['well_type']}
-                    {production_context}
                     - Reservoir Lithology: {st.session_state.inputs.get('lithology', 'Sandstone')}
                     - Measured Depth / TVD: {st.session_state.inputs['md']} ft / {st.session_state.inputs['tvd']} ft (Dogleg Severity: {st.session_state.inputs['dls']} deg/100ft)
                     - Wellhead / Bottomhole Pressure: {st.session_state.inputs['p_wh']} psi / {st.session_state.inputs['p_bhp']} psi (Available Drawdown: {pref['dp_avail_psi']} psi)
-                    - Static Closed-In Tubing Head Pressure (CITHP): {pref['cithp_psi']} psi
-                    - Annular Fluid & APB Pressure Rise: {st.session_state.inputs['annular_fluid']} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
+                    - Annular Fluid & APB Pressure Build-up: {st.session_state.inputs['annular_fluid']} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
                     - Target Field Life: {st.session_state.inputs['field_life_yrs']} Years at {st.session_state.inputs['decline_rate']}% Annual Decline Rate
-                    - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_ppm']} PPM H2S
+                    - CO2 / H2S Concentrations: {st.session_state.inputs['co2_mole_pct']} mole% CO2, {st.session_state.inputs['h2s_ppm']} PPM H2S (pH: {st.session_state.inputs['ph_val']})
 
                     SELECTED PREFERRED TUBING CANDIDATE:
                     - Candidate Name: {pref['Name']}
@@ -1174,7 +1186,6 @@ elif page == "6. Recommendation & Sensitivity":
                     - Total Calculated Pressure Drop: {pref['dp_total_psi']} psi (Hydrostatic: {pref['dp_hydro_psi']} psi, Friction: {pref['dp_fric_psi']} psi)
                     - Net Lubinski Axial Force: {pref['f_axial_klbs']} klbs
                     - von Mises Triaxial Stress: {pref['vme_stress_psi']} psi (Triaxial Safety Factor: {pref['triaxial_sf']})
-                    - Static Surface Burst Safety Factor (CITHP): {pref['burst_sf']} (Rating: {pref['cithp_psi']} psi CITHP vs Candidate Burst Limit)
                     - Initial Flow Velocity: {pref['Velocity_fts']} ft/s
                     - Year {st.session_state.inputs['field_life_yrs']} Late-Life Velocity: {pref['v_late_life_fts']} ft/s
                     - Turner Critical Liquid Loading Limit: {pref['v_critical']} ft/s
@@ -1183,10 +1194,10 @@ elif page == "6. Recommendation & Sensitivity":
 
                     INSTRUCTIONS:
                     1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
-                    2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulic performance against available drawdown drive under the given rate profile.
-                    3. Paragraph 2: Analyze flow velocities (initial vs late-life) against Turner liquid loading and API RP 14E erosion thresholds.
-                    4. Paragraph 3: Detail static shut-in CITHP burst safety factor, Lubinski triaxial safety factor (SF_vme), thermal APB expansion, and justify connection selection (API EUE vs Premium metal seal) considering gas tightness and NACE MR0175 sour service requirements.
-                    5. Use formal petroleum completion engineering phrasing and bold key numeric values.
+                    2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulics vs available drawdown.
+                    3. Paragraph 2: Analyze initial vs Year 15 late-life velocities against Turner loading and API RP 14E limits.
+                    4. Paragraph 3: Detail structural safety factor (Triaxial SF), Annular Pressure Build-up (APB), and explain connection choice (API EUE vs Premium metal seal) under NACE MR0175 limits.
+                    5. Use formal engineering phrasing and bold key numeric values.
                     """
 
                     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
@@ -1251,6 +1262,12 @@ elif page == "6. Recommendation & Sensitivity":
         fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
         
         st.plotly_chart(fig_dp, use_container_width=True)
+        
+        st.info("""
+        **How to Interpret Graph 1:**
+        * **Red Dashed Line (Drawdown Limit):** Represents maximum available reservoir pressure drive (P_bhp - P_wh). Candidates operating above this line cannot flow naturally to the surface.
+        * **Pressure Curve Trend:** Frictional pressure drop decreases sharply as tubing inner diameter increases. The optimal candidate balances low pressure drop while remaining comfortably below the drawdown ceiling.
+        """)
 
     with tab2:
         fig_v = go.Figure()
