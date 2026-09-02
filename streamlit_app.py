@@ -209,7 +209,7 @@ def run_engineering_calculations(inputs, candidate_df):
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
     
-    # Particle Settling Velocity (Rubey Formula) & Oroskar-Turian Solid Transport Criteria
+    # Particle Settling Velocity (Rubey Formula) & Solid Transport Criteria
     d_p_ft = (sand_d_um * 1e-6) * 3.28084
     g_const = 32.174
     delta_rho = max(rho_s_lbft3 - rho_slurry, 0.1)
@@ -746,8 +746,9 @@ elif page == "2. Calculation Methodology":
             <p style="font-size: 0.9rem; color: #475569;">Converts gas throughput, liquid ratios, and solid particle concentration ($C_v$) into slurry density:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"C_v = \frac{V_{sand}}{V_{liquid} + V_{sand}}, \quad \rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s")
-        st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}, \quad \lambda_l = \frac{q_l}{q_l + q_g}, \quad \rho_m = \lambda_l \rho_l + (1-\lambda_l)\rho_g")
+        st.latex(r"q_o = Q_g \times CGR \quad [\text{STB/D}], \quad q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}")
+        st.latex(r"P_{pc} = 756.8 - 131.07 \gamma_g - 3.6 \gamma_g^2, \quad T_{pc} = 169.2 + 349.5 \gamma_g - 74.0 \gamma_g^2")
+        st.latex(r"\rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}, \quad C_v = \frac{V_{sand}}{V_{liquid} + V_{sand}}, \quad \rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s")
 
     st.info("🎯 **Step 1 Candidate Gate:** Validates thermodynamic fluid and solid slurry density convergence.")
     st.markdown("---")
@@ -760,20 +761,21 @@ elif page == "2. Calculation Methodology":
     with col2_1:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Slurry Pressure Loss (&Delta;P<sub>total</sub>)</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Combines slurry hydrostatic head and turbulent pipe friction:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.1 Total Slurry Pressure Loss (&Delta;P<sub>total</sub>) & Friction</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Combines slurry hydrostatic head and turbulent pipe friction via Colebrook-White friction factor (f):</p>
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_{\text{slurry}} \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_{\text{slurry}} \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
+        st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right], \quad Re = \frac{\rho_{\text{slurry}} v_m d_i}{\mu_m}")
 
     with col2_2:
         st.markdown("""
         <div class="card" style="border-top: 3px solid #F59E0B;">
-            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Salama Sand Erosion & Particle Settling Window</h4>
-            <p style="font-size: 0.9rem; color: #475569;">Evaluates sand erosional velocity limit (Salama 1983) and Rubey terminal settling carrying velocity:</p>
+            <h4 style="color: #1E3A8A; font-size: 1.1rem; font-weight: 700;">2.2 Velocity Window: Salama Sand Erosion & Particle Transport</h4>
+            <p style="font-size: 0.9rem; color: #475569;">Evaluates sand erosional velocity limit (Salama 1983), Turner liquid lift, and Rubey settling velocity:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.latex(r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}} \quad (C_{\text{salama, CRA}}=450, C_{\text{salama, CS}}=200)")
+        st.latex(r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}}, \quad v_{\text{critical}} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}")
         st.latex(r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + 36 \nu^2} - \frac{6 \nu}{d_p}, \quad v_{\text{carrying}} = \max(v_{\text{critical}}, 1.35 v_t)")
 
     st.warning("🚫 **Step 2 Candidate Gate:** Rejects candidates if Early-Life rate causes pipe sand erosion ($v_m > v_{\text{erosional}}$) OR if Late-Life rate drops below solid transport velocity ($v_m < v_{\text{carrying}}$).")
@@ -793,6 +795,7 @@ elif page == "2. Calculation Methodology":
         """, unsafe_allow_html=True)
         st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
         st.latex(r"F_{gravity} = W_{lbft} \cdot MD \left(1 - \frac{\rho_{\text{slurry}}}{490}\right), \quad F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
+        st.latex(r"F_{piston} = P_{bhp} A_{id} - P_{annular} (A_{od} - A_{id}), \quad F_{ballooning} = 2 \nu (P_{bhp} A_{id} - P_{annular} A_{od})")
 
     with col3_2:
         st.markdown("""
@@ -802,6 +805,7 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
+        st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
         st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_z)^2 + (\sigma_z - \sigma_\theta)^2 \right]} \le \frac{Y_{yield}}{SF_{triaxial}}")
 
     st.success("🛡️ **Step 3 Candidate Gate:** Rejects candidates failing minimum safety factor limits ($SF_{triaxial} < 1.25$).")
@@ -820,6 +824,7 @@ elif page == "2. Calculation Methodology":
         </div>
         """, unsafe_allow_html=True)
         st.latex(r"\text{CITHP} = P_{bhp} \cdot e^{-\left(\frac{M \cdot TVD}{Z \cdot R \cdot T_{avg}}\right)}, \quad SF_{burst} = \frac{\text{Candidate Burst Rating [psi]}}{\text{CITHP [psi]}} \ge 1.10")
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}")
 
     with col4_2:
         st.markdown("""
