@@ -549,19 +549,48 @@ page = st.sidebar.radio(
 # PAGE 1: INTRODUCTION & OVERVIEW
 # -----------------------------------------------------------------------------
 if page == "1. Introduction & Overview":
-    st.markdown('<div class="main-header">Interactive Tubing Selection Tool</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Upper-Completion Optimization Engine for Varying Well Conditions</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .page-one-hero { background: linear-gradient(120deg, #0F172A 0%, #1E3A8A 58%, #0E7490 100%); border-radius: 16px; padding: 1.6rem 1.8rem; margin-bottom: 1rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18); }
+    .page-one-kicker { color: #BAE6FD; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .page-one-title { color: #FFFFFF; font-size: 2.15rem; line-height: 1.15; font-weight: 750; margin: 0; }
+    .page-one-subtitle { color: #DBEAFE; font-size: 1rem; line-height: 1.55; margin: 0.65rem 0 0; max-width: 48rem; }
+    .page-one-bookmarks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; margin-top: 0.85rem; }
+    .page-one-bookmark { display: block; background: #FFFFFF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 0.8rem 0.9rem; color: #1E3A8A !important; text-decoration: none !important; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .page-one-bookmark:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(30, 64, 175, 0.12); }
+    .page-one-bookmark-number { display: block; color: #0284C7; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
+    .page-one-bookmark-label { display: block; font-size: 0.92rem; font-weight: 700; line-height: 1.3; }
+    .page-one-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #CBD5E1; border: 1px solid #CBD5E1; border-radius: 12px; overflow: hidden; margin: 1rem 0 1.4rem; }
+    .page-one-glance-item { background: #FFFFFF; padding: 0.9rem 1rem; }
+    .page-one-glance-label { color: #64748B; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .page-one-glance-value { color: #0F172A; font-size: 0.96rem; font-weight: 700; line-height: 1.35; margin-top: 0.25rem; }
+    @media (max-width: 700px) { .page-one-bookmarks, .page-one-glance { grid-template-columns: 1fr; } .page-one-title { font-size: 1.7rem; } }
+    </style>
+    <section class="page-one-hero">
+        <div class="page-one-kicker">Upper Completion Design</div>
+        <h1 class="page-one-title">Interactive Tubing Selection Tool</h1>
+        <p class="page-one-subtitle">A guided overview of the completion hardware, flow path, and design decisions that shape a reliable tubing recommendation.</p>
+    </section>
+    """, unsafe_allow_html=True)
     
     if os.path.exists("cover.jpg"):
         st.image("cover.jpg", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
 
     st.markdown("""
-    <nav class="card" aria-label="Page 1 bookmarks" style="background-color: #EFF6FF; border-left: 5px solid #2563EB; margin-bottom: 1.25rem;">
-        <div style="font-size: 1.05rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.45rem;">Page 1 Bookmarks</div>
-        <a href="#upper-completion" style="color: #1D4ED8; font-weight: 600; text-decoration: none; margin-right: 1.25rem;">1.0 What is Upper Completion?</a>
-        <a href="#production-tubing" style="color: #1D4ED8; font-weight: 600; text-decoration: none; margin-right: 1.25rem;">1.1 Production Tubing</a>
-        <a href="#model-limitations" style="color: #1D4ED8; font-weight: 600; text-decoration: none;">1.2 Model Assumptions &amp; Limitations</a>
+    <nav class="card" aria-label="Page 1 bookmarks" style="background: linear-gradient(135deg, #F8FAFC, #EFF6FF); border-left: 5px solid #2563EB; margin-bottom: 1rem;">
+        <div style="font-size: 1.05rem; font-weight: 750; color: #1E3A8A;">Explore this page</div>
+        <div style="font-size: 0.88rem; color: #475569; margin-top: 0.15rem;">Jump to the part of the completion story you need.</div>
+        <div class="page-one-bookmarks">
+            <a class="page-one-bookmark" href="#upper-completion"><span class="page-one-bookmark-number">1.0</span><span class="page-one-bookmark-label">What is Upper Completion?</span></a>
+            <a class="page-one-bookmark" href="#production-tubing"><span class="page-one-bookmark-number">1.1</span><span class="page-one-bookmark-label">Production Tubing</span></a>
+            <a class="page-one-bookmark" href="#model-limitations"><span class="page-one-bookmark-number">1.2</span><span class="page-one-bookmark-label">Assumptions &amp; Limitations</span></a>
+        </div>
     </nav>
+    <div class="page-one-glance" aria-label="Design at a glance">
+        <div class="page-one-glance-item"><div class="page-one-glance-label">Primary flow path</div><div class="page-one-glance-value">Production tubing</div></div>
+        <div class="page-one-glance-item"><div class="page-one-glance-label">Design balance</div><div class="page-one-glance-value">Hydraulics, integrity &amp; operability</div></div>
+        <div class="page-one-glance-item"><div class="page-one-glance-label">Tool outcome</div><div class="page-one-glance-value">Screened tubing recommendation</div></div>
+    </div>
     """, unsafe_allow_html=True)
     
     st.markdown("""
