@@ -577,291 +577,380 @@ page = st.sidebar.radio(
 # PAGE 1: INTRODUCTION & OVERVIEW
 # -----------------------------------------------------------------------------
 if page == "1. Introduction & Overview":
-    def get_cover_image_b64():
-        for name in ['cover.jpg', 'cover.png', 'cover.jpeg']:
-            if os.path.exists(name):
-                try:
-                    with open(name, 'rb') as f:
-                        encoded = base64.b64encode(f.read()).decode('utf-8')
-                        mime = 'image/png' if name.endswith('.png') else 'image/jpeg'
-                        return f'data:{mime};base64,{encoded}'
-                except Exception:
-                    pass
+    @st.cache_data(show_spinner=False)
+    def encode_image_b64(path):
+        """Return an inline data URI for `path`, or None when it is unavailable.
+
+        Cached because cover.jpg is several megabytes; re-encoding it on every
+        rerun would add that much base64 to each page render.
+        """
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, 'rb') as handle:
+                encoded = base64.b64encode(handle.read()).decode('utf-8')
+        except OSError:
+            return None
+        mime = 'image/png' if path.lower().endswith('.png') else 'image/jpeg'
+        return f'data:{mime};base64,{encoded}'
+
+    def first_existing_image(names):
+        for name in names:
+            data_uri = encode_image_b64(name)
+            if data_uri:
+                return data_uri
         return None
 
-    cover_b64 = get_cover_image_b64()
+    def figure_block(path, number, caption):
+        """Render a figure inside a framed, captioned plate. Skips missing files."""
+        data_uri = encode_image_b64(path)
+        if not data_uri:
+            return ""
+        return f"""
+        <figure class="p1-figure">
+            <div class="p1-figure-frame"><img src="{data_uri}" alt="{caption}" loading="lazy" /></div>
+            <figcaption class="p1-figure-caption"><span class="p1-figure-number">Figure {number}</span>{caption}</figcaption>
+        </figure>
+        """
+
+    cover_b64 = first_existing_image(['cover.jpg', 'cover.png', 'cover.jpeg'])
 
     st.markdown("""
     <style>
-    .page-one-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #CBD5E1; border: 1px solid #CBD5E1; border-radius: 12px; overflow: hidden; margin: 1rem 0 1.5rem; }
-    .page-one-glance-item { background: #FFFFFF; padding: 0.9rem 1rem; }
-    .page-one-glance-label { color: #64748B; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-    .page-one-glance-value { color: #0F172A; font-size: 0.96rem; font-weight: 700; line-height: 1.35; margin-top: 0.25rem; }
-    .subtopic-badge { display: inline-block; background-color: #EFF6FF; color: #1D4ED8; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #BFDBFE; }
-    .subtopic-badge-green { display: inline-block; background-color: #ECFDF5; color: #047857; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #A7F3D0; }
-    .subtopic-badge-red { display: inline-block; background-color: #FEF2F2; color: #B91C1C; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #FECACA; }
-    @media (max-width: 700px) { .page-one-glance { grid-template-columns: 1fr; } }
+    /* ---- Page 1 design system -------------------------------------------- */
+    .p1-scope { --p1-ink: #0F172A; --p1-muted: #64748B; --p1-body: #334155;
+                --p1-line: #E2E8F0; --p1-blue: #1E3A8A; --p1-green: #065F46; --p1-red: #991B1B; }
+
+    /* Section banner: numbered chip + title + lead paragraph */
+    .p1-section { position: relative; background: #FFFFFF; border: 1px solid #E2E8F0;
+                  border-radius: 14px; padding: 1.35rem 1.5rem; margin: 0 0 1.1rem;
+                  box-shadow: 0 1px 2px rgba(15,23,42,0.04); scroll-margin-top: 1.5rem; overflow: hidden; }
+    .p1-section::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; }
+    .p1-section-blue::before  { background: linear-gradient(180deg, #3B82F6, #1E3A8A); }
+    .p1-section-green::before { background: linear-gradient(180deg, #34D399, #065F46); }
+    .p1-section-red::before   { background: linear-gradient(180deg, #F87171, #991B1B); }
+    .p1-section-head { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; }
+    .p1-section-num { flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem;
+                      border-radius: 9px; font-size: 0.9rem; font-weight: 800; color: #FFFFFF; letter-spacing: 0.01em; }
+    .p1-section-blue  .p1-section-num { background: linear-gradient(135deg, #2563EB, #1E3A8A); }
+    .p1-section-green .p1-section-num { background: linear-gradient(135deg, #059669, #065F46); }
+    .p1-section-red   .p1-section-num { background: linear-gradient(135deg, #DC2626, #991B1B); }
+    .p1-section-title { font-size: 1.42rem; font-weight: 800; line-height: 1.25; margin: 0; }
+    .p1-section-blue  .p1-section-title { color: #1E3A8A; }
+    .p1-section-green .p1-section-title { color: #065F46; }
+    .p1-section-red   .p1-section-title { color: #991B1B; }
+    .p1-section-lead { font-size: 1.0rem; line-height: 1.65; color: #334155; margin: 0; }
+    .p1-section-lead b { color: #0F172A; }
+
+    /* Content card */
+    .p1-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px;
+               padding: 1.15rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+               transition: box-shadow 0.18s ease, border-color 0.18s ease; scroll-margin-top: 1.5rem; }
+    .p1-card:hover { box-shadow: 0 8px 20px rgba(15,23,42,0.09); border-color: #CBD5E1; }
+    .p1-card-title { font-size: 1.12rem; font-weight: 800; margin: 0 0 0.5rem; line-height: 1.3; }
+    .p1-card-blue  .p1-card-title { color: #1E3A8A; }
+    .p1-card-green .p1-card-title { color: #065F46; }
+    .p1-card-red   .p1-card-title { color: #991B1B; }
+    .p1-card-body { font-size: 0.94rem; line-height: 1.65; color: #334155; margin: 0; }
+
+    /* Eyebrow chip above card titles */
+    .p1-chip { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.07em;
+               text-transform: uppercase; padding: 0.18rem 0.5rem; border-radius: 999px; margin-bottom: 0.55rem; }
+    .p1-chip-blue  { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .p1-chip-green { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+    .p1-chip-red   { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+
+    /* Definition list: term + description, replaces bare bullets */
+    .p1-list { list-style: none; margin: 0; padding: 0; }
+    .p1-list li { position: relative; padding: 0.5rem 0 0.5rem 1.5rem; font-size: 0.92rem;
+                  line-height: 1.6; color: #334155; border-top: 1px dashed #E2E8F0; }
+    .p1-list li:first-child { border-top: none; padding-top: 0.15rem; }
+    .p1-list li::before { content: ""; position: absolute; left: 0.25rem; top: 1.05rem;
+                          width: 6px; height: 6px; border-radius: 50%; background: #94A3B8; }
+    .p1-list li:first-child::before { top: 0.7rem; }
+    .p1-list-blue  li::before { background: #3B82F6; }
+    .p1-list-green li::before { background: #10B981; }
+    .p1-list-red   li::before { background: #EF4444; }
+    .p1-term { font-weight: 700; color: #0F172A; }
+
+    /* Figure plate */
+    .p1-figure { margin: 0 0 1rem; }
+    .p1-figure-frame { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px;
+                       padding: 0.85rem; display: flex; justify-content: center; align-items: center; }
+    .p1-figure-frame img { max-width: 100%; height: auto; border-radius: 6px; display: block; }
+    .p1-figure-caption { font-size: 0.82rem; color: #64748B; line-height: 1.5; margin-top: 0.5rem; text-align: center; }
+    .p1-figure-number { display: inline-block; font-weight: 800; color: #1E3A8A;
+                        background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 4px;
+                        padding: 0.05rem 0.4rem; margin-right: 0.45rem; font-size: 0.74rem; }
+
+    /* Specification table */
+    .p1-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.92rem;
+                border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; }
+    .p1-table thead th { background: linear-gradient(135deg, #047857, #065F46); color: #FFFFFF;
+                         text-align: left; padding: 0.75rem 1rem; font-size: 0.76rem;
+                         letter-spacing: 0.06em; text-transform: uppercase; font-weight: 800; }
+    .p1-table tbody td { padding: 0.7rem 1rem; border-top: 1px solid #E2E8F0; color: #334155; vertical-align: top; }
+    .p1-table tbody tr:nth-child(even) { background: #F8FAFC; }
+    .p1-table tbody tr:hover { background: #ECFDF5; }
+    .p1-table .p1-spec { font-weight: 700; color: #0F172A; white-space: nowrap; }
+
+    /* Divider between major sections */
+    .p1-rule { height: 1px; background: linear-gradient(90deg, transparent, #CBD5E1 15%, #CBD5E1 85%, transparent);
+               margin: 1.9rem 0 1.5rem; border: none; }
+
+    @media (max-width: 700px) {
+        .p1-section-title { font-size: 1.2rem; }
+        .p1-table .p1-spec { white-space: normal; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
-    if cover_b64:
-        st.markdown(f"""
-        <div style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 1.2rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22); background: linear-gradient(180deg, rgba(15, 23, 42, 0.3) 0%, rgba(15, 23, 42, 0.75) 50%, rgba(15, 23, 42, 0.96) 100%), url('{cover_b64}') center/cover no-repeat; min-height: 440px; display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem 2.2rem;">
-            <div style="max-width: 880px; margin-bottom: 1.2rem;">
-                <div style="color: #38BDF8; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.35rem;">
-                    Upper Completion Design Engine
-                </div>
-                <h1 style="color: #FFFFFF; font-size: 2.35rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.15; text-shadow: 0 2px 6px rgba(0,0,0,0.7);">
-                    Interactive Tubing Selection Tool
-                </h1>
-                <p style="color: #E2E8F0; font-size: 1.02rem; line-height: 1.5; margin: 0; max-width: 48rem; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">
-                    A guided engineering overview of completion hardware, fluid transport dynamics, structural load boundaries, and tubing selection decisions.
-                </p>
-            </div>
-            <!-- Bottom Left Topics Navigation Overlay -->
-            <div style="align-self: flex-start; max-width: 920px; width: 100%; background: rgba(15, 23, 42, 0.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 1rem 1.2rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
-                <div style="color: #93C5FD; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
-                    🧭 Topics Overview
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
-                    <a href="#1-0-what-is-upper-completion" style="text-decoration: none; color: inherit;">
-                        <div style="background: rgba(30, 58, 138, 0.65); border: 1px solid rgba(147, 197, 253, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
-                            <div style="color: #60A5FA; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
-                                1.0 Upper Completion
-                            </div>
-                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
-                                Hardware & Flow Conduit Overview
-                            </div>
-                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
-                                1.1 Configurations • 1.2 Major Decisions • 1.3 Components
-                            </div>
-                        </div>
-                    </a>
-                    <a href="#2-0-production-tubing" style="text-decoration: none; color: inherit;">
-                        <div style="background: rgba(6, 95, 70, 0.65); border: 1px solid rgba(110, 231, 183, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
-                            <div style="color: #34D399; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
-                                2.0 Production Tubing
-                            </div>
-                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
-                                The Flow Path of the Well
-                            </div>
-                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
-                                2.1 Specifications • 2.2 Dimensions & Geometry
-                            </div>
-                        </div>
-                    </a>
-                    <a href="#3-0-model-assumptions-limitations" style="text-decoration: none; color: inherit;">
-                        <div style="background: rgba(153, 27, 27, 0.65); border: 1px solid rgba(252, 165, 165, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
-                            <div style="color: #FCA5A5; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
-                                3.0 Assumptions & Limitations
-                            </div>
-                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
-                                Model Scope & Operational Limits
-                            </div>
-                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
-                                3.1 Assumptions • 3.2 Engineering Limits
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <section class="page-one-hero">
-            <div class="page-one-kicker">Upper Completion Design</div>
-            <h1 class="page-one-title">Interactive Tubing Selection Tool</h1>
-            <p class="page-one-subtitle">A guided overview of the completion hardware, flow path, and design decisions that shape a reliable tubing recommendation.</p>
-        </section>
-        """, unsafe_allow_html=True)
-
     st.markdown("""
-    <div class="page-one-glance" aria-label="Design at a glance">
-        <div class="page-one-glance-item"><div class="page-one-glance-label">Primary flow path</div><div class="page-one-glance-value">Production tubing</div></div>
-        <div class="page-one-glance-item"><div class="page-one-glance-label">Design balance</div><div class="page-one-glance-value">Hydraulics, integrity &amp; operability</div></div>
-        <div class="page-one-glance-item"><div class="page-one-glance-label">Tool outcome</div><div class="page-one-glance-value">Screened tubing recommendation</div></div>
+    <style>
+    .p1-hero { position: relative; border-radius: 18px; overflow: hidden; margin-bottom: 1.1rem;
+               box-shadow: 0 18px 38px rgba(15,23,42,0.24); min-height: 340px;
+               display: flex; flex-direction: column; justify-content: flex-end; padding: 2.4rem 2.2rem 2rem; }
+    .p1-hero-fallback { background: radial-gradient(120% 140% at 12% 10%, #1D4ED8 0%, #0F172A 55%, #020617 100%); }
+    .p1-hero-kicker { color: #7DD3FC; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em;
+                      text-transform: uppercase; margin-bottom: 0.5rem; }
+    .p1-hero-title { color: #FFFFFF; font-size: 2.5rem; font-weight: 800; line-height: 1.12;
+                     margin: 0 0 0.6rem; letter-spacing: -0.02em; text-shadow: 0 2px 10px rgba(0,0,0,0.55); }
+    .p1-hero-sub { color: #DBEAFE; font-size: 1.03rem; line-height: 1.6; margin: 0; max-width: 44rem;
+                   text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+    .p1-hero-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+    .p1-hero-tag { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
+                   color: #E0F2FE; font-size: 0.76rem; font-weight: 600; padding: 0.3rem 0.7rem;
+                   border-radius: 999px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+    /* Contents rail: three linked cards below the hero */
+    .p1-toc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
+    .p1-toc-card { display: block; text-decoration: none !important; background: #FFFFFF;
+                   border: 1px solid #E2E8F0; border-top: 3px solid var(--accent, #3B82F6);
+                   border-radius: 12px; padding: 0.95rem 1.05rem; height: 100%;
+                   box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+                   transition: transform 0.18s ease, box-shadow 0.18s ease; }
+    .p1-toc-card:hover { transform: translateY(-3px); box-shadow: 0 12px 22px rgba(15,23,42,0.12); }
+    .p1-toc-num { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em;
+                  color: var(--accent, #3B82F6); text-transform: uppercase; }
+    .p1-toc-title { font-size: 1.0rem; font-weight: 800; color: #0F172A; line-height: 1.3; margin: 0.18rem 0 0.3rem; }
+    .p1-toc-desc { font-size: 0.83rem; color: #64748B; line-height: 1.5; }
+    .p1-toc-sub { font-size: 0.75rem; color: #94A3B8; line-height: 1.45; margin-top: 0.5rem;
+                  padding-top: 0.5rem; border-top: 1px dashed #E2E8F0; }
+
+    @media (max-width: 820px) {
+        .p1-toc { grid-template-columns: 1fr; }
+        .p1-hero { min-height: 260px; padding: 1.6rem 1.4rem; }
+        .p1-hero-title { font-size: 1.85rem; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    hero_bg = (
+        f"background: linear-gradient(175deg, rgba(15,23,42,0.42) 0%, rgba(15,23,42,0.72) 45%, rgba(2,6,23,0.94) 100%), "
+        f"url('{cover_b64}') center/cover no-repeat;"
+        if cover_b64 else ""
+    )
+    hero_class = "p1-hero" if cover_b64 else "p1-hero p1-hero-fallback"
+
+    st.markdown(f"""
+    <div class="{hero_class}" style="{hero_bg}">
+        <div class="p1-hero-kicker">Upper Completion Design Engine</div>
+        <h1 class="p1-hero-title">Interactive Tubing Selection Tool</h1>
+        <p class="p1-hero-sub">
+            A guided engineering walkthrough of completion hardware, fluid transport dynamics,
+            structural load boundaries, and the trade-offs behind a defensible tubing recommendation.
+        </p>
+        <div class="p1-hero-meta">
+            <span class="p1-hero-tag">Production tubing as the primary flow path</span>
+            <span class="p1-hero-tag">Hydraulics &middot; integrity &middot; operability</span>
+            <span class="p1-hero-tag">Screened tubing recommendation</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
+    st.markdown("""
+    <nav class="p1-toc" aria-label="Page contents">
+        <a class="p1-toc-card" href="#1-0-what-is-upper-completion" style="--accent: #2563EB;">
+            <div class="p1-toc-num">Section 1.0</div>
+            <div class="p1-toc-title">Upper Completion</div>
+            <div class="p1-toc-desc">Hardware and flow-conduit overview</div>
+            <div class="p1-toc-sub">1.1 Configurations &middot; 1.2 Design decisions &middot; 1.3 Components</div>
+        </a>
+        <a class="p1-toc-card" href="#2-0-production-tubing" style="--accent: #059669;">
+            <div class="p1-toc-num">Section 2.0</div>
+            <div class="p1-toc-title">Production Tubing</div>
+            <div class="p1-toc-desc">The flow path of the well</div>
+            <div class="p1-toc-sub">2.1 Specifications &middot; 2.2 Dimensions &amp; geometry</div>
+        </a>
+        <a class="p1-toc-card" href="#3-0-model-assumptions-limitations" style="--accent: #DC2626;">
+            <div class="p1-toc-num">Section 3.0</div>
+            <div class="p1-toc-title">Assumptions &amp; Limits</div>
+            <div class="p1-toc-desc">Model scope and operational bounds</div>
+            <div class="p1-toc-sub">3.1 Key assumptions &middot; 3.2 Engineering limits</div>
+        </a>
+    </nav>
+    """, unsafe_allow_html=True)
+
     # -------------------------------------------------------------------------
     # MAIN TOPIC 1.0: WHAT IS UPPER COMPLETION?
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div id="1-0-what-is-upper-completion" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; scroll-margin-top: 1rem;">
-        <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">1.0 What is Upper Completion?</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-            The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
+    <section id="1-0-what-is-upper-completion" class="p1-section p1-section-blue">
+        <div class="p1-section-head">
+            <div class="p1-section-num">1.0</div>
+            <h2 class="p1-section-title">What is Upper Completion?</h2>
+        </div>
+        <p class="p1-section-lead">
+            The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir
+            completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for
+            <b>produced or injected fluids</b>, and depending on well requirements may include production tubing,
+            packers, subsurface safety valves, artificial-lift systems, and chemical-injection systems.
         </p>
-    </div>
+    </section>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2, gap="small")
+    col1, col2 = st.columns(2, gap="medium")
 
     with col1:
-        st.markdown("""
-        <div id="1-1-upper-completion-configurations" class="card" style="border-top: 3px solid #3B82F6;">
-            <div class="subtopic-badge">SUBTOPIC 1.1</div>
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.1 Upper Completion Configurations</h3>
-            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Common configurations include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                <li><b>Tubingless completion:</b> fluids flow through the casing.</li>
-                <li><b>Tubing without packer:</b> tubing is installed without annular isolation.</li>
-                <li><b>Tubing with packer:</b> the packer isolates the tubing–casing annulus.</li>
-                <li><b>Dual tubing with packers:</b> provides separate flow paths for multiple zones or fluids.</li>
+        st.markdown(f"""
+        <div id="1-1-upper-completion-configurations" class="p1-card p1-card-blue">
+            <span class="p1-chip p1-chip-blue">Subtopic 1.1</span>
+            <h3 class="p1-card-title">Upper Completion Configurations</h3>
+            <ul class="p1-list p1-list-blue">
+                <li><span class="p1-term">Tubingless completion</span> — fluids flow through the casing.</li>
+                <li><span class="p1-term">Tubing without packer</span> — tubing installed without annular isolation.</li>
+                <li><span class="p1-term">Tubing with packer</span> — the packer isolates the tubing–casing annulus.</li>
+                <li><span class="p1-term">Dual tubing with packers</span> — separate flow paths for multiple zones or fluids.</li>
             </ul>
         </div>
-        """, unsafe_allow_html=True)
-
-        if os.path.exists("Figure 1.png"):
-            st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
-
-        st.markdown("""
-        <div id="1-2-major-design-decisions" class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
-            <div class="subtopic-badge">SUBTOPIC 1.2</div>
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.2 Major Design Decisions</h3>
-            <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Key decisions include:</p>
-            <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
-                <li><b>Tubing size:</b> balances production capacity and pressure drop.</li>
-                <li><b>Completion configuration:</b> single or dual completion.</li>
-                <li><b>Tubing isolation:</b> using a <b>packer or equivalent</b> to control fluid communication.</li>
+        {figure_block("Figure 1.png", "1", "Upper-completion configurations")}
+        <div id="1-2-major-design-decisions" class="p1-card p1-card-blue">
+            <span class="p1-chip p1-chip-blue">Subtopic 1.2</span>
+            <h3 class="p1-card-title">Major Design Decisions</h3>
+            <ul class="p1-list p1-list-blue">
+                <li><span class="p1-term">Artificial lift</span> — gas lift, ESP, or natural flow.</li>
+                <li><span class="p1-term">Tubing size</span> — balances production capacity against pressure drop.</li>
+                <li><span class="p1-term">Completion configuration</span> — single or dual completion.</li>
+                <li><span class="p1-term">Tubing isolation</span> — a packer or equivalent to control fluid communication.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("""
-        <div id="1-3-key-components" class="card" style="border-top: 3px solid #10B981;">
-            <div class="subtopic-badge">SUBTOPIC 1.3</div>
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.3 Key Components</h3>
-            <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-                Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
+        st.markdown(f"""
+        <div id="1-3-key-components" class="p1-card p1-card-blue">
+            <span class="p1-chip p1-chip-green">Subtopic 1.3</span>
+            <h3 class="p1-card-title">Key Components</h3>
+            <p class="p1-card-body">
+                Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs),
+                artificial-lift equipment, and chemical-injection systems</b>. Together they enable safe fluid
+                transport, well control, well integrity, and future intervention.
             </p>
         </div>
+        {figure_block("Figure 2.jpg", "2", "Typical upper-completion components")}
         """, unsafe_allow_html=True)
 
-        if os.path.exists("Figure 2.jpg"):
-            st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
-
-    st.markdown("---")
+    st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # MAIN TOPIC 2.0: PRODUCTION TUBING
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div id="2-0-production-tubing" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem; scroll-margin-top: 1rem;">
-        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">2.0 Production Tubing: The Flow Path of the Well</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-            <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
+    <section id="2-0-production-tubing" class="p1-section p1-section-green">
+        <div class="p1-section-head">
+            <div class="p1-section-num">2.0</div>
+            <h2 class="p1-section-title">Production Tubing: The Flow Path of the Well</h2>
+        </div>
+        <p class="p1-section-lead">
+            <b>Production tubing</b> is the primary conduit carrying <b>oil, gas, or injected fluids</b> between the
+            reservoir and surface facilities. Its design balances <b>flow performance, mechanical integrity, and
+            operational requirements</b> — tubing size, wall thickness, steel grade, connection type, and mechanical
+            strength must together withstand the pressure, temperature, and loads seen across the well's life.
         </p>
-    </div>
+    </section>
     """, unsafe_allow_html=True)
 
-    if os.path.exists("Figure 3.jpg"):
-        st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
+    col_t1, col_t2 = st.columns([1, 1], gap="medium")
+
+    with col_t1:
+        st.markdown(figure_block("Figure 3.jpg", "3", "Production tubing in a completed well"), unsafe_allow_html=True)
+
+    with col_t2:
+        st.markdown(f"""
+        <div id="2-2-tubing-dimensions-geometry" class="p1-card p1-card-green">
+            <span class="p1-chip p1-chip-green">Subtopic 2.2</span>
+            <h3 class="p1-card-title">Tubing Dimensions &amp; Geometry</h3>
+            <p class="p1-card-body">
+                Cross-sectional geometry governs both the internal fluid dynamics (<b>ID</b>) and the external
+                clearance inside the casing (<b>OD</b>). Nominal wall thickness provides burst and collapse
+                resistance under downhole pressure differentials.
+            </p>
+        </div>
+        {figure_block("Figure 4.png", "4", "Tubing dimensions and wall thickness")}
+        """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div id="2-1-key-tubing-specifications" class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
-        <div class="subtopic-badge-green">SUBTOPIC 2.1</div>
-        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">2.1 Key Tubing Specifications</h3>
-        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
+    <div id="2-1-key-tubing-specifications" class="p1-card p1-card-green">
+        <span class="p1-chip p1-chip-green">Subtopic 2.1</span>
+        <h3 class="p1-card-title">Key Tubing Specifications</h3>
+        <table class="p1-table">
             <thead>
-                <tr style="background-color: #065F46; color: white; text-align: left;">
-                    <th style="padding: 12px 16px; border-radius: 6px 0 0 0; width: 30%;">Specification</th>
-                    <th style="padding: 12px 16px; border-radius: 0 6px 0 0; width: 70%;">Importance</th>
-                </tr>
+                <tr><th style="width: 26%;">Specification</th><th>Why it matters</th></tr>
             </thead>
             <tbody>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal size / OD</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the overall tubing size and compatibility with the casing.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Internal diameter (ID)</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences <b>fluid velocity and pressure loss</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Drift diameter</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines the maximum equipment diameter that can pass through the tubing.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Nominal weight</td>
-                    <td style="padding: 12px 16px; color: #334155;">Indicates tubing weight and is related to <b>wall thickness</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Steel grade</td>
-                    <td style="padding: 12px 16px; color: #334155;">Determines <b>strength and suitability for corrosive environments</b>.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Connection</td>
-                    <td style="padding: 12px 16px; color: #334155;">Affects connection strength and tubing integrity.</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #FFFFFF;">
-                    <td style="padding: 12px 16px; font-weight: bold; color: #1E293B;">Joint length</td>
-                    <td style="padding: 12px 16px; color: #334155;">Influences running and handling operations during completion and workover.</td>
-                </tr>
+                <tr><td class="p1-spec">Nominal size / OD</td><td>Sets overall tubing size and compatibility with the casing.</td></tr>
+                <tr><td class="p1-spec">Internal diameter (ID)</td><td>Drives <b>fluid velocity and pressure loss</b>.</td></tr>
+                <tr><td class="p1-spec">Drift diameter</td><td>Limits the maximum equipment diameter that can pass through the tubing.</td></tr>
+                <tr><td class="p1-spec">Nominal weight</td><td>Indicates tubing weight and relates directly to <b>wall thickness</b>.</td></tr>
+                <tr><td class="p1-spec">Steel grade</td><td>Determines <b>strength and suitability for corrosive environments</b>.</td></tr>
+                <tr><td class="p1-spec">Connection</td><td>Affects connection strength, sealing, and overall tubing integrity.</td></tr>
+                <tr><td class="p1-spec">Joint length</td><td>Influences running and handling during completion and workover.</td></tr>
             </tbody>
         </table>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div id="2-2-tubing-dimensions-geometry" class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
-        <div class="subtopic-badge-green">SUBTOPIC 2.2</div>
-        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.6rem; font-weight: 700;">2.2 Tubing Dimensions & Geometry</h3>
-        <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-            Tubing cross-sectional geometry dictates both the internal fluid dynamics (ID) and external clearance inside the casing (OD). The nominal wall thickness provides burst and collapse resistance under downhole pressure differentials.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if os.path.exists("Figure 4.png"):
-        st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions and wall thickness", use_container_width=True)
-
-    st.markdown("---")
+    st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # MAIN TOPIC 3.0: MODEL ASSUMPTIONS & DESIGN LIMITATIONS
     # -------------------------------------------------------------------------
     st.markdown("""
-    <div id="3-0-model-assumptions-limitations" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1rem; scroll-margin-top: 1rem;">
-        <h2 style="color: #991B1B; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">3.0 Model Assumptions & Design Limitations</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
-            To provide rapid and robust engineering screening, this selection engine applies standardized physical models and fluid dynamics principles. Understanding these assumptions and operational limits ensures proper interpretation of output recommendations.
+    <section id="3-0-model-assumptions-limitations" class="p1-section p1-section-red">
+        <div class="p1-section-head">
+            <div class="p1-section-num">3.0</div>
+            <h2 class="p1-section-title">Model Assumptions &amp; Design Limitations</h2>
+        </div>
+        <p class="p1-section-lead">
+            To deliver rapid, robust screening, this engine applies standardized physical models and fluid-dynamics
+            principles. Knowing where those models hold — and where they stop — is essential to interpreting the
+            recommendations correctly.
         </p>
+    </section>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+        <div id="3-1-key-assumptions" class="p1-card p1-card-red" style="margin-bottom: 0;">
+            <span class="p1-chip p1-chip-red">Subtopic 3.1</span>
+            <h3 class="p1-card-title">Key Assumptions</h3>
+            <ul class="p1-list p1-list-red">
+                <li><span class="p1-term">Steady-state flow</span> — single-phase gas or homogenized multiphase flow under steady operating conditions.</li>
+                <li><span class="p1-term">Linear thermal gradient</span> — temperature varies linearly from wellhead to bottomhole.</li>
+                <li><span class="p1-term">Isothermal annular APB</span> — trapped-fluid expansion uses single-zone average thermal expansion (&alpha;<sub>v</sub>) and isothermal compressibility (&kappa;<sub>T</sub>).</li>
+                <li><span class="p1-term">Uniform pipe geometry</span> — the string is evaluated as one nominal size and weight from surface to TD.</li>
+            </ul>
+        </div>
+        <div id="3-2-engineering-limitations" class="p1-card p1-card-red" style="margin-bottom: 0;">
+            <span class="p1-chip p1-chip-red">Subtopic 3.2</span>
+            <h3 class="p1-card-title">Engineering Limitations</h3>
+            <ul class="p1-list p1-list-red">
+                <li><span class="p1-term">Transient effects</span> — shut-in surges, water hammer, and thermal warm-up/cool-down cycles are not modeled.</li>
+                <li><span class="p1-term">Multiphase flow regimes</span> — a homogeneous mixture model is used; slug, mist, and annular flow maps are simplified.</li>
+                <li><span class="p1-term">Corrosion kinetics</span> — NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); no quantitative corrosion rate (mm/year) is computed.</li>
+                <li><span class="p1-term">Completion accessories</span> — SSSVs and mandrels are treated as equivalent hydraulic restrictions, not detailed local geometries.</li>
+            </ul>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-
-    col_a, col_b = st.columns(2, gap="small")
-
-    with col_a:
-        st.markdown("""
-        <div id="3-1-key-assumptions" class="card" style="border-top: 3px solid #DC2626; height: 100%;">
-            <div class="subtopic-badge-red">SUBTOPIC 3.1</div>
-            <h3 style="color: #991B1B; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">3.1 Key Assumptions</h3>
-            <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                <li><b>Steady-State Flow:</b> Calculates single-phase gas or homogenized multiphase flow under steady operational conditions.</li>
-                <li><b>Linear Thermal Gradient:</b> Assumes a linear temperature distribution from surface wellhead to bottomhole.</li>
-                <li><b>Isothermal Annular APB:</b> Trapped annular fluid volume expansion relies on single-zone average thermal expansion (α<sub>v</sub>) and isothermal compressibility (κ<sub>T</sub>).</li>
-                <li><b>Uniform Pipe Geometry:</b> Tubing string is evaluated as a single nominal size and weight from surface to TD.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_b:
-        st.markdown("""
-        <div id="3-2-engineering-limitations" class="card" style="border-top: 3px solid #DC2626; height: 100%;">
-            <div class="subtopic-badge-red">SUBTOPIC 3.2</div>
-            <h3 style="color: #991B1B; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">3.2 Engineering Limitations</h3>
-            <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                <li><b>Transient Effects:</b> Does not account for dynamic shut-in surges, water hammer, or transient thermal warm-up/cool-down loops.</li>
-                <li><b>Multiphase Flow Regimes:</b> Uses a homogenous fluid mixture model; detailed flow pattern maps (slugging, mist, annular) are simplified.</li>
-                <li><b>Corrosion Kinetics:</b> NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); it does not compute quantitative corrosion rates (mm/year).</li>
-                <li><b>Complex Completion Accessories:</b> Subsurface safety valves (SSSVs) and mandrels are modeled as equivalent hydraulic restrictions rather than detailed localized geometries.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 2: CALCULATION METHODOLOGY (REFINED & RESTORED)
