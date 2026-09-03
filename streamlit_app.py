@@ -1747,7 +1747,7 @@ elif page == "6. Recommendation & Sensitivity":
                 f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
             )
             
-            st.markdown(f"""
+            st.markdown(rf"""
             * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
             * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) and late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and below Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**).
             * **Shut-In CITHP & Surface Integrity:** Closed-In Tubing Head Pressure of **{preferred['cithp_psi']} psi** yields a static burst safety factor of **{preferred['burst_sf']}** (exceeding $SF \ge 1.10$).
