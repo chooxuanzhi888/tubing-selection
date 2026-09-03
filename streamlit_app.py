@@ -7,6 +7,7 @@ import os
 import json
 import urllib.request
 import textwrap
+import base64
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
@@ -576,43 +577,106 @@ page = st.sidebar.radio(
 # PAGE 1: INTRODUCTION & OVERVIEW
 # -----------------------------------------------------------------------------
 if page == "1. Introduction & Overview":
+    def get_cover_image_b64():
+        for name in ['cover.jpg', 'cover.png', 'cover.jpeg']:
+            if os.path.exists(name):
+                try:
+                    with open(name, 'rb') as f:
+                        encoded = base64.b64encode(f.read()).decode('utf-8')
+                        mime = 'image/png' if name.endswith('.png') else 'image/jpeg'
+                        return f'data:{mime};base64,{encoded}'
+                except Exception:
+                    pass
+        return None
+
+    cover_b64 = get_cover_image_b64()
+
     st.markdown("""
     <style>
-    .page-one-hero { background: linear-gradient(120deg, #0F172A 0%, #1E3A8A 58%, #0E7490 100%); border-radius: 16px; padding: 1.6rem 1.8rem; margin-bottom: 1rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18); }
-    .page-one-kicker { color: #BAE6FD; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.4rem; }
-    .page-one-title { color: #FFFFFF; font-size: 2.15rem; line-height: 1.15; font-weight: 750; margin: 0; }
-    .page-one-subtitle { color: #DBEAFE; font-size: 1rem; line-height: 1.55; margin: 0.65rem 0 0; max-width: 48rem; }
-    .page-one-bookmarks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; margin-top: 0.85rem; }
-    .page-one-bookmark { display: block; background: #FFFFFF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 0.8rem 0.9rem; color: #1E3A8A !important; text-decoration: none !important; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-    .page-one-bookmark:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(30, 64, 175, 0.12); }
-    .page-one-bookmark-number { display: block; color: #0284C7; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
-    .page-one-bookmark-label { display: block; font-size: 0.92rem; font-weight: 700; line-height: 1.3; }
-    .page-one-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #CBD5E1; border: 1px solid #CBD5E1; border-radius: 12px; overflow: hidden; margin: 1rem 0 1.4rem; }
+    .page-one-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #CBD5E1; border: 1px solid #CBD5E1; border-radius: 12px; overflow: hidden; margin: 1rem 0 1.5rem; }
     .page-one-glance-item { background: #FFFFFF; padding: 0.9rem 1rem; }
     .page-one-glance-label { color: #64748B; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
     .page-one-glance-value { color: #0F172A; font-size: 0.96rem; font-weight: 700; line-height: 1.35; margin-top: 0.25rem; }
-    @media (max-width: 700px) { .page-one-bookmarks, .page-one-glance { grid-template-columns: 1fr; } .page-one-title { font-size: 1.7rem; } }
+    .subtopic-badge { display: inline-block; background-color: #EFF6FF; color: #1D4ED8; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #BFDBFE; }
+    .subtopic-badge-green { display: inline-block; background-color: #ECFDF5; color: #047857; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #A7F3D0; }
+    .subtopic-badge-red { display: inline-block; background-color: #FEF2F2; color: #B91C1C; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px solid #FECACA; }
+    @media (max-width: 700px) { .page-one-glance { grid-template-columns: 1fr; } }
     </style>
-    <section class="page-one-hero">
-        <div class="page-one-kicker">Upper Completion Design</div>
-        <h1 class="page-one-title">Interactive Tubing Selection Tool</h1>
-        <p class="page-one-subtitle">A guided overview of the completion hardware, flow path, and design decisions that shape a reliable tubing recommendation.</p>
-    </section>
     """, unsafe_allow_html=True)
-    
-    if os.path.exists("cover.jpg"):
-        st.image("cover.jpg", caption="Offshore Production Facility — Upper Completion Overview", use_container_width=True)
+
+    if cover_b64:
+        st.markdown(f"""
+        <div style="position: relative; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 1.2rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22); background: linear-gradient(180deg, rgba(15, 23, 42, 0.3) 0%, rgba(15, 23, 42, 0.75) 50%, rgba(15, 23, 42, 0.96) 100%), url('{cover_b64}') center/cover no-repeat; min-height: 440px; display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem 2.2rem;">
+            <div style="max-width: 880px; margin-bottom: 1.2rem;">
+                <div style="color: #38BDF8; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.35rem;">
+                    Upper Completion Design Engine
+                </div>
+                <h1 style="color: #FFFFFF; font-size: 2.35rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.15; text-shadow: 0 2px 6px rgba(0,0,0,0.7);">
+                    Interactive Tubing Selection Tool
+                </h1>
+                <p style="color: #E2E8F0; font-size: 1.02rem; line-height: 1.5; margin: 0; max-width: 48rem; text-shadow: 0 1px 4px rgba(0,0,0,0.8);">
+                    A guided engineering overview of completion hardware, fluid transport dynamics, structural load boundaries, and tubing selection decisions.
+                </p>
+            </div>
+            <!-- Bottom Left Topics Navigation Overlay -->
+            <div style="align-self: flex-start; max-width: 920px; width: 100%; background: rgba(15, 23, 42, 0.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 1rem 1.2rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                <div style="color: #93C5FD; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+                    🧭 Topics Overview
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+                    <a href="#1-0-what-is-upper-completion" style="text-decoration: none; color: inherit;">
+                        <div style="background: rgba(30, 58, 138, 0.65); border: 1px solid rgba(147, 197, 253, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
+                            <div style="color: #60A5FA; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
+                                1.0 Upper Completion
+                            </div>
+                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
+                                Hardware & Flow Conduit Overview
+                            </div>
+                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
+                                1.1 Configurations • 1.2 Major Decisions • 1.3 Components
+                            </div>
+                        </div>
+                    </a>
+                    <a href="#2-0-production-tubing" style="text-decoration: none; color: inherit;">
+                        <div style="background: rgba(6, 95, 70, 0.65); border: 1px solid rgba(110, 231, 183, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
+                            <div style="color: #34D399; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
+                                2.0 Production Tubing
+                            </div>
+                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
+                                The Flow Path of the Well
+                            </div>
+                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
+                                2.1 Specifications • 2.2 Dimensions & Geometry
+                            </div>
+                        </div>
+                    </a>
+                    <a href="#3-0-model-assumptions-limitations" style="text-decoration: none; color: inherit;">
+                        <div style="background: rgba(153, 27, 27, 0.65); border: 1px solid rgba(252, 165, 165, 0.35); border-radius: 8px; padding: 0.7rem 0.85rem; height: 100%;">
+                            <div style="color: #FCA5A5; font-weight: 800; font-size: 0.88rem; margin-bottom: 0.15rem;">
+                                3.0 Assumptions & Limitations
+                            </div>
+                            <div style="color: #F1F5F9; font-size: 0.8rem; font-weight: 600; line-height: 1.3;">
+                                Model Scope & Operational Limits
+                            </div>
+                            <div style="color: #94A3B8; font-size: 0.72rem; margin-top: 0.35rem;">
+                                3.1 Assumptions • 3.2 Engineering Limits
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <section class="page-one-hero">
+            <div class="page-one-kicker">Upper Completion Design</div>
+            <h1 class="page-one-title">Interactive Tubing Selection Tool</h1>
+            <p class="page-one-subtitle">A guided overview of the completion hardware, flow path, and design decisions that shape a reliable tubing recommendation.</p>
+        </section>
+        """, unsafe_allow_html=True)
 
     st.markdown("""
-    <nav class="card" aria-label="Page 1 bookmarks" style="background: linear-gradient(135deg, #F8FAFC, #EFF6FF); border-left: 5px solid #2563EB; margin-bottom: 1rem;">
-        <div style="font-size: 1.05rem; font-weight: 750; color: #1E3A8A;">Explore this page</div>
-        <div style="font-size: 0.88rem; color: #475569; margin-top: 0.15rem;">Jump to the part of the completion story you need.</div>
-        <div class="page-one-bookmarks">
-            <a class="page-one-bookmark" href="#upper-completion"><span class="page-one-bookmark-number">1.0</span><span class="page-one-bookmark-label">What is Upper Completion?</span></a>
-            <a class="page-one-bookmark" href="#production-tubing"><span class="page-one-bookmark-number">1.1</span><span class="page-one-bookmark-label">Production Tubing</span></a>
-            <a class="page-one-bookmark" href="#model-limitations"><span class="page-one-bookmark-number">1.2</span><span class="page-one-bookmark-label">Assumptions &amp; Limitations</span></a>
-        </div>
-    </nav>
     <div class="page-one-glance" aria-label="Design at a glance">
         <div class="page-one-glance-item"><div class="page-one-glance-label">Primary flow path</div><div class="page-one-glance-value">Production tubing</div></div>
         <div class="page-one-glance-item"><div class="page-one-glance-label">Design balance</div><div class="page-one-glance-value">Hydraulics, integrity &amp; operability</div></div>
@@ -620,10 +684,13 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
     
+    # -------------------------------------------------------------------------
+    # MAIN TOPIC 1.0: WHAT IS UPPER COMPLETION?
+    # -------------------------------------------------------------------------
     st.markdown("""
-    <div id="upper-completion" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; scroll-margin-top: 1rem;">
+    <div id="1-0-what-is-upper-completion" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; scroll-margin-top: 1rem;">
         <h2 style="color: #1E3A8A; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">1.0 What is Upper Completion?</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
             The <b>upper completion</b> is the portion of a well completion located <b>above the lower or reservoir completion</b>, extending to the <b>wellhead and surface facilities</b>. It provides the main pathway for <b>produced or injected fluids</b>. Depending on the well requirements, it may include <b>production tubing, packers, subsurface safety valves, artificial lift systems, and chemical-injection systems</b>.
         </p>
     </div>
@@ -633,8 +700,9 @@ if page == "1. Introduction & Overview":
 
     with col1:
         st.markdown("""
-        <div class="card" style="border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Upper Completion Configurations</h3>
+        <div id="1-1-upper-completion-configurations" class="card" style="border-top: 3px solid #3B82F6;">
+            <div class="subtopic-badge">SUBTOPIC 1.1</div>
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.1 Upper Completion Configurations</h3>
             <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Common configurations include:</p>
             <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Tubingless completion:</b> fluids flow through the casing.</li>
@@ -649,8 +717,9 @@ if page == "1. Introduction & Overview":
             st.image("Figure 1.png", caption="Figure 1: Upper-completion configurations", use_container_width=True)
 
         st.markdown("""
-        <div class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Major Design Decisions</h3>
+        <div id="1-2-major-design-decisions" class="card" style="margin-top: 1rem; border-top: 3px solid #3B82F6;">
+            <div class="subtopic-badge">SUBTOPIC 1.2</div>
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.2 Major Design Decisions</h3>
             <p style="font-size: 0.95rem; line-height: 1.5; color: #475569;">Key decisions include:</p>
             <ul style="font-size: 0.95rem; line-height: 1.7; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
                 <li><b>Artificial lift:</b> e.g., gas lift or ESP.</li>
@@ -663,8 +732,9 @@ if page == "1. Introduction & Overview":
 
     with col2:
         st.markdown("""
-        <div class="card" style="border-top: 3px solid #10B981;">
-            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">Key Components</h3>
+        <div id="1-3-key-components" class="card" style="border-top: 3px solid #10B981;">
+            <div class="subtopic-badge">SUBTOPIC 1.3</div>
+            <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">1.3 Key Components</h3>
             <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
                 Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs), artificial-lift equipment, and chemical-injection systems</b>. Together, they enable <b>safe fluid transport, well control, well integrity, and future intervention</b>.
             </p>
@@ -675,10 +745,14 @@ if page == "1. Introduction & Overview":
             st.image("Figure 2.jpg", caption="Figure 2: Typical upper-completion components", use_container_width=True)
 
     st.markdown("---")
+
+    # -------------------------------------------------------------------------
+    # MAIN TOPIC 2.0: PRODUCTION TUBING
+    # -------------------------------------------------------------------------
     st.markdown("""
-    <div id="production-tubing" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem; scroll-margin-top: 1rem;">
-        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">1.1 Production Tubing: The Flow Path of the Well</h2>
-        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B;">
+    <div id="2-0-production-tubing" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #059669; margin-top: 1rem; scroll-margin-top: 1rem;">
+        <h2 style="color: #065F46; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">2.0 Production Tubing: The Flow Path of the Well</h2>
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
             <b>Production tubing</b> is the primary conduit that transports <b>oil, gas, or injected fluids</b> between the reservoir and surface facilities. Its design must balance <b>flow performance, mechanical integrity, and operational requirements</b>. Key considerations include <b>tubing size, wall thickness, steel grade, connection type, and mechanical strength</b>, ensuring the tubing can withstand the pressure, temperature, and loads encountered throughout the well's life.
         </p>
     </div>
@@ -688,8 +762,9 @@ if page == "1. Introduction & Overview":
         st.image("Figure 3.jpg", caption="Figure 3 — Production tubing in a completed well", use_container_width=True)
 
     st.markdown("""
-    <div class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
-        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">Key Tubing Specifications</h3>
+    <div id="2-1-key-tubing-specifications" class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
+        <div class="subtopic-badge-green">SUBTOPIC 2.1</div>
+        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 700;">2.1 Key Tubing Specifications</h3>
         <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
             <thead>
                 <tr style="background-color: #065F46; color: white; text-align: left;">
@@ -731,34 +806,62 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    if os.path.exists("Figure 4.png"):
-        st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions", use_container_width=True)
-
     st.markdown("""
-    <div id="model-limitations" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1.5rem; scroll-margin-top: 1rem;">
-        <h2 style="color: #991B1B; font-size: 1.5rem; margin-bottom: 0.8rem; font-weight: 700;">1.2 Model Assumptions & Design Limitations</h2>
-        <div style="display: flex; gap: 1rem;">
-            <div style="flex: 1;">
-                <h4 style="color: #991B1B; font-size: 1.1rem; margin-bottom: 0.4rem;">Key Assumptions</h4>
-                <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                    <li><b>Steady-State Flow:</b> Calculates single-phase gas or homogenized multiphase flow under steady operational conditions.</li>
-                    <li><b>Linear Thermal Gradient:</b> Assumes a linear temperature distribution from surface wellhead to bottomhole.</li>
-                    <li><b>Isothermal Annular APB:</b> Trapped annular fluid volume expansion relies on single-zone average thermal expansion (α<sub>v</sub>) and isothermal compressibility (κ<sub>T</sub>).</li>
-                    <li><b>Uniform Pipe Geometry:</b> Tubing string is evaluated as a single nominal size and weight from surface to TD.</li>
-                </ul>
-            </div>
-            <div style="flex: 1;">
-                <h4 style="color: #991B1B; font-size: 1.1rem; margin-bottom: 0.4rem;">Engineering Limitations</h4>
-                <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
-                    <li><b>Transient Effects:</b> Does not account for dynamic shut-in surges, water hammer, or transient thermal warm-up/cool-down loops.</li>
-                    <li><b>Multiphase Flow Regimes:</b> Uses a homogenous fluid mixture model; detailed flow pattern maps (slugging, mist, annular) are simplified.</li>
-                    <li><b>Corrosion Kinetics:</b> NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); it does not compute quantitative corrosion rates (mm/year).</li>
-                    <li><b>Complex Completion Accessories:</b> Subsurface safety valves (SSSVs) and mandrels are modeled as equivalent hydraulic restrictions rather than detailed localized geometries.</li>
-                </ul>
-            </div>
-        </div>
+    <div id="2-2-tubing-dimensions-geometry" class="card" style="margin-top: 1rem; border-top: 3px solid #059669;">
+        <div class="subtopic-badge-green">SUBTOPIC 2.2</div>
+        <h3 style="color: #065F46; font-size: 1.3rem; margin-bottom: 0.6rem; font-weight: 700;">2.2 Tubing Dimensions & Geometry</h3>
+        <p style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
+            Tubing cross-sectional geometry dictates both the internal fluid dynamics (ID) and external clearance inside the casing (OD). The nominal wall thickness provides burst and collapse resistance under downhole pressure differentials.
+        </p>
     </div>
     """, unsafe_allow_html=True)
+
+    if os.path.exists("Figure 4.png"):
+        st.image("Figure 4.png", caption="Figure 4 — Tubing dimensions and wall thickness", use_container_width=True)
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------------
+    # MAIN TOPIC 3.0: MODEL ASSUMPTIONS & DESIGN LIMITATIONS
+    # -------------------------------------------------------------------------
+    st.markdown("""
+    <div id="3-0-model-assumptions-limitations" class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #DC2626; margin-top: 1rem; scroll-margin-top: 1rem;">
+        <h2 style="color: #991B1B; font-size: 1.6rem; margin-bottom: 0.8rem; font-weight: 700;">3.0 Model Assumptions & Design Limitations</h2>
+        <p style="font-size: 1.05rem; line-height: 1.6; color: #1E293B; margin-bottom: 0;">
+            To provide rapid and robust engineering screening, this selection engine applies standardized physical models and fluid dynamics principles. Understanding these assumptions and operational limits ensures proper interpretation of output recommendations.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_a, col_b = st.columns(2, gap="small")
+
+    with col_a:
+        st.markdown("""
+        <div id="3-1-key-assumptions" class="card" style="border-top: 3px solid #DC2626; height: 100%;">
+            <div class="subtopic-badge-red">SUBTOPIC 3.1</div>
+            <h3 style="color: #991B1B; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">3.1 Key Assumptions</h3>
+            <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
+                <li><b>Steady-State Flow:</b> Calculates single-phase gas or homogenized multiphase flow under steady operational conditions.</li>
+                <li><b>Linear Thermal Gradient:</b> Assumes a linear temperature distribution from surface wellhead to bottomhole.</li>
+                <li><b>Isothermal Annular APB:</b> Trapped annular fluid volume expansion relies on single-zone average thermal expansion (α<sub>v</sub>) and isothermal compressibility (κ<sub>T</sub>).</li>
+                <li><b>Uniform Pipe Geometry:</b> Tubing string is evaluated as a single nominal size and weight from surface to TD.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_b:
+        st.markdown("""
+        <div id="3-2-engineering-limitations" class="card" style="border-top: 3px solid #DC2626; height: 100%;">
+            <div class="subtopic-badge-red">SUBTOPIC 3.2</div>
+            <h3 style="color: #991B1B; font-size: 1.25rem; margin-bottom: 0.6rem; font-weight: 700;">3.2 Engineering Limitations</h3>
+            <ul style="font-size: 0.95rem; line-height: 1.6; color: #1E293B; margin-bottom: 0; padding-left: 1.2rem;">
+                <li><b>Transient Effects:</b> Does not account for dynamic shut-in surges, water hammer, or transient thermal warm-up/cool-down loops.</li>
+                <li><b>Multiphase Flow Regimes:</b> Uses a homogenous fluid mixture model; detailed flow pattern maps (slugging, mist, annular) are simplified.</li>
+                <li><b>Corrosion Kinetics:</b> NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); it does not compute quantitative corrosion rates (mm/year).</li>
+                <li><b>Complex Completion Accessories:</b> Subsurface safety valves (SSSVs) and mandrels are modeled as equivalent hydraulic restrictions rather than detailed localized geometries.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 2: CALCULATION METHODOLOGY (REFINED & RESTORED)
