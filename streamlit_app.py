@@ -1159,7 +1159,8 @@ if page == "1. Introduction & Overview":
     .p1-hero-fallback { background: radial-gradient(120% 140% at 12% 10%, #1D4ED8 0%, #0F172A 55%, #020617 100%); }
     .p1-hero-kicker { color: #7DD3FC; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.16em;
                       text-transform: uppercase; margin-bottom: 0.5rem; }
-    .p1-hero-title { color: #FFFFFF; font-size: 2.5rem; font-weight: 800; line-height: 1.12;
+    .p1-hero-title, .stMarkdown h1.p1-hero-title {
+                     color: #FFFFFF !important; font-size: 2.5rem; font-weight: 800; line-height: 1.12;
                      margin: 0 0 0.6rem; letter-spacing: -0.02em; text-shadow: 0 2px 10px rgba(0,0,0,0.55); }
     .p1-hero-sub { color: #DBEAFE; font-size: 1.03rem; line-height: 1.6; margin: 0; max-width: 44rem;
                    text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
