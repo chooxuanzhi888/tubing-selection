@@ -9,6 +9,7 @@ import json
 import urllib.request
 import textwrap
 import base64
+import itertools
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
@@ -94,9 +95,9 @@ st.markdown("""
     .m2-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
                 text-transform: uppercase; color: #64748B; margin: 1.1rem 0 0.4rem; }
     .m2-label:first-child { margin-top: 0; }
-    /* Left-aligned on purpose: these paragraphs embed inline <details> glossary
-       terms, which justification cannot break across lines. Justifying them
-       stretches the spaces around each term into visible gaps. */
+    /* Left-aligned on purpose: these paragraphs embed inline glossary terms whose
+       pop-up panels cannot be broken across lines, so justification would stretch
+       the spaces around each term into visible gaps. */
     .m2-purpose { font-size: 0.9rem; line-height: 1.65; color: #1E293B;
                   background: #F8FAFC; border-left: 3px solid #3B82F6;
                   padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
@@ -122,24 +123,27 @@ st.markdown("""
     .m2-fx-caption { font-size: 0.82rem; color: #475569; font-weight: 600; margin: 0.55rem 0 -0.35rem; }
 
     /* ---- Glossary pop-up ------------------------------------------------ */
-    /* A <details> element styled as an inline term: the <summary> is the dotted
-       term the reader clicks, and the panel below is the plain-English blurb. */
-    details.m2-term { display: inline; position: relative; }
-    details.m2-term > summary { display: inline; list-style: none; cursor: help;
-                                border-bottom: 1.5px dotted #2563EB; color: #1D4ED8;
-                                font-weight: 600; }
-    details.m2-term > summary::-webkit-details-marker { display: none; }
-    details.m2-term > summary::marker { content: ""; }
-    details.m2-term > summary:hover { background: #EFF6FF; }
-    details.m2-term[open] > summary { background: #DBEAFE; }
-    details.m2-term .m2-term-pop { position: absolute; z-index: 40; left: 0; top: 1.6em;
-                                   width: min(21rem, 78vw); background: #0F172A; color: #E2E8F0;
-                                   border-radius: 8px; padding: 0.7rem 0.85rem;
-                                   font-size: 0.82rem; line-height: 1.55; font-weight: 400;
-                                   font-style: normal; text-transform: none; letter-spacing: normal;
-                                   text-align: left;
-                                   box-shadow: 0 10px 24px rgba(15,23,42,0.28); }
-    details.m2-term .m2-term-pop b { color: #7DD3FC; display: block; margin-bottom: 0.2rem; }
+    /* Built from inline <span>/<label> only. An earlier <details>-based version
+       broke the line: <details> is block-level, so the markdown renderer split
+       the paragraph around every term. A hidden checkbox driven by <label>
+       gives click-to-toggle with no block element in the text flow. */
+    .m2-term { position: relative; display: inline; }
+    .m2-term > input.m2-term-cb { position: absolute; opacity: 0; width: 0; height: 0;
+                                  pointer-events: none; }
+    .m2-term > label.m2-term-label { display: inline; cursor: help;
+                                     border-bottom: 1.5px dotted #2563EB; color: #1D4ED8;
+                                     font-weight: 600; }
+    .m2-term > label.m2-term-label:hover { background: #EFF6FF; }
+    .m2-term > input.m2-term-cb:checked ~ label.m2-term-label { background: #DBEAFE; }
+    .m2-term .m2-term-pop { display: none; position: absolute; z-index: 40; left: 0; top: 1.7em;
+                            width: min(21rem, 78vw); background: #0F172A; color: #E2E8F0;
+                            border-radius: 8px; padding: 0.7rem 0.85rem;
+                            font-size: 0.82rem; line-height: 1.55; font-weight: 400;
+                            font-style: normal; text-transform: none; letter-spacing: normal;
+                            text-align: left; white-space: normal;
+                            box-shadow: 0 10px 24px rgba(15,23,42,0.28); }
+    .m2-term > input.m2-term-cb:checked ~ .m2-term-pop { display: block; }
+    .m2-term .m2-term-pop b { color: #7DD3FC; display: block; margin-bottom: 0.2rem; }
 
     /* ---- Clickable flowchart ------------------------------------------- */
     a.flow-link { text-decoration: none; display: block; color: inherit; }
@@ -363,16 +367,24 @@ GLOSSARY = {
 }
 
 
+_TERM_SEQ = itertools.count()
+
+
 def term(key, text=None):
     """Render `text` as a clickable glossary term that reveals a pop-up definition.
 
-    Uses a <details>/<summary> pair so the pop-up toggles with pure HTML, which
-    works inside st.markdown where custom JavaScript would be stripped.
+    Emits only inline elements. A hidden checkbox plus its <label> gives
+    click-to-toggle in pure CSS, which matters because st.markdown strips custom
+    JavaScript. Do not switch this back to <details>: that element is block-level,
+    so the markdown renderer breaks the paragraph at every term.
     """
     title, body = GLOSSARY[key]
     label = text if text is not None else title
-    return (f'<details class="m2-term"><summary>{label}</summary>'
-            f'<span class="m2-term-pop"><b>{title}</b>{body}</span></details>')
+    cb_id = f"gt{next(_TERM_SEQ)}"
+    return (f'<span class="m2-term">'
+            f'<input class="m2-term-cb" type="checkbox" id="{cb_id}" />'
+            f'<label class="m2-term-label" for="{cb_id}">{label}</label>'
+            f'<span class="m2-term-pop"><b>{title}</b>{body}</span></span>')
 
 
 def param_table(rows):
