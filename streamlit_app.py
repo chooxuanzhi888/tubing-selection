@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -159,6 +160,183 @@ DEFAULT_MAX_SERVICE_TEMP_C = 150.0
 Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
 CV_SOLIDS_MAX = 0.15
 FRICTION_FACTOR_MAX = 0.15
+
+# Interactive upper-completion schematic used in place of a static Figure 2 image.
+# Clicking a hotspot on the diagram renders that component's details in the side panel.
+UPPER_COMPLETION_SCHEMATIC_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; padding: 10px; background-color: #f8f9fa; }
+  .container { display: flex; flex-direction: row; gap: 20px; height: 680px; width: 100%; }
+
+  /* Diagram Viewport */
+  .diagram-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 450px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .diagram-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+  /* Interactive Target Hotspots */
+  .hotspot {
+    fill: rgba(0, 123, 255, 0.15);
+    stroke: #007bff;
+    stroke-width: 2;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+  .hotspot:hover, .hotspot.active {
+    fill: rgba(255, 193, 7, 0.4);
+    stroke: #ffc107;
+    stroke-width: 3;
+  }
+
+  /* Side Info Panel */
+  .info-panel {
+    flex: 1.2;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+  }
+  .component-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .component-body { font-size: 0.95rem; line-height: 1.6; color: #4b5563; }
+  .placeholder-text { font-style: italic; color: #9ca3af; margin-top: 20px; }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="diagram-wrapper">
+    <img src="https://i.ibb.co/3s3M5C3/completion-schematic.png" class="diagram-img" alt="Upper Completion Diagram">
+
+    <svg class="overlay-svg" viewBox="0 0 400 650" preserveAspectRatio="xMidYMid meet">
+      <rect class="hotspot" id="th" x="140" y="20" width="120" height="30" onclick="showInfo('th')"></rect>
+      <rect class="hotspot" id="fc1" x="140" y="60" width="120" height="25" onclick="showInfo('fc1')"></rect>
+      <rect class="hotspot" id="trsv" x="130" y="95" width="140" height="40" onclick="showInfo('trsv')"></rect>
+      <rect class="hotspot" id="fc2" x="140" y="145" width="120" height="25" onclick="showInfo('fc2')"></rect>
+      <rect class="hotspot" id="spm" x="130" y="180" width="140" height="45" onclick="showInfo('spm')"></rect>
+      <rect class="hotspot" id="lp" x="140" y="235" width="120" height="30" onclick="showInfo('lp')"></rect>
+      <rect class="hotspot" id="packer" x="120" y="275" width="160" height="50" onclick="showInfo('packer')"></rect>
+      <rect class="hotspot" id="irsv" x="130" y="335" width="140" height="40" onclick="showInfo('irsv')"></rect>
+      <rect class="hotspot" id="screen" x="130" y="385" width="140" height="120" onclick="showInfo('screen')"></rect>
+      <rect class="hotspot" id="shoe" x="130" y="515" width="140" height="35" onclick="showInfo('shoe')"></rect>
+    </svg>
+  </div>
+
+  <div class="info-panel">
+    <div id="badge-container"></div>
+    <h2 class="component-title" id="title">Select a Component</h2>
+    <div class="component-body" id="description">
+      <p class="placeholder-text">Click on any section of the completion diagram on the left to view its mechanical specifications, primary operational functions, and technical details.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Technical definitions for Upper Completion components
+const componentData = {
+  th: {
+    name: "Tubing Hanger",
+    category: "Wellhead Component",
+    desc: "Installed in the wellhead bowl, the tubing hanger supports the full weight of the production tubing string and seals the annular space between the tubing and the casing head. It provides fluid-tight penetrations for hydraulic control lines and electrical monitoring cables downhole."
+  },
+  fc1: {
+    name: "Flow Coupling (Upper)",
+    category: "Tubular Protection",
+    desc: "Heavy-wall joint of tubing installed directly above dynamic flow-constricting safety valves. It is engineered to withstand erosive internal fluid flow caused by turbulent pressure drops and high fluid velocity."
+  },
+  trsv: {
+    name: "Tubing-Retrievable Safety Valve (TRSSV)",
+    category: "Barrier Safety",
+    desc: "A surface-controlled fail-safe device held open by hydraulic pressure applied from a surface panel. If hydraulic pressure is bled off or wellhead control is lost, internal springs close the flapper mechanism to isolate downhole pressures."
+  },
+  fc2: {
+    name: "Flow Coupling (Lower)",
+    category: "Tubular Protection",
+    desc: "Heavy-wall tubular joint installed directly below turbulent restriction points (such as the TRSV) to protect the surrounding completion tubing from flow erosion and localized wall loss."
+  },
+  spm: {
+    name: "Side Pocket Mandrel & Gauge",
+    category: "Monitoring & Artificial Lift",
+    desc: "Receptacle welded onto the production tubing housing memory gauges or downhole pressure/temperature sensors. It can also receive kick-off/gas lift valves run or retrieved via slickline wireline operations."
+  },
+  lp: {
+    name: "Landing Nipple Profile",
+    category: "Flow Control",
+    desc: "Internally machined landing profile with internal lock grooves and honed sealing bores. Used to land slickline flow control devices such as wireline plugs, standing valves, or chokes."
+  },
+  packer: {
+    name: "Production Packer",
+    category: "Zonal Isolation",
+    desc: "Downhole sealing tool set in the production casing to isolate the annulus above the reservoir. It prevents formation fluids from contacting the casing wall, contains pressure, and forces fluids up the production tubing."
+  },
+  irsv: {
+    name: "Injection / Injection-Retrievable Safety Valve (IRSV)",
+    category: "Barrier Safety",
+    desc: "Downhole valve configuration designed for chemical injection or secondary safety barriers, preventing backflow into lower completion intervals while allowing fluid injection."
+  },
+  screen: {
+    name: "Gravel-Pack Screen / Sand Control",
+    category: "Reservoir Protection",
+    desc: "Perforated base pipe wrapped in wire mesh or slotted liners designed to filter formation sand out of the fluid stream while allowing oil, gas, and water to flow freely into the production tubing."
+  },
+  shoe: {
+    name: "Self-Aligning Guide Shoe",
+    category: "Completion Wireline Entry",
+    desc: "Tapered profile positioned at the very bottom of the tubing string. It guides wireline tools and tubing workovers smoothly back inside the tubing bore during reentry."
+  }
+};
+
+function showInfo(id) {
+  // Update hotspot selections
+  document.querySelectorAll('.hotspot').forEach(el => el.classList.remove('active'));
+  const activeEl = document.getElementById(id);
+  if(activeEl) activeEl.classList.add('active');
+
+  // Render info content
+  const data = componentData[id];
+  if(data) {
+    document.getElementById('badge-container').innerHTML = `<span class="badge">${data.category}</span>`;
+    document.getElementById('title').innerText = data.name;
+    document.getElementById('description').innerHTML = `<p>${data.desc}</p>`;
+  }
+}
+</script>
+
+</body>
+</html>
+"""
 
 
 def normalize_grade(grade):
@@ -971,7 +1149,7 @@ if page == "1. Introduction & Overview":
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown(f"""
+        st.markdown("""
         <div id="1-3-key-components" class="p1-card p1-card-blue">
             <span class="p1-chip p1-chip-green">Subtopic 1.3</span>
             <h3 class="p1-card-title">Key Components</h3>
@@ -981,8 +1159,15 @@ if page == "1. Introduction & Overview":
                 transport, well control, well integrity, and future intervention.
             </p>
         </div>
-        {figure_block("Figure 2.jpg", "2", "Typical upper-completion components")}
         """, unsafe_allow_html=True)
+        components.html(UPPER_COMPLETION_SCHEMATIC_HTML, height=720, scrolling=False)
+        st.markdown(
+            '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
+            '<span class="p1-figure-number">Figure 2</span>'
+            'Typical upper-completion components — click a section of the schematic for details.'
+            '</figcaption></figure>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
