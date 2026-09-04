@@ -93,8 +93,7 @@ if 'inputs' not in st.session_state:
         'casing_id': 8.681,
         'p_wh': 800.0,
         'p_bhp': 4500.0,
-        'cithp': 3800.0,
-        't_wh': 75.0,
+        't_wh': 150.0,
         't_bht': 210.0,
         't_ambient': 75.0,
         'annular_fluid': 'Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)',
@@ -121,7 +120,8 @@ if 'inputs' not in st.session_state:
         'sand_sg': 2.65,
         'field_life_yrs': 20,
         'decline_rate': 8.0,
-        'sf_triaxial': 1.25
+        'sf_triaxial': 1.25,
+        'apb_limit_psi': 1500.0
     }
 
 if 'tubing_db' not in st.session_state:
@@ -142,6 +142,34 @@ ANNULAR_FLUID_PROPS = {
     "Oil-Based Mud / Synthetic (α_v = 7.0e-4 /°C, κ_T = 5.0e-6 /psi)": {"alpha_v": 7.0e-4, "kappa_t": 5.0e-6},
     "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)": {"alpha_v": 3.5e-4, "kappa_t": 2.5e-6}
 }
+
+# Indicative maximum continuous service temperature per steel grade [°C]. These are
+# screening values for grade-vs-BHT compatibility only; a project-specific design
+# must use the mill's published derating curves.
+MAX_SERVICE_TEMP_C = {
+    "H40": 150.0, "J55": 150.0, "K55": 150.0, "M65": 150.0, "C75": 150.0,
+    "N80": 150.0, "C95": 150.0, "T95": 150.0, "L80": 150.0, "L801": 150.0,
+    "P105": 150.0, "P110": 150.0, "Q125": 150.0,
+    "L8013CR": 150.0, "S13CR110": 175.0, "17CR110": 180.0,
+    "22CR110": 232.0, "25CR125": 250.0
+}
+DEFAULT_MAX_SERVICE_TEMP_C = 150.0
+
+# Engine screening thresholds shared with the Page 2 methodology documentation.
+Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
+CV_SOLIDS_MAX = 0.15
+FRICTION_FACTOR_MAX = 0.15
+
+
+def normalize_grade(grade):
+    """Collapse a grade label to a lookup key: uppercase, no spaces or hyphens."""
+    return str(grade).upper().replace(" ", "").replace("-", "").replace("_", "")
+
+
+def max_service_temp_c(grade):
+    """Return the indicative max service temperature [°C] for a steel grade."""
+    return MAX_SERVICE_TEMP_C.get(normalize_grade(grade), DEFAULT_MAX_SERVICE_TEMP_C)
+
 
 def compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg):
     """Return gas compressibility using the Dranchuk-Abou-Kassem correlation.
@@ -185,6 +213,22 @@ def compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg):
     raise ValueError("Z-factor calculation did not converge; check the gas-property inputs.")
 
 
+def static_cithp_psi(p_bhp, tvd, gas_sg, z_factor, t_avg_r):
+    """Static shut-in CITHP [psig] from a barometric dry-gas column.
+
+    Uses the standard gas-gradient exponent 0.01875·γ_g·TVD/(Z·T_avg,R), which is
+    M/R with R = 1545 ft·lbf/(lb-mol·°R): 28.97/1545 = 0.01875. Pressures are
+    converted to absolute for the exponential and returned as gauge, matching the
+    convention used everywhere else in the app.
+
+    Shared by the engine and the Page 3 default so the surface burst check and the
+    value shown in the input form always come from the same model.
+    """
+    p_bhp_psia = p_bhp + 14.7
+    p_wh_psia = p_bhp_psia * np.exp(-(0.01875 * gas_sg * tvd) / (z_factor * t_avg_r))
+    return max(p_wh_psia - 14.7, 0.0)
+
+
 def validate_engineering_inputs(inputs, candidate_df):
     """Raise ValueError before invalid user/session data can enter the model."""
     numeric_fields = {
@@ -193,6 +237,7 @@ def validate_engineering_inputs(inputs, candidate_df):
         "API gravity": "api_gravity", "gas specific gravity": "gas_sg", "water specific gravity": "water_sg",
         "oil viscosity": "oil_visc", "sand size": "sand_size_microns", "sand specific gravity": "sand_sg",
         "field life": "field_life_yrs", "decline rate": "decline_rate", "water cut": "water_cut",
+        "ambient surface temperature": "t_ambient",
     }
     values = {}
     for label, key in numeric_fields.items():
@@ -205,7 +250,7 @@ def validate_engineering_inputs(inputs, candidate_df):
 
     if values["p_wh"] < 0 or values["p_bhp"] <= values["p_wh"]:
         raise ValueError("Bottomhole pressure must be greater than or equal to zero and greater than wellhead pressure.")
-    if values["t_wh"] <= -459.67 or values["t_bht"] <= -459.67:
+    if values["t_wh"] <= -459.67 or values["t_bht"] <= -459.67 or values["t_ambient"] <= -459.67:
         raise ValueError("Temperatures must be above absolute zero.")
     if values["tvd"] <= 0 or values["md"] < values["tvd"]:
         raise ValueError("Measured depth must be greater than or equal to positive TVD.")
@@ -245,7 +290,7 @@ def run_engineering_calculations(inputs, candidate_df):
     # UI pressures are gauge pressures; PVT correlations require absolute pressure.
     p_avg_psia = (p_wh_val + p_bhp_val) / 2.0 + 14.7
     
-    t_wh_val = inputs.get('t_wh', 75.0)
+    t_wh_val = inputs.get('t_wh', 150.0)
     t_bht_val = inputs.get('t_bht', 210.0)
     t_avg_f = (t_wh_val + t_bht_val) / 2.0
     t_avg_r = t_avg_f + 459.67
@@ -295,6 +340,8 @@ def run_engineering_calculations(inputs, candidate_df):
         q_g_scf_d = q_o_stb * free_gas_gor
 
     z_factor = compute_dynamic_z_factor(p_avg_psia, t_avg_r, gas_sg_val)
+    z_in_range = Z_FACTOR_MIN <= z_factor <= Z_FACTOR_MAX
+    bo_valid = bo_rb_stb > 0.0
     rho_g = (2.7 * gas_sg_val * p_avg_psia) / (z_factor * t_avg_r)
     rho_g = max(rho_g, 0.05)
     
@@ -313,6 +360,7 @@ def run_engineering_calculations(inputs, candidate_df):
     v_sand_ft3d = w_s_lb_day / rho_s_lbft3 if rho_s_lbft3 > 0 else 0.0
     v_liq_ft3d = q_liq_stbd * 5.615
     c_v_solids = v_sand_ft3d / (v_liq_ft3d + v_sand_ft3d) if (v_liq_ft3d + v_sand_ft3d) > 0 else 0.0
+    cv_in_range = c_v_solids <= CV_SOLIDS_MAX
     rho_slurry = (1.0 - c_v_solids) * rho_m + c_v_solids * rho_s_lbft3
     
     mu_w_cp = 0.5
@@ -362,19 +410,40 @@ def run_engineering_calculations(inputs, candidate_df):
         
     q_m_late = max(q_l_ft3s_late + q_g_ft3s_late, 1e-6)
 
-    # Dynamic static CITHP calculation via barometric gas column model
+    # Late-life in-situ densities: the minimum-carrying-velocity check has to be
+    # evaluated against depleted conditions, not early-life gas density.
+    rho_g_late = max((2.7 * gas_sg_val * p_avg_late_psia) / (z_late * t_avg_late_r), 0.05)
+    if is_gas_well:
+        q_liq_late_total = q_cond_late + q_wat_late
+        wc_late_frac_eff = q_wat_late / q_liq_late_total if q_liq_late_total > 0 else 0.0
+        rho_o_late = 62.4 * gamma_o
+    else:
+        wc_late_frac_eff = wc_late_frac
+        bo_late = 0.9759 + 0.000120 * ((rs_late * ((gas_sg_val / gamma_o) ** 0.5) + 1.25 * (t_avg_late_r - 459.67)) ** 1.2)
+        rho_o_late = (62.4 * gamma_o + 0.0136 * rs_late * gas_sg_val) / bo_late
+    rho_l_late = (1.0 - wc_late_frac_eff) * rho_o_late + wc_late_frac_eff * rho_w
+
+    # Static shut-in CITHP via barometric gas column; a user-entered value overrides it.
     tvd_val = inputs.get('tvd', 10000.0)
-    m_gas = 28.97 * gas_sg_val
-    cithp_calc = p_bhp_val * np.exp(-(m_gas * tvd_val) / (z_factor * 10.731 * t_avg_r))
-    cithp_val = inputs.get('cithp', cithp_calc)
-    
+    cithp_calc = static_cithp_psi(p_bhp_val, tvd_val, gas_sg_val, z_factor, t_avg_r)
+    cithp_val = float(inputs.get('cithp') or cithp_calc)
+
     fluid_props = ANNULAR_FLUID_PROPS.get(inputs.get('annular_fluid', ''), ANNULAR_FLUID_PROPS["Water-Based Brine (α_v = 2.1e-4 /°C, κ_T = 3.0e-6 /psi)"])
     alpha_v = fluid_props['alpha_v']
     kappa_t = fluid_props['kappa_t']
-    
+
     t_ambient_val = inputs.get('t_ambient', 75.0)
-    delta_t_annular = max(t_avg_f - t_ambient_val, 0.0)
-    dp_apb_psi = (alpha_v / kappa_t) * delta_t_annular
+    # Annular temperature rise is the *change* from the sealed-in static condition to
+    # flowing conditions, not the difference from surface ambient. Bottomhole stays at
+    # reservoir temperature, so the mean static profile is (T_ambient + T_bht)/2 and the
+    # mean flowing profile is (T_wh + T_bht)/2 — the rise reduces to half the wellhead
+    # heat-up. alpha_v is per °C, so convert from °F.
+    t_static_avg_f = (t_ambient_val + t_bht_val) / 2.0
+    delta_t_annular_f = max(t_avg_f - t_static_avg_f, 0.0)
+    delta_t_annular_c = delta_t_annular_f * (5.0 / 9.0)
+    dp_apb_psi = (alpha_v / kappa_t) * delta_t_annular_c
+    apb_limit_psi = float(inputs.get('apb_limit_psi', 1500.0))
+    apb_pass = dp_apb_psi <= apb_limit_psi
     p_annular_total_wh = p_wh_val + dp_apb_psi
 
     for _, row in candidate_df.iterrows():
@@ -411,7 +480,12 @@ def run_engineering_calculations(inputs, candidate_df):
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
         v_carrying = max(v_critical_loading, 1.35 * v_t_rubey)
-        
+
+        # Late-life carrying limit uses depleted densities: lower gas density raises
+        # the Turner droplet-lift threshold, which is the binding late-life risk.
+        v_critical_late = (1.3 * (sigma_dynes ** 0.25) * (max(rho_l_late - rho_g_late, 0.01) ** 0.25)) / (rho_g_late ** 0.5)
+        v_carrying_late = max(v_critical_late, 1.35 * v_t_rubey)
+
         grade_str_upper = str(row['Grade']).upper()
         if w_s_lb_day > 0.1:
             c_salama = 450.0 if ("13CR" in grade_str_upper or "22CR" in grade_str_upper or "25CR" in grade_str_upper or "CRA" in str(row['Material']).upper()) else 200.0
@@ -419,72 +493,71 @@ def run_engineering_calculations(inputs, candidate_df):
             v_erosional = min(v_erosional, c_factor / np.sqrt(rho_m))
         else:
             v_erosional = c_factor / np.sqrt(rho_m)
-        
+
         dp_available = p_bhp_val - p_wh_val
-        
+
         hydraulics_pass = dp_total <= dp_available
+        friction_pass = f <= FRICTION_FACTOR_MAX
         velocity_pass = v_carrying < v_m < v_erosional
-        late_life_pass = v_m_late >= v_carrying
-        
+        late_life_pass = v_m_late >= v_carrying_late
+
         rho_buoy_factor = (1.0 - (rho_slurry / 490.0))
         f_gravity_lbs = row['Weight_lbft'] * md_val * rho_buoy_factor
-        f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular
+        f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular_f
         f_piston_lbs = (p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
         f_drag_lbs = (f * rho_slurry * (v_m ** 2) * np.pi * id_ft * md_val) / (2.0 * 32.174)
         sigma_bending_psi = 218.0 * row['OD_in'] * dls_val
-        
+
         f_axial_total_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs
         f_axial_total_klbs = f_axial_total_lbs / 1000.0
-        
+
+        # Pipe body tensile rating: SMYS across the steel cross-section.
+        tensile_rating_lbs = row['Yield_psi'] * area_steel_in2
+        axial_pass = abs(f_axial_total_lbs) <= tensile_rating_lbs
+
         sigma_axial_psi = (f_axial_total_lbs / area_steel_in2) + sigma_bending_psi
-        
+
         p_int = p_bhp_val
         p_ext = p_annular_total_wh
         r_i = row['ID_in'] / 2.0
         r_o = row['OD_in'] / 2.0
-        
+
         sigma_hoop_psi = (p_int * (r_i**2) - p_ext * (r_o**2) + (r_i**2 * r_o**2 * (p_int - p_ext) / (r_i**2))) / (r_o**2 - r_i**2)
         sigma_radial_psi = -p_int
-        
+
         vme_stress_psi = np.sqrt(0.5 * ((sigma_hoop_psi - sigma_radial_psi)**2 + (sigma_radial_psi - sigma_axial_psi)**2 + (sigma_axial_psi - sigma_hoop_psi)**2))
         triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
         sf_triaxial_target = inputs.get('sf_triaxial', 1.25)
         stress_pass = triaxial_sf >= sf_triaxial_target
-        
-        cithp_val = inputs.get('cithp', p_wh_val)
+
         burst_sf = row['Burst_psi'] / cithp_val if cithp_val > 0 else 99.0
         burst_pass = burst_sf >= 1.10
 
-        temp_pass = True
-        temp_reason = "Compatible"
         grade_str = str(row['Grade']).upper()
-        
-        if t_bht_c >= 107.0 and grade_str not in ["Q125"]:
-            temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= 107°C) requires Grade Q125"
-        elif t_bht_c >= 80.0 and grade_str not in ["H40", "N80", "P105", "P110", "Q125"]:
-            temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= 80°C) requires H40, N80, P105, P110, or Q125"
-        elif t_bht_c >= 65.0 and grade_str not in ["N80", "C95", "T95", "P105", "P110", "Q125"]:
-            temp_pass = False
-            temp_reason = f"Fail: BHT ({round(t_bht_c,1)}°C >= 65°C) requires N80, C95, T95, or higher"
+        grade_temp_limit_c = max_service_temp_c(row['Grade'])
+        temp_pass = t_bht_c <= grade_temp_limit_c
+        temp_reason = (
+            f"Compatible (BHT {round(t_bht_c, 1)}°C ≤ {round(grade_temp_limit_c, 0)}°C limit)"
+            if temp_pass else
+            f"Fail: BHT ({round(t_bht_c, 1)}°C) exceeds {row['Grade']} max service temperature ({round(grade_temp_limit_c, 0)}°C)"
+        )
 
         material_pass = True
         mat_reason = "Compatible"
-        
+
         if is_sour_service:
-            if grade_str in ["J-55", "J55", "N-80", "N80", "P-110", "P110"]:
+            if grade_str in ["J-55", "J55", "N-80", "N80", "P-110", "P110", "K-55", "K55", "C95", "M65", "Q125"]:
                 material_pass = False
-                mat_reason = f"Fail: Sour Service (pH2S = {round(p_h2s_psia,3)} psia >= 0.05). Requires L80-1 (26 HRC Max) or CRA."
+                mat_reason = f"Fail: Sour Service (pH2S = {round(p_h2s_psia,3)} psia >= 0.05). Requires L80-1 (26 HRC Max), C75, T95, or CRA."
 
         conn_reasons = []
         needs_premium = False
-        
+
         if is_gas_well or inputs.get('gor', 0) > 2000 or inputs.get('q_gas_mmscfd', 0) > 10.0:
             needs_premium = True
             conn_reasons.append("High Gas Stream (Metal-to-Metal Seal Required)")
-            
+
         if cithp_val > 3000:
             needs_premium = True
             conn_reasons.append(f"High Static CITHP ({round(cithp_val,0)} psi) - Thread Leak Risk")
@@ -510,9 +583,42 @@ def run_engineering_calculations(inputs, candidate_df):
         elif needs_premium and 'Premium' in row['Connection']:
             conn_status_msg = "Premium Connection Validated (" + "; ".join(conn_reasons) + ")"
 
-        overall_pass = (casing_clearance_pass and hydraulics_pass and velocity_pass and late_life_pass and 
-                        material_pass and stress_pass and connection_pass and temp_pass and burst_pass)
-        
+        # Well-level PVT / rheology gates: identical for every candidate, but reported
+        # per row so a failure is visible in the screening matrix.
+        pvt_pass = z_in_range and bo_valid
+        if pvt_pass:
+            pvt_reason = "Compatible"
+        elif not z_in_range:
+            pvt_reason = f"Fail: Z-factor ({round(z_factor, 3)}) outside valid range {Z_FACTOR_MIN}–{Z_FACTOR_MAX}"
+        else:
+            pvt_reason = f"Fail: non-physical oil formation volume factor (Bo = {round(bo_rb_stb, 3)} ≤ 0)"
+
+        if cv_in_range:
+            solids_reason = "Compatible"
+        else:
+            solids_reason = f"Fail: sand concentration Cv ({round(c_v_solids, 4)}) exceeds {CV_SOLIDS_MAX} transport-model limit"
+
+        if not friction_pass:
+            hydraulics_reason = f"Fail: non-physical friction factor (f = {round(f, 4)} > {FRICTION_FACTOR_MAX})"
+        elif not hydraulics_pass:
+            hydraulics_reason = f"Fail: dP total ({round(dp_total, 1)} psi) exceeds available drawdown ({round(dp_available, 1)} psi)"
+        else:
+            hydraulics_reason = "Compatible"
+
+        if not apb_pass:
+            apb_reason = f"Fail: APB rise ({round(dp_apb_psi, 1)} psi) exceeds {round(apb_limit_psi, 0)} psi collapse-margin limit"
+        else:
+            apb_reason = "Compatible"
+
+        if not axial_pass:
+            axial_reason = f"Fail: net axial load ({round(f_axial_total_klbs, 1)} klbs) exceeds pipe body rating ({round(tensile_rating_lbs / 1000.0, 1)} klbs)"
+        else:
+            axial_reason = "Compatible"
+
+        overall_pass = (casing_clearance_pass and hydraulics_pass and friction_pass and velocity_pass and
+                        late_life_pass and material_pass and stress_pass and axial_pass and connection_pass and
+                        temp_pass and burst_pass and apb_pass and pvt_pass and cv_in_range)
+
         results.append({
             "Name": row['Name'],
             "OD_in": row['OD_in'],
@@ -525,6 +631,7 @@ def run_engineering_calculations(inputs, candidate_df):
             "v_erosional": round(v_erosional, 2),
             "v_critical": round(v_critical_loading, 2),
             "v_carrying": round(v_carrying, 2),
+            "v_carrying_late": round(v_carrying_late, 2),
             "dp_hydro_psi": round(dp_hydro, 1),
             "dp_fric_psi": round(dp_fric, 1),
             "dp_total_psi": round(dp_total, 1),
@@ -532,27 +639,54 @@ def run_engineering_calculations(inputs, candidate_df):
             "dp_apb_psi": round(dp_apb_psi, 1),
             "cithp_psi": round(cithp_val, 1),
             "f_axial_klbs": round(f_axial_total_klbs, 1),
+            "f_axial_rating_klbs": round(tensile_rating_lbs / 1000.0, 1),
+            "friction_factor": round(f, 4),
+            "cv_solids": round(c_v_solids, 5),
             "vme_stress_psi": round(vme_stress_psi, 0),
             "triaxial_sf": round(triaxial_sf, 2),
             "burst_sf": round(burst_sf, 2),
             "Z_Factor": round(z_factor, 3),
             "Bo_rb_stb": round(bo_rb_stb, 3),
+            "max_service_temp_c": round(grade_temp_limit_c, 0),
             "Casing_Clearance_Pass": casing_clearance_pass,
             "Hydraulics_Pass": hydraulics_pass,
+            "Friction_Pass": friction_pass,
             "Velocity_Pass": velocity_pass,
             "Late_Life_Pass": late_life_pass,
             "Material_Pass": material_pass,
             "Stress_Pass": stress_pass,
+            "Axial_Pass": axial_pass,
             "Burst_Pass": burst_pass,
             "Temp_Pass": temp_pass,
+            "APB_Pass": apb_pass,
+            "PVT_Pass": pvt_pass,
+            "Solids_Pass": cv_in_range,
             "Connection_Pass": connection_pass,
             "Connection_Reason": conn_status_msg,
             "Material_Reason": mat_reason,
             "Temp_Reason": temp_reason,
+            "Hydraulics_Reason": hydraulics_reason,
+            "APB_Reason": apb_reason,
+            "Axial_Reason": axial_reason,
+            "PVT_Reason": pvt_reason,
+            "Solids_Reason": solids_reason,
             "Overall_Pass": overall_pass
         })
         
     return pd.DataFrame(results)
+
+def active_candidate_df():
+    """Return the candidate set the screening pages should evaluate.
+
+    Honours the Page 4 OD/grade filters when they have been set; falls back to the
+    full database otherwise (e.g. when the user goes straight to Page 5).
+    """
+    db = st.session_state.tubing_db
+    selection = st.session_state.get('candidate_filter')
+    if not selection:
+        return db
+    return db[db['OD_in'].isin(selection.get('od', [])) & db['Grade'].isin(selection.get('grade', []))]
+
 
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
@@ -997,7 +1131,7 @@ elif page == "2. Calculation Methodology":
             <span class="flow-step-title" style="color: #1E40AF;">Step 1: Multiphase Fluid PVT & Gas Compressibility (Z-Factor)</span>
             <span class="flow-domain-badge" style="background-color: #DBEAFE; color: #1E40AF;">Domain A</span>
         </div>
-        <div class="flow-box-body">Calculates solution gas-oil ratio (R<sub>s</sub>), oil formation volume factor (B<sub>o</sub>), and Standing-Katz compressibility (Z).</div>
+        <div class="flow-box-body">Calculates solution gas-oil ratio (R<sub>s</sub>), oil formation volume factor (B<sub>o</sub>), and Dranchuk-Abou-Kassem compressibility (Z).</div>
     </div>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
@@ -1125,7 +1259,7 @@ elif page == "2. Calculation Methodology":
         st.latex(r"q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}, \quad \rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}")
         st.latex(r"\lambda_l = \frac{q_l}{q_l + q_g}, \quad \rho_m = \lambda_l \rho_l + (1-\lambda_l)\rho_g")
         
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Estimates gas compressibility factor (<i>Z</i>) via Standing-Katz correlations to convert surface gas rate (<i>Q<sub>g</sub></i>) into downhole volumetric flow rate (<i>q<sub>g</sub></i>). Determines gas density (<i>&rho;<sub>g</sub></i>) and liquid holdup (<i>&lambda;<sub>l</sub></i>) to compute homogeneous fluid mixture density (<i>&rho;<sub>m</sub></i>).</div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Estimates gas compressibility factor (<i>Z</i>) via the Dranchuk-Abou-Kassem equation of state (iterated on reduced density, using Standing's pseudo-critical property correlations) to convert surface gas rate (<i>Q<sub>g</sub></i>) into downhole volumetric flow rate (<i>q<sub>g</sub></i>). Determines gas density (<i>&rho;<sub>g</sub></i>) and liquid holdup (<i>&lambda;<sub>l</sub></i>) to compute homogeneous fluid mixture density (<i>&rho;<sub>m</sub></i>).</div>""", unsafe_allow_html=True)
         
         st.markdown("""<div class="param-key">
 <b>Parameter Definition Key:</b><br/>
@@ -1306,15 +1440,15 @@ elif page == "2. Calculation Methodology":
 • <b><i>&nu;<sub>p</sub></i></b>: Poisson's ratio of steel [0.30]
 </div>""", unsafe_allow_html=True)
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where total net axial tension (<i>F<sub>axial</sub></i>) exceeds the pipe body tensile yield rating or causes severe helical buckling under thermal expansion.</div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where the magnitude of total net axial load (<i>|F<sub>axial</sub>|</i>) exceeds the pipe body rating (SMYS × A<sub>steel</sub>).</div>""", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col5_2:
         st.markdown("""<div class="formula-card"><h4 style="color: #065F46; margin-top: 0; font-size: 1.05rem; font-weight: 700;">5.2 Trapped Annular Pressure Build-up (APB)</h4>""", unsafe_allow_html=True)
         
-        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates pressure rise (<i>&Delta;P<sub>APB</sub></i>) inside an isolated tubing-casing annulus caused by thermal expansion of trapped completion fluid. Used to evaluate collapse and ballooning forces on the tubing.</div>""", unsafe_allow_html=True)
+        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular, °C}, \quad \Delta T_{annular, °C} = \frac{5}{9}\left(T_{avg} - T_{ambient}\right)_{°F}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}")
+
+        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates pressure rise (<i>&Delta;P<sub>APB</sub></i>) inside an isolated tubing-casing annulus caused by thermal expansion of trapped completion fluid. The annular temperature rise is measured from the ambient/static surface datum and converted to °C to match the units of <i>&alpha;<sub>v</sub></i>. Used to evaluate collapse and ballooning forces on the tubing.</div>""", unsafe_allow_html=True)
         
         st.markdown("""<div class="param-key">
 <b>Parameter Definition Key:</b><br/>
@@ -1409,10 +1543,11 @@ elif page == "2. Calculation Methodology":
 <b>Parameter Definition Key:</b><br/>
 • <b><i>p<sub>H<sub>2</sub>S</sub></i></b>: Partial pressure of hydrogen sulfide gas [psia]<br/>
 • <b>H<sub>2</sub>S [PPM]</b>: Concentration of H<sub>2</sub>S in produced gas stream [PPM]<br/>
+• <b><i>T<sub>max,grade</sub></i></b>: Indicative maximum continuous service temperature per grade [°C] (carbon & 13Cr = 150, S13Cr-110 = 175, 17Cr = 180, 22Cr = 232, 25Cr = 250)<br/>
 • <b>Premium Mandate Triggers</b>: Enforced if Gas Well, GOR > 2000, Q<sub>g</sub> > 10 MMscf/D, CITHP > 3000 psi, &Delta;P<sub>APB</sub> > 1500 psi, Depth > 10,000 ft, or CRA metallurgy.
 </div>""", unsafe_allow_html=True)
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects non-NACE compliant steel grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia) and disqualifies standard API EUE threads when gas-tight Premium Connections are required.</div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects non-NACE compliant steel grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia), grades whose maximum service temperature is below the bottomhole temperature (BHT > <i>T<sub>max,grade</sub></i>), and standard API EUE threads when gas-tight Premium Connections are required.</div>""", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------- 
@@ -1453,19 +1588,36 @@ elif page == "3. Well & Fluid Inputs":
 
         with col_g3:
             casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(current_inputs.get('casing_id', 8.681)), step=0.001, format="%.3f")
+            t_wh = st.number_input("Flowing Wellhead Temperature - WHT (°F)", min_value=32.0, max_value=400.0, value=float(current_inputs.get('t_wh', 150.0)), step=1.0, format="%.3f")
+            t_ambient = st.number_input("Ambient / Static Surface Temperature (°F)", min_value=-40.0, max_value=200.0, value=float(current_inputs.get('t_ambient', 75.0)), step=1.0, format="%.3f",
+                                        help="Baseline temperature of the trapped annular fluid at installation. The annular temperature rise (and therefore APB and thermal load) is measured from this datum.")
 
         st.markdown("---")
         st.markdown("#### 🛡️ Completion Targets, Shut-In CITHP & Field Lifespan")
         col_s1, col_s2, col_s3 = st.columns(3)
 
         with col_s1:
-            calc_cithp = round(current_inputs.get('p_bhp', 4500.0) * np.exp(-0.000035 * tvd), 1)
-            cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(current_inputs.get('cithp', calc_cithp)), step=50.0, format="%.3f")
+            # Default CITHP from the same barometric gas-column model the engine uses.
+            _p_bhp_ref = float(current_inputs.get('p_bhp', 4500.0))
+            _gas_sg_ref = float(current_inputs.get('gas_sg', 0.65))
+            _t_avg_r_ref = (t_wh + float(current_inputs.get('t_bht', 210.0))) / 2.0 + 459.67
+            try:
+                _z_ref = compute_dynamic_z_factor(
+                    (float(current_inputs.get('p_wh', 800.0)) + _p_bhp_ref) / 2.0 + 14.7,
+                    _t_avg_r_ref, _gas_sg_ref
+                )
+                calc_cithp = round(static_cithp_psi(_p_bhp_ref, tvd, _gas_sg_ref, _z_ref, _t_avg_r_ref), 1)
+            except ValueError:
+                calc_cithp = round(_p_bhp_ref * 0.6, 1)
+            cithp_input = st.number_input("Closed-In Tubing Head Pressure - CITHP (psi)", min_value=0.0, max_value=25000.0, value=float(current_inputs.get('cithp') or calc_cithp), step=50.0, format="%.3f",
+                                          help=f"Barometric dry-gas column model gives {calc_cithp} psi for the current BHP, TVD and gas gravity. Override with a measured value if available.")
             field_life = st.number_input("Target Field / Completion Lifespan (Years)", min_value=1, max_value=50, value=int(current_inputs.get('field_life_yrs', 20)), step=1)
 
         with col_s2:
             sf_triaxial = st.number_input("Min Triaxial Safety Factor", min_value=1.0, max_value=2.5, value=float(current_inputs.get('sf_triaxial', 1.25)), step=0.05, format="%.3f")
             decline_rate = st.number_input("Annual Field Decline Rate (%)", min_value=0.0, max_value=30.0, value=float(current_inputs.get('decline_rate', 8.0)), step=0.5, format="%.3f")
+            apb_limit = st.number_input("Max Allowable APB Rise (psi)", min_value=100.0, max_value=10000.0, value=float(current_inputs.get('apb_limit_psi', 1500.0)), step=100.0, format="%.3f",
+                                        help="Candidates are rejected when the calculated trapped-annulus pressure rise exceeds this collapse-margin limit.")
 
         with col_s3:
             annular_options = list(ANNULAR_FLUID_PROPS.keys())
@@ -1496,7 +1648,10 @@ elif page == "3. Well & Fluid Inputs":
         with col_c3:
             ph_val = st.number_input("Formation Water pH", min_value=2.0, max_value=10.0, value=float(current_inputs.get('ph_val', 6.5)), step=0.1, format="%.3f")
             chlorides_ppm = st.number_input("Chlorides (PPM Cl⁻)", min_value=0.0, max_value=250000.0, value=float(current_inputs.get('chlorides_ppm', 35000.0)), step=1000.0, format="%.3f")
-            lithology = st.selectbox("Reservoir Lithology", ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"])
+            lith_options = ["Sandstone (C=120)", "Carbonate / Unconsolidated (C=150)"]
+            curr_lith = current_inputs.get('lithology', lith_options[0])
+            lithology = st.selectbox("Reservoir Lithology", lith_options,
+                                     index=lith_options.index(curr_lith) if curr_lith in lith_options else 0)
             sand_sg = st.number_input("Solid Particle Density (SG)", min_value=1.5, max_value=5.0, value=float(current_inputs.get('sand_sg', 2.65)), step=0.05, format="%.3f")
 
     # ------------------------------------------------------------------------- 
@@ -1675,7 +1830,9 @@ elif page == "3. Well & Fluid Inputs":
     st.session_state.inputs.update({ 
         "well_type": well_type,
         "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
+        "t_wh": t_wh, "t_ambient": t_ambient,
         "cithp": cithp_input, "sf_triaxial": sf_triaxial, "annular_fluid": annular_fluid,
+        "apb_limit_psi": apb_limit,
         "field_life_yrs": field_life, "decline_rate": decline_rate,
         "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
         "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
@@ -1727,10 +1884,18 @@ elif page == "4. Candidate Tubing Specs":
         )
 
     filtered_db = st.session_state.tubing_db[
-        (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) & 
+        (st.session_state.tubing_db['OD_in'].isin(selected_sizes)) &
         (st.session_state.tubing_db['Grade'].isin(selected_grades))
     ]
-    
+
+    # The filtered set is what Pages 5 and 6 screen, so persist it.
+    st.session_state.candidate_filter = {"od": list(selected_sizes), "grade": list(selected_grades)}
+
+    if filtered_db.empty:
+        st.warning("No candidates match the current filters. Pages 5 and 6 need at least one candidate to screen.")
+    else:
+        st.caption(f"**{len(filtered_db)}** of {len(st.session_state.tubing_db)} candidates selected — Pages 5 and 6 screen exactly this filtered set.")
+
     st.dataframe(filtered_db, use_container_width=True, height=450)
     
     with st.expander("➕ Add Custom Tubing Candidate"):
@@ -1771,25 +1936,82 @@ elif page == "5. Engineering Calculations":
     st.markdown('<div class="main-header">Step 5: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
     
+    candidates = active_candidate_df()
+    if candidates.empty:
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 4.")
+        st.stop()
+
     try:
-        res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+        res_df = run_engineering_calculations(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
-    
+
+    st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 4 filter selection.")
+
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
-    
+
     display_df = res_df[[
-        'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_erosional',
-        'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'vme_stress_psi', 'triaxial_sf', 'burst_sf', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
+        'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_carrying_late', 'v_erosional',
+        'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'f_axial_rating_klbs', 'vme_stress_psi', 'triaxial_sf', 'burst_sf',
+        'friction_factor', 'cv_solids', 'Z_Factor', 'max_service_temp_c', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
-    
+
     display_df.columns = [
-        'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
-        'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Burst SF', 'NACE Status', 'Temp Status', 'Overall Status'
+        'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Late Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
+        'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'Axial Rating (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Burst SF',
+        'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
-    
+
     st.dataframe(display_df, use_container_width=True, height=450)
+
+    # Per-gate failure detail so a rejection can be traced to a specific check.
+    st.subheader("Screening Gate Detail")
+    gate_cols = [
+        ('Casing_Clearance_Pass', 'Casing Clearance'), ('PVT_Pass', 'PVT / Z-Factor'),
+        ('Solids_Pass', 'Sand Concentration'), ('Hydraulics_Pass', 'Hydraulics'),
+        ('Friction_Pass', 'Friction Factor'), ('Velocity_Pass', 'Velocity Window'),
+        ('Late_Life_Pass', 'Late-Life Velocity'), ('Stress_Pass', 'Triaxial Stress'),
+        ('Axial_Pass', 'Axial Load'), ('Burst_Pass', 'Surface Burst'),
+        ('APB_Pass', 'APB Limit'), ('Temp_Pass', 'Temperature'),
+        ('Material_Pass', 'NACE Sour'), ('Connection_Pass', 'Connection')
+    ]
+    gate_df = res_df[['Name'] + [col for col, _ in gate_cols]].copy()
+    gate_df.columns = ['Tubing Candidate'] + [label for _, label in gate_cols]
+    st.dataframe(gate_df, use_container_width=True, height=350)
+
+    failed = res_df[~res_df['Overall_Pass']]
+    if not failed.empty:
+        with st.expander(f"⚠️ Rejection reasons ({len(failed)} candidate(s) failed)"):
+            for _, r in failed.iterrows():
+                reasons = []
+                if not r['Casing_Clearance_Pass']:
+                    reasons.append(f"OD {r['OD_in']}\" does not clear the {st.session_state.inputs.get('casing_id', 8.681)}\" casing ID")
+                if not r['PVT_Pass']:
+                    reasons.append(r['PVT_Reason'])
+                if not r['Solids_Pass']:
+                    reasons.append(r['Solids_Reason'])
+                if not (r['Hydraulics_Pass'] and r['Friction_Pass']):
+                    reasons.append(r['Hydraulics_Reason'])
+                if not r['Velocity_Pass']:
+                    reasons.append(f"Initial velocity {r['Velocity_fts']} ft/s outside window {r['v_carrying']}–{r['v_erosional']} ft/s")
+                if not r['Late_Life_Pass']:
+                    reasons.append(f"Late-life velocity {r['v_late_life_fts']} ft/s below late carrying limit {r['v_carrying_late']} ft/s")
+                if not r['Stress_Pass']:
+                    reasons.append(f"Triaxial SF {r['triaxial_sf']} below target {st.session_state.inputs.get('sf_triaxial', 1.25)}")
+                if not r['Axial_Pass']:
+                    reasons.append(r['Axial_Reason'])
+                if not r['Burst_Pass']:
+                    reasons.append(f"Surface burst SF {r['burst_sf']} below 1.10")
+                if not r['APB_Pass']:
+                    reasons.append(r['APB_Reason'])
+                if not r['Temp_Pass']:
+                    reasons.append(r['Temp_Reason'])
+                if not r['Material_Pass']:
+                    reasons.append(r['Material_Reason'])
+                if not r['Connection_Pass']:
+                    reasons.append(r['Connection_Reason'])
+                st.markdown(f"**{r['Name']}** — " + "; ".join(str(x) for x in reasons))
 
 # -----------------------------------------------------------------------------
 # PAGE 6: RECOMMENDATION & SENSITIVITY
@@ -1798,8 +2020,13 @@ elif page == "6. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 6: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
     
+    candidates = active_candidate_df()
+    if candidates.empty:
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 4.")
+        st.stop()
+
     try:
-        res_df = run_engineering_calculations(st.session_state.inputs, st.session_state.tubing_db)
+        res_df = run_engineering_calculations(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
@@ -1838,9 +2065,9 @@ elif page == "6. Recommendation & Sensitivity":
             
             st.markdown(rf"""
             * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
-            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) and late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remain safely above minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and below Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**).
+            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) sits between the minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**). Late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remains above the depleted-condition carrying limit (**{preferred['v_carrying_late']} ft/s**).
             * **Shut-In CITHP & Surface Integrity:** Closed-In Tubing Head Pressure of **{preferred['cithp_psi']} psi** yields a static burst safety factor of **{preferred['burst_sf']}** (exceeding $SF \ge 1.10$).
-            * **NACE & Structural Safety:** Grade **{preferred['Grade']}** ({preferred['Material']}) provides a von Mises triaxial SF of **{preferred['triaxial_sf']}** under Lubinski axial tension (**{preferred['f_axial_klbs']} klbs**) and APB rise (**{preferred['dp_apb_psi']} psi**).
+            * **NACE & Structural Safety:** Grade **{preferred['Grade']}** ({preferred['Material']}) provides a von Mises triaxial SF of **{preferred['triaxial_sf']}** under Lubinski axial tension (**{preferred['f_axial_klbs']} klbs** against a **{preferred['f_axial_rating_klbs']} klbs** pipe body rating) and APB rise (**{preferred['dp_apb_psi']} psi**). Maximum service temperature for this grade is **{preferred['max_service_temp_c']}°C**.
             * **Connection Validation:** {preferred['Connection_Reason']}
             """)
         else:
