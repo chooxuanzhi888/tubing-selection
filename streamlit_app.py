@@ -1031,7 +1031,13 @@ if page == "1. Introduction & Overview":
                 encoded = base64.b64encode(handle.read()).decode('utf-8')
         except OSError:
             return None
-        mime = 'image/png' if path.lower().endswith('.png') else 'image/jpeg'
+        lowered = path.lower()
+        if lowered.endswith('.png'):
+            mime = 'image/png'
+        elif lowered.endswith('.svg'):
+            mime = 'image/svg+xml'
+        else:
+            mime = 'image/jpeg'
         return f'data:{mime};base64,{encoded}'
 
     def first_existing_image(names):
@@ -1320,7 +1326,7 @@ if page == "1. Introduction & Overview":
     col_t1, col_t2 = st.columns([1, 1], gap="medium")
 
     with col_t1:
-        st.markdown(figure_block("Figure 3.jpg", "3", "Production tubing in a completed well"), unsafe_allow_html=True)
+        st.markdown(figure_block("Figure 3.svg", "3", "Production tubing in a completed well"), unsafe_allow_html=True)
 
     with col_t2:
         st.markdown(f"""
