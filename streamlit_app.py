@@ -2021,8 +2021,8 @@ elif page == "2. Calculation Methodology":
             "Trapped Annular Pressure Build-up (APB)",
             "#065F46",
             [
-                (r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular, °C}", "Pressure rise from fluid that cannot expand"),
-                (r"\Delta T_{annular, °C} = \frac{5}{9}\left(T_{avg} - T_{ambient}\right)_{°F}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}", "Temperature rise above surface datum, and total external pressure"),
+                (r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular, ^\circ C}", "Pressure rise from fluid that cannot expand"),
+                (r"\Delta T_{annular, ^\circ C} = \frac{5}{9}\left(T_{avg} - T_{ambient}\right)_{^\circ F}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}", "Temperature rise above surface datum, and total external pressure"),
             ],
             f"Captures {term('apb')}: completion fluid sealed in the {term('annulus')} is heated by production but has nowhere to expand, so pressure climbs. The rise is measured from the ambient surface datum and converted to &deg;C to match the units of <i>&alpha;<sub>v</sub></i>. The result raises external pressure on the tubing, feeding the collapse and {term('ballooning')} checks.",
             [
@@ -2100,9 +2100,9 @@ elif page == "2. Calculation Methodology":
             "NACE MR0175 Sour Service &amp; Premium Connection Logic",
             "#5B21B6",
             [
-                (r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}", "H₂S partial pressure against the NACE sour threshold"),
+                (r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}", "H<sub>2</sub>S partial pressure against the NACE sour threshold"),
             ],
-            f"Applies the environmental and mechanical gates. The {term('partial-pressure')} of H₂S decides whether {term('sour', 'sour service')} rules apply; above 0.05 psia, {term('nace')} caps hardness at 26 HRC or mandates a {term('cra')}. Separately, high gas rate, APB, depth or CRA metallurgy force a {term('premium-connection')} for gas-tight sealing.",
+            f"Applies the environmental and mechanical gates. The {term('partial-pressure')} of H<sub>2</sub>S decides whether {term('sour', 'sour service')} rules apply; above 0.05 psia, {term('nace')} caps hardness at 26 HRC or mandates a {term('cra')}. Separately, high gas rate, APB, depth or CRA metallurgy force a {term('premium-connection')} for gas-tight sealing.",
             [
                 ("p<sub>H<sub>2</sub>S</sub>", "Partial pressure of hydrogen sulphide", "psia"),
                 ("H<sub>2</sub>S", "Concentration in the produced gas stream", "PPM"),
