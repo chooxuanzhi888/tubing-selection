@@ -94,12 +94,18 @@ st.markdown("""
     .m2-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
                 text-transform: uppercase; color: #64748B; margin: 1.1rem 0 0.4rem; }
     .m2-label:first-child { margin-top: 0; }
+    /* Prose blocks are justified with hyphenation so the ragged right edge does
+       not fight the card border; short table cells stay ragged-left on purpose. */
     .m2-purpose { font-size: 0.9rem; line-height: 1.65; color: #1E293B;
                   background: #F8FAFC; border-left: 3px solid #3B82F6;
-                  padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0; }
+                  padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
+                  text-align: justify; text-justify: inter-word;
+                  hyphens: auto; -webkit-hyphens: auto; }
     .m2-gate { font-size: 0.86rem; line-height: 1.6; color: #991B1B;
                background: #FEF2F2; border-left: 3px solid #EF4444;
-               padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0; }
+               padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
+               text-align: justify; text-justify: inter-word;
+               hyphens: auto; -webkit-hyphens: auto; }
     /* Parameter definition table: symbol | meaning | units. */
     .m2-param-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .m2-param-table th { text-align: left; font-size: 0.68rem; font-weight: 800;
@@ -107,7 +113,8 @@ st.markdown("""
                          padding: 0.4rem 0.6rem; border-bottom: 1.5px solid #CBD5E1;
                          background: #F8FAFC; }
     .m2-param-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #EEF2F6;
-                         color: #334155; line-height: 1.5; vertical-align: top; }
+                         color: #334155; line-height: 1.5; vertical-align: top;
+                         text-align: left; }
     .m2-param-table tr:last-child td { border-bottom: none; }
     .m2-param-table td.m2-sym { white-space: nowrap; font-weight: 700; color: #0F172A;
                                 width: 16%; font-family: "SFMono-Regular", Consolas, monospace; }
@@ -1684,7 +1691,7 @@ elif page == "2. Calculation Methodology":
     st.markdown("""
 <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
     <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Modular 7-Step Engineering Screening Pipeline</h3>
-    <p style="font-size: 0.92rem; color: #334155; line-height: 1.5; margin-bottom: 0;">
+    <p style="font-size: 0.92rem; color: #334155; line-height: 1.5; margin-bottom: 0; text-align: justify;">
         Every candidate pipe from the database is processed through three engineering domains:
         <b>Domain A (Thermodynamics &amp; Rheology)</b>, <b>Domain B (Hydrodynamics &amp; Velocity Windows)</b>, and <b>Domain C (Structural Load &amp; Integrity Gates)</b>.
         <b style="color: #1E3A8A;">Click any step below to open it.</b>
