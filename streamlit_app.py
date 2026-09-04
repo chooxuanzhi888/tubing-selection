@@ -1339,7 +1339,7 @@ if page == "1. Introduction & Overview":
                 resistance under downhole pressure differentials.
             </p>
         </div>
-        {figure_block("Figure 4.png", "4", "Tubing dimensions and wall thickness")}
+        {figure_block("Figure 4.jpg", "4", "Tubing dimensions and wall thickness")}
         """, unsafe_allow_html=True)
 
     st.markdown("""
