@@ -1226,7 +1226,7 @@ if page == "1. Introduction & Overview":
             <div class="p1-toc-num">Section 2.0</div>
             <div class="p1-toc-title">Production Tubing</div>
             <div class="p1-toc-desc">The flow path of the well</div>
-            <div class="p1-toc-sub">2.1 Specifications &middot; 2.2 Dimensions &amp; geometry</div>
+            <div class="p1-toc-sub">2.1 Dimensions &amp; geometry &middot; 2.2 Specifications</div>
         </a>
         <a class="p1-toc-card" href="#3-0-model-assumptions-limitations" style="--accent: #DC2626;">
             <div class="p1-toc-num">Section 3.0</div>
@@ -1285,7 +1285,7 @@ if page == "1. Introduction & Overview":
     with col2:
         st.markdown("""
         <div id="1-3-key-components" class="p1-card p1-card-blue">
-            <span class="p1-chip p1-chip-green">Subtopic 1.3</span>
+            <span class="p1-chip p1-chip-blue">Subtopic 1.3</span>
             <h3 class="p1-card-title">Key Components</h3>
             <p class="p1-card-body">
                 Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs),
@@ -1326,12 +1326,12 @@ if page == "1. Introduction & Overview":
     col_t1, col_t2 = st.columns([1, 1], gap="medium")
 
     with col_t1:
-        st.markdown(figure_block("Figure 3.svg", "3", "Production tubing in a completed well"), unsafe_allow_html=True)
+        st.markdown(figure_block("Figure 3.jpg", "3", "Production tubing in a completed well"), unsafe_allow_html=True)
 
     with col_t2:
         st.markdown(f"""
-        <div id="2-2-tubing-dimensions-geometry" class="p1-card p1-card-green">
-            <span class="p1-chip p1-chip-green">Subtopic 2.2</span>
+        <div id="2-1-tubing-dimensions-geometry" class="p1-card p1-card-green">
+            <span class="p1-chip p1-chip-green">Subtopic 2.1</span>
             <h3 class="p1-card-title">Tubing Dimensions &amp; Geometry</h3>
             <p class="p1-card-body">
                 Cross-sectional geometry governs both the internal fluid dynamics (<b>ID</b>) and the external
@@ -1343,8 +1343,8 @@ if page == "1. Introduction & Overview":
         """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div id="2-1-key-tubing-specifications" class="p1-card p1-card-green">
-        <span class="p1-chip p1-chip-green">Subtopic 2.1</span>
+    <div id="2-2-key-tubing-specifications" class="p1-card p1-card-green">
+        <span class="p1-chip p1-chip-green">Subtopic 2.2</span>
         <h3 class="p1-card-title">Key Tubing Specifications</h3>
         <table class="p1-table">
             <thead>
