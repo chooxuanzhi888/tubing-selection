@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accurate Upper Completion Schematic - Light Theme</title>
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  body { margin: 0; padding: 20px; background-color: #f8fafc; color: #0f172a; }
+  .container { display: flex; flex-direction: row; gap: 24px; max-width: 1200px; height: 780px; margin: 0 auto; }
+  
+  /* Schematic Viewer Card */
+  .diagram-card {
+    flex: 1.1;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+    overflow: hidden;
+  }
+  svg { width: 100%; height: 100%; max-width: 420px; }
+
+  /* Interactive Hotspot Styles */
+  .hotspot { cursor: pointer; }
+  .hotspot .selection-box {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 1.5;
+    transition: all 0.2s ease;
+  }
+  .hotspot:hover .selection-box, .hotspot.active .selection-box {
+    fill: rgba(2, 132, 199, 0.08);
+    stroke: #0284c7;
+    stroke-dasharray: 4 4;
+  }
+  .hotspot:hover .comp-body, .hotspot.active .comp-body {
+    filter: drop-shadow(0 0 6px rgba(2, 132, 199, 0.4));
+  }
+  .pointer-line { stroke: #94a3b8; stroke-width: 1; stroke-dasharray: 2 2; }
+  .label-text { font-size: 11px; font-weight: 600; fill: #475569; pointer-events: none; }
+  .hotspot:hover .label-text, .hotspot.active .label-text { fill: #0284c7; font-weight: 700; }
+
+  /* Info Card */
+  .info-card {
+    flex: 0.9;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+  }
+  .badge {
+    align-self: flex-start;
+    padding: 4px 12px;
+    border-radius: 16px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 16px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .description { font-size: 0.95rem; line-height: 1.7; color: #334155; }
+  .placeholder { color: #94a3b8; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="diagram-card">
+    <svg viewBox="0 0 340 740">
+      <defs>
+        <linearGradient id="tubingMetal" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#94a3b8"/>
+          <stop offset="30%" stop-color="#f1f5f9"/>
+          <stop offset="70%" stop-color="#cbd5e1"/>
+          <stop offset="100%" stop-color="#64748b"/>
+        </linearGradient>
+
+        <linearGradient id="steelDark" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#334155"/>
+          <stop offset="50%" stop-color="#64748b"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+
+        <linearGradient id="brassValve" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#d97706"/>
+          <stop offset="50%" stop-color="#fde047"/>
+          <stop offset="100%" stop-color="#b45309"/>
+        </linearGradient>
+
+        <pattern id="cementPattern" width="8" height="8" patternUnits="userSpaceOnUse">
+          <path d="M 0 8 L 8 0 M 0 0 L 8 8" stroke="#cbd5e1" stroke-width="0.8"/>
+        </pattern>
+        
+        <pattern id="packerRubber" width="6" height="6" patternUnits="userSpaceOnUse">
+          <rect width="6" height="6" fill="#1e293b"/>
+          <circle cx="3" cy="3" r="1" fill="#ef4444"/>
+        </pattern>
+      </defs>
+
+      <rect x="20" y="10" width="220" height="720" fill="url(#cementPattern)"/>
+
+      <rect x="40" y="10" width="180" height="720" fill="#0284c7" fill-opacity="0.05" stroke="#cbd5e1" stroke-width="2"/>
+      <line x1="40" y1="10" x2="40" y2="730" stroke="#475569" stroke-width="4"/>
+      <line x1="220" y1="10" x2="220" y2="730" stroke="#475569" stroke-width="4"/>
+
+      <rect x="120" y="10" width="20" height="720" fill="url(#tubingMetal)" stroke="#475569" stroke-width="1"/>
+
+      <g class="hotspot" id="th" onclick="selectComponent('th')">
+        <rect class="selection-box" x="25" y="15" width="280" height="45"/>
+        <g class="comp-body">
+          <path d="M 35 15 L 225 15 L 200 55 L 60 55 Z" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
+          <circle cx="75" cy="30" r="3" fill="#ef4444"/>
+          <circle cx="185" cy="30" r="3" fill="#ef4444"/>
+          <line x1="85" y1="15" x2="85" y2="55" stroke="#0284c7" stroke-width="1.5"/>
+        </g>
+        <line class="pointer-line" x1="160" y1="35" x2="240" y2="35"/>
+        <text class="label-text" x="245" y="38">Tubing Hanger</text>
+      </g>
+
+      <g class="hotspot" id="fc1" onclick="selectComponent('fc1')">
+        <rect class="selection-box" x="105" y="80" width="200" height="40"/>
+        <rect class="comp-body" x="114" y="82" width="32" height="36" rx="2" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
+        <line class="pointer-line" x1="146" y1="100" x2="240" y2="100"/>
+        <text class="label-text" x="245" y="103">Flow Coupling</text>
+      </g>
+
+      <g class="hotspot" id="trsv" onclick="selectComponent('trsv')">
+        <rect class="selection-box" x="75" y="135" width="230" height="65"/>
+        <g class="comp-body">
+          <rect x="108" y="140" width="44" height="55" rx="3" fill="url(#brassValve)" stroke="#b45309" stroke-width="1.5"/>
+          <path d="M 85 15 L 85 155 L 108 155" fill="none" stroke="#0284c7" stroke-width="2"/>
+          <line x1="122" y1="172" x2="134" y2="162" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"/>
+        </g>
+        <line class="pointer-line" x1="152" y1="168" x2="240" y2="168"/>
+        <text class="label-text" x="245" y="171">TRSSV</text>
+      </g>
+
+      <g class="hotspot" id="fc2" onclick="selectComponent('fc2')">
+        <rect class="selection-box" x="105" y="215" width="200" height="40"/>
+        <rect class="comp-body" x="114" y="217" width="32" height="36" rx="2" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
+        <line class="pointer-line" x1="146" y1="235" x2="240" y2="235"/>
+        <text class="label-text" x="245" y="238">Flow Coupling</text>
+      </g>
+
+      <g class="hotspot" id="spm" onclick="selectComponent('spm')">
+        <rect class="selection-box" x="80" y="270" width="225" height="75"/>
+        <g class="comp-body">
+          <path d="M 120 275 L 162 275 L 168 290 L 168 325 L 162 335 L 120 335 Z" fill="url(#steelDark)" stroke="#65a30d" stroke-width="1.5"/>
+          <rect x="144" y="290" width="16" height="32" rx="2" fill="#eab308" stroke="#ca8a04" stroke-width="1"/>
+          <line x1="152" y1="322" x2="152" y2="338" stroke="#dc2626" stroke-width="1.5"/>
+        </g>
+        <line class="pointer-line" x1="168" y1="308" x2="240" y2="308"/>
+        <text class="label-text" x="245" y="311">Mandrel & Gauge</text>
+      </g>
+
+      <g class="hotspot" id="lp" onclick="selectComponent('lp')">
+        <rect class="selection-box" x="100" y="360" width="205" height="40"/>
+        <g class="comp-body">
+          <rect x="116" y="362" width="28" height="36" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
+          <path d="M 120 370 L 124 370 L 124 378 L 120 378 Z" fill="#0284c7"/>
+          <path d="M 140 370 L 136 370 L 136 378 L 140 378 Z" fill="#0284c7"/>
+        </g>
+        <line class="pointer-line" x1="144" y1="380" x2="240" y2="380"/>
+        <text class="label-text" x="245" y="383">Landing Profile</text>
+      </g>
+
+      <g class="hotspot" id="packer" onclick="selectComponent('packer')">
+        <rect class="selection-box" x="35" y="415" width="270" height="85"/>
+        <g class="comp-body">
+          <rect x="42" y="435" width="76" height="30" fill="url(#packerRubber)" stroke="#dc2626" stroke-width="1.5"/>
+          <rect x="142" y="435" width="76" height="30" fill="url(#packerRubber)" stroke="#dc2626" stroke-width="1.5"/>
+          
+          <path d="M 42 420 L 118 420 L 110 432 L 50 432 Z" fill="#94a3b8" stroke="#475569"/>
+          <path d="M 142 420 L 218 420 L 210 432 L 150 432 Z" fill="#94a3b8" stroke="#475569"/>
+          
+          <path d="M 50 468 L 110 468 L 118 480 L 42 480 Z" fill="#94a3b8" stroke="#475569"/>
+          <path d="M 150 468 L 210 468 L 218 480 L 142 480 Z" fill="#94a3b8" stroke="#475569"/>
+        </g>
+        <line class="pointer-line" x1="218" y1="450" x2="240" y2="450"/>
+        <text class="label-text" x="245" y="453">Production Packer</text>
+      </g>
+
+      <g class="hotspot" id="irsv" onclick="selectComponent('irsv')">
+        <rect class="selection-box" x="90" y="515" width="215" height="55"/>
+        <g class="comp-body">
+          <rect x="112" y="520" width="36" height="45" rx="2" fill="url(#steelDark)" stroke="#9333ea" stroke-width="1.5"/>
+          <circle cx="130" cy="542" r="5" fill="#a855f7"/>
+          <polygon points="130,532 125,538 135,538" fill="#c084fc"/>
+        </g>
+        <line class="pointer-line" x1="148" y1="542" x2="240" y2="542"/>
+        <text class="label-text" x="245" y="545">IRSV Barrier</text>
+      </g>
+
+      <g class="hotspot" id="shoe" onclick="selectComponent('shoe')">
+        <rect class="selection-box" x="90" y="585" width="215" height="65"/>
+        <g class="comp-body">
+          <path d="M 118 590 L 142 590 L 142 630 L 118 610 Z" fill="url(#steelDark)" stroke="#d97706" stroke-width="1.5"/>
+        </g>
+        <line class="pointer-line" x1="142" y1="605" x2="240" y2="605"/>
+        <text class="label-text" x="245" y="608">Guide Shoe</text>
+      </g>
+
+      <text x="48" y="715" fill="#94a3b8" font-size="10" font-weight="700">CASING</text>
+      <text x="122" y="715" fill="#64748b" font-size="10" font-weight="700">TUBING</text>
+    </svg>
+  </div>
+
+  <div class="info-card">
+    <div id="badge-slot"></div>
+    <h2 class="title" id="title-slot">Upper Completion Assembly</h2>
+    <div class="description" id="desc-slot">
+      <p class="placeholder">Click any component or label on the completion schematic to review its mechanical construction, API specifications, and operational function.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const data = {
+  th: {
+    title: "Tubing Hanger",
+    category: "Wellhead Component",
+    desc: "Landed inside the wellhead housing bowl, the tubing hanger supports the entire weight of the production tubing string. It utilizes dynamic elastomer seal rings to seal off the casing annulus and provides high-pressure feedthrough ports for hydraulic control lines and downhole gauge cables."
+  },
+  fc1: {
+    title: "Flow Coupling (Upper)",
+    category: "Tubular Protection",
+    desc: "A thick-walled joint of heavy-duty tubing installed directly above dynamic flow-constricting safety valves. It is engineered to absorb erosive fluid jetting caused by turbulent flow and localized high velocity."
+  },
+  trsv: {
+    title: "Tubing-Retrievable Safety Valve (TRSSV)",
+    category: "Primary Barrier",
+    desc: "A surface-controlled fail-safe valve held in the open position by hydraulic pressure applied through a control line. Loss of surface pressure allows internal springs to actuate the flapper mechanism shut, isolating reservoir pressure downhole."
+  },
+  fc2: {
+    title: "Flow Coupling (Lower)",
+    category: "Tubular Protection",
+    desc: "Positioned directly beneath flow restrictions to protect the primary production string from wall thinning and washouts caused by turbulent fluid entry."
+  },
+  spm: {
+    title: "Side Pocket Mandrel & Gauge",
+    category: "Monitoring & Artificial Lift",
+    desc: "Features an offset external pocket that houses downhole memory/permanent pressure-temperature gauges. The internal profile allows kick-off, gas-lift, or chemical-injection valves to be set and retrieved via slickline."
+  },
+  lp: {
+    title: "Landing Profile (Nipple)",
+    category: "Flow Control",
+    desc: "A heavy-walled tubular section featuring precision internal locking grooves and polished seal bores. Serves as a landing platform for wireline tools, standing valves, or isolation plugs."
+  },
+  packer: {
+    title: "Production Packer",
+    category: "Zonal Isolation",
+    desc: "Utilizes expandable elastomer elements and opposing bi-directional mechanical slip wickers to anchor inside the casing. Isolates the annular space above the reservoir, containing formation pressure inside the tubing."
+  },
+  irsv: {
+    title: "Injection-Retrievable Safety Valve (IRSV)",
+    category: "Secondary Barrier",
+    desc: "A specialized downhole safety sub designed with an internal check-valve mechanism. Allows controlled fluid injection while preventing uncontained backflow toward upper completion zones."
+  },
+  shoe: {
+    title: "Self-Aligning Guide Shoe",
+    category: "Completion Bottom-Hole Assembly",
+    desc: "Featuring a tapered mule-shoe profile at the base of the tubing string, this component guides wireline or coiled tubing tools smoothly back into the tubing bore during reentry interventions."
+  }
+};
+
+function selectComponent(id) {
+  document.querySelectorAll('.hotspot').forEach(el => el.classList.remove('active'));
+  
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+
+  const comp = data[id];
+  if (comp) {
+    document.getElementById('badge-slot').innerHTML = `<span class="badge">${comp.category}</span>`;
+    document.getElementById('title-slot').innerText = comp.title;
+    document.getElementById('desc-slot').innerHTML = `<p>${comp.desc}</p>`;
+  }
+}
+</script>
+
+</body>
+</html>
