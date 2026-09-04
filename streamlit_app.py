@@ -78,6 +78,70 @@ st.markdown("""
         color: #991B1B;
         margin-top: 0.5rem;
     }
+
+    /* ---- Page 2 methodology layout ------------------------------------- */
+    /* Full-width formula card: heading, then formula, then labelled blocks. */
+    .m2-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+               padding: 1.15rem 1.35rem 1.25rem; margin: 0 0 1.4rem;
+               box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+    .m2-card-head { display: flex; align-items: baseline; gap: 0.6rem;
+                    padding-bottom: 0.6rem; margin-bottom: 0.9rem;
+                    border-bottom: 1px solid #E2E8F0; }
+    .m2-card-num { flex: none; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em;
+                   padding: 0.16rem 0.5rem; border-radius: 5px; background: #F1F5F9; color: #475569; }
+    .m2-card-title { font-size: 1.06rem; font-weight: 700; margin: 0; line-height: 1.3; }
+    /* Small uppercase label that introduces each block inside a card. */
+    .m2-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
+                text-transform: uppercase; color: #64748B; margin: 1.1rem 0 0.4rem; }
+    .m2-label:first-child { margin-top: 0; }
+    .m2-purpose { font-size: 0.9rem; line-height: 1.65; color: #1E293B;
+                  background: #F8FAFC; border-left: 3px solid #3B82F6;
+                  padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0; }
+    .m2-gate { font-size: 0.86rem; line-height: 1.6; color: #991B1B;
+               background: #FEF2F2; border-left: 3px solid #EF4444;
+               padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0; }
+    /* Parameter definition table: symbol | meaning | units. */
+    .m2-param-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .m2-param-table th { text-align: left; font-size: 0.68rem; font-weight: 800;
+                         letter-spacing: 0.07em; text-transform: uppercase; color: #64748B;
+                         padding: 0.4rem 0.6rem; border-bottom: 1.5px solid #CBD5E1;
+                         background: #F8FAFC; }
+    .m2-param-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #EEF2F6;
+                         color: #334155; line-height: 1.5; vertical-align: top; }
+    .m2-param-table tr:last-child td { border-bottom: none; }
+    .m2-param-table td.m2-sym { white-space: nowrap; font-weight: 700; color: #0F172A;
+                                width: 16%; font-family: "SFMono-Regular", Consolas, monospace; }
+    .m2-param-table td.m2-unit { white-space: nowrap; color: #64748B; width: 24%; font-size: 0.8rem; }
+    /* Caption naming the quantity each formula solves for. */
+    .m2-fx-caption { font-size: 0.82rem; color: #475569; font-weight: 600; margin: 0.55rem 0 -0.35rem; }
+
+    /* ---- Glossary pop-up ------------------------------------------------ */
+    /* A <details> element styled as an inline term: the <summary> is the dotted
+       term the reader clicks, and the panel below is the plain-English blurb. */
+    details.m2-term { display: inline; position: relative; }
+    details.m2-term > summary { display: inline; list-style: none; cursor: help;
+                                border-bottom: 1.5px dotted #2563EB; color: #1D4ED8;
+                                font-weight: 600; }
+    details.m2-term > summary::-webkit-details-marker { display: none; }
+    details.m2-term > summary::marker { content: ""; }
+    details.m2-term > summary:hover { background: #EFF6FF; }
+    details.m2-term[open] > summary { background: #DBEAFE; }
+    details.m2-term .m2-term-pop { position: absolute; z-index: 40; left: 0; top: 1.6em;
+                                   width: min(21rem, 78vw); background: #0F172A; color: #E2E8F0;
+                                   border-radius: 8px; padding: 0.7rem 0.85rem;
+                                   font-size: 0.82rem; line-height: 1.55; font-weight: 400;
+                                   font-style: normal; text-transform: none; letter-spacing: normal;
+                                   box-shadow: 0 10px 24px rgba(15,23,42,0.28); }
+    details.m2-term .m2-term-pop b { color: #7DD3FC; display: block; margin-bottom: 0.2rem; }
+
+    /* ---- Clickable flowchart ------------------------------------------- */
+    a.flow-link { text-decoration: none; display: block; color: inherit; }
+    a.flow-link:hover .flow-box { border-color: #2563EB;
+                                  box-shadow: 0 4px 10px rgba(37,99,235,0.18);
+                                  transform: translateY(-1px); }
+    .flow-box { transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease; }
+    .flow-jump { font-size: 0.7rem; font-weight: 700; color: #2563EB; opacity: 0; transition: opacity 0.15s ease; }
+    a.flow-link:hover .flow-jump { opacity: 1; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -160,6 +224,192 @@ DEFAULT_MAX_SERVICE_TEMP_C = 150.0
 Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
 CV_SOLIDS_MAX = 0.15
 FRICTION_FACTOR_MAX = 0.15
+
+# -----------------------------------------------------------------------------
+# PAGE 2 METHODOLOGY: GLOSSARY & CARD BUILDERS
+# -----------------------------------------------------------------------------
+# Plain-English explanations for the jargon on Page 2. Rendered as click-to-open
+# pop-ups so a reader who does not know a term can get it without leaving the page.
+GLOSSARY = {
+    "z-factor": ("Z-factor (gas compressibility)",
+                 "How far a real gas strays from ideal-gas behaviour. Z = 1 is ideal; hot deep gas "
+                 "typically runs 0.8-1.2. It scales how much a given surface gas rate shrinks when "
+                 "compressed downhole, so it drives gas density and true flow velocity."),
+    "pvt": ("PVT (pressure-volume-temperature)",
+            "Lab-derived relationships describing how a reservoir fluid changes volume, density and "
+            "dissolved-gas content as pressure and temperature change between reservoir and surface."),
+    "rs": ("Solution gas-oil ratio (Rs)",
+           "How much gas is dissolved in the oil at downhole conditions. As pressure drops on the way "
+           "up, this gas comes out of solution, lightening the fluid column and adding gas volume."),
+    "bo": ("Oil formation volume factor (Bo)",
+           "Barrels of downhole live oil that shrink into one stock-tank barrel at surface. A Bo of 1.3 "
+           "means the oil occupies 30% more space downhole because of dissolved gas."),
+    "holdup": ("Liquid holdup",
+               "The fraction of the pipe cross-section occupied by liquid rather than gas. It sets the "
+               "weight of the fluid column, and therefore how much hydrostatic pressure the well must lift against."),
+    "pseudo-critical": ("Pseudo-critical properties",
+                        "A gas mixture has no single critical point, so correlations use averaged "
+                        "'pseudo' critical pressure and temperature. Dividing actual conditions by these "
+                        "gives the reduced values that Z-factor correlations need."),
+    "cv": ("Solids volumetric concentration (Cv)",
+           "The share of the flowing stream made up of solid sand grains, by volume. Even a few percent "
+           "raises mixture density and sharply accelerates erosion of the pipe wall."),
+    "slurry": ("Slurry",
+               "A flowing mixture of liquid, gas and suspended solid particles. It is heavier and more "
+               "erosive than clean fluid, so it is modelled separately from single-phase flow."),
+    "reynolds": ("Reynolds number (Re)",
+                 "A dimensionless ratio of inertial to viscous forces that tells you whether flow is "
+                 "smooth (laminar, below ~2,000) or chaotic (turbulent, above ~4,000). Production tubing "
+                 "flow is almost always turbulent."),
+    "friction-factor": ("Friction factor (f)",
+                        "A dimensionless number capturing how much pressure the fluid loses rubbing "
+                        "against the pipe wall. It depends on the Reynolds number and on how rough the wall is."),
+    "roughness": ("Relative roughness",
+                  "Pipe wall bumpiness divided by pipe diameter. The same absolute roughness matters much "
+                  "more in a narrow pipe than a wide one, which is why the ratio is used."),
+    "hydrostatic": ("Hydrostatic pressure",
+                    "The pressure from the sheer weight of the fluid column standing in the well. It depends "
+                    "on fluid density and vertical depth only, not on flow rate."),
+    "drawdown": ("Available drawdown",
+                 "The pressure difference between the reservoir at the bottom and the wellhead at surface. "
+                 "This is the total budget available to lift fluid up the well; if losses exceed it, the well dies."),
+    "erosional": ("Erosional velocity",
+                  "The speed above which flowing fluid, especially when carrying sand, strips metal from the "
+                  "pipe wall fast enough to shorten well life. It sets the upper bound on flow velocity."),
+    "carrying": ("Carrying (critical) velocity",
+                 "The minimum speed needed to keep sand and liquid droplets moving upward. Flow slower than "
+                 "this lets solids settle out and liquid accumulate, eventually killing the well."),
+    "liquid-loading": ("Liquid loading",
+                       "When gas flows too slowly to carry liquid to surface, liquid falls back and collects "
+                       "at the bottom of the well. The accumulating column adds back-pressure and can stop flow entirely."),
+    "terminal-velocity": ("Terminal settling velocity",
+                          "The steady falling speed a sand grain reaches in still fluid, where drag balances "
+                          "its weight. Upward flow must beat this to carry the grain out of the well."),
+    "interfacial-tension": ("Interfacial tension",
+                            "The surface force holding a liquid droplet together against the gas around it. "
+                            "It sets the largest droplet the gas stream can carry before it breaks up or falls back."),
+    "axial-load": ("Net axial load",
+                   "The total up-or-down force acting along the tubing's length, summing pipe weight, thermal "
+                   "effects, pressure end-loads and drag. Too much tension parts the string; too much compression buckles it."),
+    "thermal-force": ("Thermal expansion force",
+                      "Hot produced fluid heats the steel, which wants to lengthen. When a packer anchors the "
+                      "string and prevents that movement, the restrained expansion converts into large compressive force instead."),
+    "piston": ("Piston force",
+               "Pressure acting on the exposed change in cross-sectional area at the packer, pushing the tubing "
+               "like fluid pushing a piston in a cylinder."),
+    "ballooning": ("Ballooning",
+                   "Internal pressure swells the pipe radially outward. Because the steel volume is fixed, that "
+                   "radial swelling makes the string shorten axially, adding force when it is anchored."),
+    "apb": ("APB (annular pressure build-up)",
+            "In a sealed annulus, completion fluid heated by production has nowhere to expand, so pressure climbs. "
+            "Severe APB can collapse the tubing or burst the casing, and is a known cause of deepwater well failures."),
+    "annulus": ("Annulus",
+                "The ring-shaped space between the outside of the tubing and the inside of the casing."),
+    "packer": ("Packer",
+               "A downhole seal that grips the casing and blocks the annulus, forcing produced fluid to travel "
+               "up the tubing and isolating the annulus above it."),
+    "lame": ("Lamé thick-wall equations",
+             "Classical elasticity solution for the stresses in a thick-walled cylinder under internal and external "
+             "pressure. Tubing is too thick-walled for simple thin-wall formulas to be accurate."),
+    "hoop": ("Hoop stress",
+             "Circumferential stress that tries to split the pipe lengthwise, like the tension in a barrel band. "
+             "Internal pressure is what mainly drives it."),
+    "radial-stress": ("Radial stress",
+                      "Stress acting through the pipe wall thickness, inward or outward. At the inner wall it equals "
+                      "the internal pressure pressing on it."),
+    "von-mises": ("von Mises equivalent stress",
+                  "A way to collapse three-dimensional stress into one number comparable against the steel's yield "
+                  "strength. It predicts yielding from distortion, which is how ductile steel actually fails."),
+    "dogleg": ("Dogleg severity (DLS)",
+               "How sharply the wellbore changes direction, in degrees per 100 ft. Forcing straight pipe through a "
+               "sharp bend adds bending stress on top of the axial load."),
+    "smys": ("SMYS / yield strength",
+             "Specified Minimum Yield Strength: the stress at which the steel grade begins to deform permanently. "
+             "L80 means 80,000 psi, P110 means 110,000 psi."),
+    "safety-factor": ("Safety factor (SF)",
+                      "Capacity divided by applied load. An SF of 1.25 means 25% margin remains before the limit is "
+                      "reached; anything at or below 1.0 means failure is predicted."),
+    "cithp": ("CITHP",
+              "Closed-In Tubing Head Pressure: the surface pressure once the well is shut in and flow stops. With a gas "
+              "column weighing little, surface pressure approaches reservoir pressure, which is the worst case for burst."),
+    "burst": ("Burst rating",
+              "The internal pressure at which the pipe body ruptures outward. Checked against shut-in surface pressure, "
+              "the harshest internal-pressure case the tubing sees."),
+    "nace": ("NACE MR0175",
+             "The industry standard governing materials for sour (H2S-bearing) service. It caps steel hardness and "
+             "restricts grades, because hard high-strength steels crack in the presence of H2S."),
+    "sour": ("Sour service",
+             "Wells producing hydrogen sulphide (H2S). H2S drives sulphide stress cracking, in which susceptible steel "
+             "fails suddenly and brittlely at stresses well below its rating."),
+    "partial-pressure": ("Partial pressure",
+                         "The share of total pressure contributed by one gas component: total pressure times its mole "
+                         "fraction. Corrosion severity tracks partial pressure, not raw concentration."),
+    "cra": ("CRA (corrosion-resistant alloy)",
+            "High-chromium and nickel alloys such as 13Cr or 25Cr, used when carbon steel would corrode too fast. They "
+            "cost considerably more but survive sour and CO2-rich environments."),
+    "premium-connection": ("Premium connection",
+                           "A thread with engineered metal-to-metal sealing surfaces, as opposed to a standard API "
+                           "thread sealing on thread compound. Required for gas-tight integrity at high pressure."),
+    "drift": ("Drift diameter",
+              "The largest diameter guaranteed to pass all the way through the string. It, rather than nominal ID, "
+              "governs which intervention tools will physically fit."),
+}
+
+
+def term(key, text=None):
+    """Render `text` as a clickable glossary term that reveals a pop-up definition.
+
+    Uses a <details>/<summary> pair so the pop-up toggles with pure HTML, which
+    works inside st.markdown where custom JavaScript would be stripped.
+    """
+    title, body = GLOSSARY[key]
+    label = text if text is not None else title
+    return (f'<details class="m2-term"><summary>{label}</summary>'
+            f'<span class="m2-term-pop"><b>{title}</b>{body}</span></details>')
+
+
+def param_table(rows):
+    """Build the symbol / meaning / units definition table for a formula card."""
+    body = "".join(
+        f'<tr><td class="m2-sym">{sym}</td><td>{meaning}</td><td class="m2-unit">{units}</td></tr>'
+        for sym, meaning, units in rows
+    )
+    return (
+        '<table class="m2-param-table">'
+        '<thead><tr><th>Symbol</th><th>Meaning</th><th>Units / typical value</th></tr></thead>'
+        f'<tbody>{body}</tbody></table>'
+    )
+
+
+def formula_card(num, title, colour, formulas, purpose, params, gate):
+    """Render one full-width methodology card in a fixed block order.
+
+    Streamlit cannot nest st.latex inside an HTML string, so the card is emitted
+    in three passes: header + purpose, then the LaTeX formulas, then the
+    parameter table and screening gate. `formulas` is a list of (latex, caption)
+    pairs; a caption of None omits the caption line.
+    """
+    st.markdown(
+        f'<div class="m2-card">'
+        f'<div class="m2-card-head"><span class="m2-card-num">{num}</span>'
+        f'<h4 class="m2-card-title" style="color: {colour};">{title}</h4></div>'
+        f'<div class="m2-label">What it does</div>'
+        f'<div class="m2-purpose">{purpose}</div>'
+        f'<div class="m2-label">Formula</div>',
+        unsafe_allow_html=True,
+    )
+    for latex, caption in formulas:
+        if caption:
+            st.markdown(f'<p class="m2-fx-caption">{caption}</p>', unsafe_allow_html=True)
+        st.latex(latex)
+    st.markdown(
+        f'<div class="m2-label">Parameters</div>{param_table(params)}'
+        f'<div class="m2-label">Screening gate — what gets rejected</div>'
+        f'<div class="m2-gate">{gate}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
 
 # Interactive upper-completion schematic used in place of a static Figure 2 image.
 # Clicking a hotspot on the diagram renders that component's details in the side panel.
@@ -1001,16 +1251,25 @@ st.sidebar.image("https://img.icons8.com/color/96/000000/oil-rig.png", width=70)
 st.sidebar.title("Tubing Selection Tool")
 st.sidebar.caption("Upper-Completion Design Engine")
 
+PAGE_LABELS = [
+    "1. Introduction & Overview",
+    "2. Calculation Methodology",
+    "3. Well & Fluid Inputs",
+    "4. Candidate Tubing Specs",
+    "5. Engineering Calculations",
+    "6. Recommendation & Sensitivity"
+]
+
+# A ?step=N link in the Page 2 flowchart must survive the rerun it triggers: force
+# the sidebar back onto Page 2 so the reader lands on the step they clicked.
+_requested_step = st.query_params.get("step")
+if _requested_step and st.session_state.get("nav_page") != PAGE_LABELS[1]:
+    st.session_state["nav_page"] = PAGE_LABELS[1]
+
 page = st.sidebar.radio(
     "Select Workflow Step:",
-    [
-        "1. Introduction & Overview",
-        "2. Calculation Methodology",
-        "3. Well & Fluid Inputs",
-        "4. Candidate Tubing Specs",
-        "5. Engineering Calculations",
-        "6. Recommendation & Sensitivity"
-    ]
+    PAGE_LABELS,
+    key="nav_page"
 )
 
 # -----------------------------------------------------------------------------
@@ -1411,17 +1670,24 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 elif page == "2. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
+
+    # Which step to auto-expand, driven by the ?step=N links in the flowchart below.
+    try:
+        active_step = int(st.query_params.get("step", 0))
+    except (TypeError, ValueError):
+        active_step = 0
 
     # -------------------------------------------------------------------------
-    # 1. OVERVIEW FLOWCHART DIAGRAM
+    # 1. OVERVIEW FLOWCHART (clickable: each box links to ?step=N)
     # -------------------------------------------------------------------------
     st.markdown("""
 <div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-left: 5px solid #1E3A8A; margin-bottom: 1.5rem;">
     <h3 style="color: #1E3A8A; font-size: 1.25rem; margin-bottom: 0.4rem; font-weight: 700;">🔄 Modular 7-Step Engineering Screening Pipeline</h3>
-    <p style="font-size: 0.92rem; color: #334155; line-height: 1.4; margin-bottom: 0;">
-        Every candidate pipe from the database is systematically processed through three engineering domains: 
-        <b>Domain A (Thermodynamics & Rheology)</b>, <b>Domain B (Hydrodynamics & Velocity Windows)</b>, and <b>Domain C (Structural Load & Integrity Gates)</b>.
+    <p style="font-size: 0.92rem; color: #334155; line-height: 1.5; margin-bottom: 0;">
+        Every candidate pipe from the database is processed through three engineering domains:
+        <b>Domain A (Thermodynamics &amp; Rheology)</b>, <b>Domain B (Hydrodynamics &amp; Velocity Windows)</b>, and <b>Domain C (Structural Load &amp; Integrity Gates)</b>.
+        <b style="color: #1E3A8A;">Click any step below to open it.</b>
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -1429,9 +1695,9 @@ elif page == "2. Calculation Methodology":
     flowchart_html = """<style>
 .flow-container { display: flex; flex-direction: column; align-items: center; max-width: 720px; margin: 0 auto 2rem auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 .flow-box { width: 100%; padding: 12px 18px; border-radius: 8px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #CBD5E1; box-sizing: border-box; position: relative; }
-.flow-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.flow-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
 .flow-step-title { font-weight: 700; font-size: 0.92rem; }
-.flow-domain-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.flow-domain-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .flow-box-body { font-size: 0.82rem; line-height: 1.4; color: #475569; }
 .flow-arrow { display: flex; flex-direction: column; align-items: center; height: 28px; justify-content: center; position: relative; }
 .flow-arrow-line { width: 2px; height: 100%; background-color: #94A3B8; }
@@ -1440,85 +1706,99 @@ elif page == "2. Calculation Methodology":
 </style>
 <div class="flow-container">
     <div class="flow-box" style="background-color: #1E293B; color: white; border-color: #0F172A; text-align: center;">
-        <span class="flow-step-title" style="font-size: 0.98rem;">Tubing Candidate Database (OD, ID, Grade, Connection, Yield & Burst Ratings)</span>
+        <span class="flow-step-title" style="font-size: 0.98rem;">Tubing Candidate Database (OD, ID, Grade, Connection, Yield &amp; Burst Ratings)</span>
     </div>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
-        <span class="flow-arrow-label">Reservoir Pressure, Temperature & Rates</span>
+        <span class="flow-arrow-label">Reservoir Pressure, Temperature &amp; Rates</span>
     </div>
+    <a class="flow-link" href="?step=1#step-1" target="_self">
     <div class="flow-box" style="background-color: #EFF6FF; border-left: 5px solid #2563EB;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #1E40AF;">Step 1: Multiphase Fluid PVT & Gas Compressibility (Z-Factor)</span>
-            <span class="flow-domain-badge" style="background-color: #DBEAFE; color: #1E40AF;">Domain A</span>
+            <span class="flow-step-title" style="color: #1E40AF;">Step 1: Multiphase Fluid PVT &amp; Gas Compressibility (Z-Factor)</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #DBEAFE; color: #1E40AF;">Domain A</span></span>
         </div>
         <div class="flow-box-body">Calculates solution gas-oil ratio (R<sub>s</sub>), oil formation volume factor (B<sub>o</sub>), and Dranchuk-Abou-Kassem compressibility (Z).</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
         <span class="flow-arrow-label">Fluid Densities (&rho;<sub>o</sub>, &rho;<sub>w</sub>, &rho;<sub>g</sub>)</span>
     </div>
+    <a class="flow-link" href="?step=2#step-2" target="_self">
     <div class="flow-box" style="background-color: #EFF6FF; border-left: 5px solid #3B82F6;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #1E40AF;">Step 2: Solid Particle Slurry Density & Volumetric Concentration</span>
-            <span class="flow-domain-badge" style="background-color: #DBEAFE; color: #1E40AF;">Domain A</span>
+            <span class="flow-step-title" style="color: #1E40AF;">Step 2: Solid Particle Slurry Density &amp; Volumetric Concentration</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #DBEAFE; color: #1E40AF;">Domain A</span></span>
         </div>
         <div class="flow-box-body">Integrates sand volumetric fraction (C<sub>v</sub>) into mixture density to determine bulk slurry density (&rho;<sub>slurry</sub>).</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
-        <span class="flow-arrow-label">Slurry Density (&rho;<sub>slurry</sub>) & Viscosity (&mu;<sub>m</sub>)</span>
+        <span class="flow-arrow-label">Slurry Density (&rho;<sub>slurry</sub>) &amp; Viscosity (&mu;<sub>m</sub>)</span>
     </div>
+    <a class="flow-link" href="?step=3#step-3" target="_self">
     <div class="flow-box" style="background-color: #FFFBEB; border-left: 5px solid #D97706;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #92400E;">Step 3: Multiphase Frictional Hydraulics & Pressure Loss (&Delta;P<sub>total</sub>)</span>
-            <span class="flow-domain-badge" style="background-color: #FEF3C7; color: #92400E;">Domain B</span>
+            <span class="flow-step-title" style="color: #92400E;">Step 3: Multiphase Frictional Hydraulics &amp; Pressure Loss (&Delta;P<sub>total</sub>)</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #FEF3C7; color: #92400E;">Domain B</span></span>
         </div>
-        <div class="flow-box-body">Evaluates hydrostatic head & turbulent pipe friction via Colebrook-White friction factor (f).</div>
+        <div class="flow-box-body">Evaluates hydrostatic head &amp; turbulent pipe friction via Colebrook-White friction factor (f).</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
-        <span class="flow-arrow-label">Flow Velocity (v<sub>m</sub>) & Friction Factor (f)</span>
+        <span class="flow-arrow-label">Flow Velocity (v<sub>m</sub>) &amp; Friction Factor (f)</span>
     </div>
+    <a class="flow-link" href="?step=4#step-4" target="_self">
     <div class="flow-box" style="background-color: #FFFBEB; border-left: 5px solid #F59E0B;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #92400E;">Step 4: Triple Velocity Operating Envelope (Erosion, Loading & Settling)</span>
-            <span class="flow-domain-badge" style="background-color: #FEF3C7; color: #92400E;">Domain B</span>
+            <span class="flow-step-title" style="color: #92400E;">Step 4: Triple Velocity Operating Envelope (Erosion, Loading &amp; Settling)</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #FEF3C7; color: #92400E;">Domain B</span></span>
         </div>
-        <div class="flow-box-body">Screens velocity window: Salama Sand Erosion Limit (v<sub>erosional</sub>) vs Turner Lift & Rubey Settling (v<sub>carrying</sub>).</div>
+        <div class="flow-box-body">Screens velocity window: Salama Sand Erosion Limit (v<sub>erosional</sub>) vs Turner Lift &amp; Rubey Settling (v<sub>carrying</sub>).</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
         <span class="flow-arrow-label">Hydraulically Qualified Pipe Inner Diameters</span>
     </div>
+    <a class="flow-link" href="?step=5#step-5" target="_self">
     <div class="flow-box" style="background-color: #ECFDF5; border-left: 5px solid #059669;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #065F46;">Step 5: Lubinski 5-Force Net Axial Load & Trapped Annular APB</span>
-            <span class="flow-domain-badge" style="background-color: #D1FAE5; color: #065F46;">Domain C</span>
+            <span class="flow-step-title" style="color: #065F46;">Step 5: Lubinski 5-Force Net Axial Load &amp; Trapped Annular APB</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #D1FAE5; color: #065F46;">Domain C</span></span>
         </div>
-        <div class="flow-box-body">Calculates total net axial force (F<sub>axial</sub>) combining gravity, thermal expansion, piston, ballooning, drag & APB.</div>
+        <div class="flow-box-body">Calculates total net axial force (F<sub>axial</sub>) combining gravity, thermal expansion, piston, ballooning, drag &amp; APB.</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
-        <span class="flow-arrow-label">Net Axial Force (F<sub>axial</sub>) & Annular Pressure (P<sub>annular</sub>)</span>
+        <span class="flow-arrow-label">Net Axial Force (F<sub>axial</sub>) &amp; Annular Pressure (P<sub>annular</sub>)</span>
     </div>
+    <a class="flow-link" href="?step=6#step-6" target="_self">
     <div class="flow-box" style="background-color: #ECFDF5; border-left: 5px solid #10B981;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #065F46;">Step 6: Lamé 3D Principal Stresses & von Mises Triaxial Yield (&sigma;<sub>VME</sub>)</span>
-            <span class="flow-domain-badge" style="background-color: #D1FAE5; color: #065F46;">Domain C</span>
+            <span class="flow-step-title" style="color: #065F46;">Step 6: Lam&eacute; 3D Principal Stresses &amp; von Mises Triaxial Yield (&sigma;<sub>VME</sub>)</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #D1FAE5; color: #065F46;">Domain C</span></span>
         </div>
         <div class="flow-box-body">Evaluates 3D axial, hoop, radial, and dogleg bending stresses against yield strength (SF<sub>triaxial</sub> &ge; 1.25).</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
         <span class="flow-arrow-label">Structurally Sound Steel Grades</span>
     </div>
+    <a class="flow-link" href="?step=7#step-7" target="_self">
     <div class="flow-box" style="background-color: #F3E8FF; border-left: 5px solid #7C3AED;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #5B21B6;">Step 7: Shut-In Static CITHP Surface Burst, NACE Sour & Connection Gate</span>
-            <span class="flow-domain-badge" style="background-color: #E9D5FF; color: #5B21B6;">Domain C</span>
+            <span class="flow-step-title" style="color: #5B21B6;">Step 7: Shut-In Static CITHP Surface Burst, NACE Sour &amp; Connection Gate</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #E9D5FF; color: #5B21B6;">Domain C</span></span>
         </div>
         <div class="flow-box-body">Validates static surface burst (SF<sub>burst</sub> &ge; 1.10), NACE MR0175 sour service hardness, and Premium gas-tight threads.</div>
     </div>
+    </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
         <span class="flow-arrow-label">Fully Compliant Candidate Profile</span>
@@ -1530,345 +1810,319 @@ elif page == "2. Calculation Methodology":
 
     st.markdown(flowchart_html, unsafe_allow_html=True)
     st.markdown("---")
-
-    # =========================================================================
-    # DOMAIN A: THERMODYNAMICS & SLURRY RHEOLOGY
-    # =========================================================================
     st.markdown("""
-<div style="background-color: #DBEAFE; border-left: 6px solid #1D4ED8; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem;">
-    <h2 style="color: #1E40AF; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain A: Thermodynamics & Slurry Rheology</h2>
+<div style="background-color: #DBEAFE; border-left: 6px solid #1D4ED8; padding: 0.75rem 1rem; border-radius: 6px; margin: 0.5rem 0 1.25rem;">
+    <h2 style="color: #1E40AF; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain A: Thermodynamics &amp; Slurry Rheology</h2>
 </div>
 """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # STEP 1
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 1: Multiphase Fluid PVT & Gas Compressibility (Z-Factor)")
-    col1_1, col1_2 = st.columns(2)
+    st.markdown('<div id="step-1"></div>', unsafe_allow_html=True)
+    with st.expander("Step 1  ·  Multiphase Fluid PVT & Gas Compressibility (Z-Factor)   —   Domain A", expanded=(active_step == 1)):
+        formula_card(
+            "1.1",
+            "Oil Well Live Fluid PVT (Standing's Correlations)",
+            "#1E40AF",
+            [
+                (r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}", "Dissolved gas carried by the oil at depth"),
+                (r"B_o = 0.9759 + 0.000120 \left[ R_s \left( \frac{\gamma_g}{\gamma_o} \right)^{0.5} + 1.25 \cdot T_{avg} \right]^{1.2}", "How much the oil swells downhole"),
+                (r"\rho_{o,live} = \frac{62.4 \cdot \gamma_o + 0.0136 \cdot R_s \cdot \gamma_g}{B_o}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w", "Resulting live-oil and total liquid density"),
+            ],
+            f"Works out how heavy the liquid column really is. Standing's {term('pvt')} correlations give the dissolved gas ({term('rs', 'gas-oil ratio')}), the volume swelling ({term('bo', 'formation volume factor')}), and from those the live oil density. That density sets the {term('hydrostatic')} the well must lift against, so it feeds every pressure calculation downstream.",
+            [
+                ("R<sub>s</sub>", "Solution gas-oil ratio — gas dissolved in the oil", "scf/STB"),
+                ("&gamma;<sub>g</sub>", "Gas specific gravity", "Air = 1.00"),
+                ("P<sub>avg</sub>", "Mean wellbore pressure, (P<sub>wh</sub> + P<sub>bhp</sub>) / 2", "psi"),
+                ("API", "Stock-tank oil gravity — higher means lighter oil", "&deg;API"),
+                ("T<sub>avg</sub>", "Mean wellbore temperature, (T<sub>wh</sub> + T<sub>bht</sub>) / 2", "&deg;F"),
+                ("B<sub>o</sub>", "Oil formation volume factor — downhole swelling", "rb/STB"),
+                ("&gamma;<sub>o</sub>", "Oil specific gravity, 141.5 / (131.5 + API)", "Water = 1.00"),
+                ("&rho;<sub>o,live</sub>", "Density of live gas-saturated oil at depth", "lb/ft<sup>3</sup>"),
+                ("f<sub>w</sub>", "Water cut — fraction of liquid that is water", "0.0 - 1.0"),
+                ("&rho;<sub>w</sub>", "Formation water density, SG<sub>w</sub> × 62.4", "lb/ft<sup>3</sup>"),
+            ],
+            "Rejects a candidate when the PVT solution will not converge numerically, or when extreme reservoir pressure produces non-physical liquid expansion (<i>B<sub>o</sub></i> &le; 0).",
+        )
 
-    with col1_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #1E40AF; margin-top: 0; font-size: 1.05rem; font-weight: 700;">1.1 Oil Well Live Fluid PVT (Standing's Correlations)</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"R_s = \gamma_g \left[ \left( \frac{P_{avg}}{18.2} + 1.4 \right) 10^{(0.0125 \cdot \text{API} - 0.00091 \cdot T_{avg})} \right]^{1.2048}")
-        st.latex(r"B_o = 0.9759 + 0.000120 \left[ R_s \left( \frac{\gamma_g}{\gamma_o} \right)^{0.5} + 1.25 \cdot T_{avg} \right]^{1.2}")
-        st.latex(r"\rho_{o,live} = \frac{62.4 \cdot \gamma_o + 0.0136 \cdot R_s \cdot \gamma_g}{B_o}, \quad \rho_l = (1-f_w)\rho_{o,live} + f_w \rho_w")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates dissolved gas evolution (<i>R<sub>s</sub></i>), liquid volume expansion (<i>B<sub>o</sub></i>), live oil density (<i>&rho;<sub>o,live</sub></i>), and total liquid phase density (<i>&rho;<sub>l</sub></i>) under average wellbore pressure (<i>P<sub>avg</sub></i>) and temperature (<i>T<sub>avg</sub></i>). Used to establish accurate hydrostatic head in liquid-dominated oil wells.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>R<sub>s</sub></i></b>: Solution gas-oil ratio [scf/STB]<br/>
-• <b><i>&gamma;<sub>g</sub></i></b>: Gas specific gravity [Air = 1.00]<br/>
-• <b><i>P<sub>avg</sub></i></b>: Mean wellbore pressure [psi] ((P<sub>wh</sub> + P<sub>bhp</sub>) / 2)<br/>
-• <b>API</b>: Stock-tank oil gravity [°API]<br/>
-• <b><i>T<sub>avg</sub></i></b>: Mean wellbore temperature [°F] ((T<sub>wh</sub> + T<sub>bht</sub>) / 2)<br/>
-• <b><i>B<sub>o</sub></i></b>: Oil formation volume factor [rb/STB]<br/>
-• <b><i>&gamma;<sub>o</sub></i></b>: Oil specific gravity [Water = 1.00] (141.5 / (131.5 + API))<br/>
-• <b><i>&rho;<sub>o,live</sub></i></b>: In-situ density of live gas-saturated oil [lb/ft<sup>3</sup>]<br/>
-• <b><i>f<sub>w</sub></i></b>: Water cut fraction [0.0 - 1.0]<br/>
-• <b><i>&rho;<sub>w</sub></i></b>: Formation water density [lb/ft<sup>3</sup>] (SG<sub>w</sub> × 62.4)
-</div>""", unsafe_allow_html=True)
+        formula_card(
+            "1.2",
+            "Gas Well Density &amp; Pseudo-Critical Properties",
+            "#1E40AF",
+            [
+                (r"P_{pc} = 756.8 - 131.07 \gamma_g - 3.6 \gamma_g^2, \quad T_{pc} = 169.2 + 349.5 \gamma_g - 74.0 \gamma_g^2", "Pseudo-critical anchors for the Z correlation"),
+                (r"q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}, \quad \rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}", "Surface rate converted to downhole flow, and gas density"),
+                (r"\lambda_l = \frac{q_l}{q_l + q_g}, \quad \rho_m = \lambda_l \rho_l + (1-\lambda_l)\rho_g", "Liquid share of the pipe, and blended mixture density"),
+            ],
+            f"Converts a surface gas rate into what the gas actually occupies downhole. The {term('z-factor')} is solved from the Dranchuk-Abou-Kassem equation of state, iterated on reduced density using Standing's {term('pseudo-critical')}. Combining gas density with {term('holdup', 'liquid holdup')} gives the mixture density used for hydraulics.",
+            [
+                ("P<sub>pc</sub>, T<sub>pc</sub>", "Gas pseudo-critical pressure and temperature", "psia, &deg;R"),
+                ("Q<sub>g</sub>", "Surface gas production rate", "MMscf/D"),
+                ("T<sub>avg,R</sub>", "Mean absolute wellbore temperature, &deg;F + 459.67", "&deg;R"),
+                ("Z", "Gas compressibility — deviation from ideal gas", "0.65 - 1.25"),
+                ("q<sub>g</sub>", "Downhole volumetric gas flow rate", "ft<sup>3</sup>/s"),
+                ("&rho;<sub>g</sub>", "In-situ gas density at depth", "lb/ft<sup>3</sup>"),
+                ("&lambda;<sub>l</sub>", "No-slip liquid holdup fraction", "0.0 - 1.0"),
+                ("&rho;<sub>m</sub>", "Homogeneous multiphase mixture density", "lb/ft<sup>3</sup>"),
+            ],
+            f"Rejects a candidate when the in-situ {term('z-factor')} falls outside the valid thermodynamic range (0.65 &le; <i>Z</i> &le; 1.25), which signals the correlation is being used outside its envelope.",
+        )
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where numerical PVT fluid convergence fails or where extreme reservoir pressure causes non-physical liquid expansion (<i>B<sub>o</sub></i> &le; 0).</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('<div id="step-2"></div>', unsafe_allow_html=True)
+    with st.expander("Step 2  ·  Solid Particle Slurry Density & Volumetric Concentration   —   Domain A", expanded=(active_step == 2)):
+        formula_card(
+            "2.1",
+            "Solid Particle Slurry Integration",
+            "#1E40AF",
+            [
+                (r"C_v = \frac{V_{sand}}{V_{liquid} + V_{sand}} = \frac{\frac{W_s}{\rho_s}}{\left(\frac{Q_{liq} \cdot 5.615}{86400}\right) + \frac{W_s}{\rho_s}}", "Sand share of the flowing stream, by volume"),
+                (r"\rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s", "Mixture density corrected for suspended sand"),
+            ],
+            f"Accounts for formation sand travelling up the well with the fluid. The {term('cv', 'volumetric concentration')} of solids raises the density of the {term('slurry')} above that of clean fluid, which changes the hydrostatic column and, in Step 4, sharply raises erosion risk.",
+            [
+                ("C<sub>v</sub>", "Solids volumetric concentration", "0.0 - 1.0"),
+                ("V<sub>sand</sub>", "Volumetric rate of solid sand particles", "ft<sup>3</sup>/s"),
+                ("V<sub>liquid</sub>", "Volumetric rate of the liquid phases", "ft<sup>3</sup>/s"),
+                ("W<sub>s</sub>", "Sand mass rate, from the PPTB input (lb per 1000 bbl)", "lb/s"),
+                ("&rho;<sub>s</sub>", "Sand grain density (quartz, SG = 2.65)", "165.4 lb/ft<sup>3</sup>"),
+                ("Q<sub>liq</sub>", "Total surface liquid rate", "STB/D"),
+                ("&rho;<sub>slurry</sub>", "Bulk solid-liquid-gas mixture density", "lb/ft<sup>3</sup>"),
+            ],
+            f'"Rejects a candidate when solids concentration exceeds <i>C<sub>v</sub></i> &gt; {CV_SOLIDS_MAX} '
+            f'({int(CV_SOLIDS_MAX * 100)}% by volume) — hyper-concentrated slurry falls outside '
+            'standard multiphase transport models."',
+        )
 
-    with col1_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #1E40AF; margin-top: 0; font-size: 1.05rem; font-weight: 700;">1.2 Gas Well Gas Density & Pseudo-Critical Properties</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"P_{pc} = 756.8 - 131.07 \gamma_g - 3.6 \gamma_g^2, \quad T_{pc} = 169.2 + 349.5 \gamma_g - 74.0 \gamma_g^2")
-        st.latex(r"q_{g,\text{ft}^3/\text{s}} = \frac{Q_g \cdot 10^6 \cdot 14.7 \cdot T_{avg,R} \cdot Z}{P_{avg} \cdot 520 \cdot 86400}, \quad \rho_g = \frac{2.7 \cdot \gamma_g \cdot P_{avg}}{Z \cdot T_{avg,R}}")
-        st.latex(r"\lambda_l = \frac{q_l}{q_l + q_g}, \quad \rho_m = \lambda_l \rho_l + (1-\lambda_l)\rho_g")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Estimates gas compressibility factor (<i>Z</i>) via the Dranchuk-Abou-Kassem equation of state (iterated on reduced density, using Standing's pseudo-critical property correlations) to convert surface gas rate (<i>Q<sub>g</sub></i>) into downhole volumetric flow rate (<i>q<sub>g</sub></i>). Determines gas density (<i>&rho;<sub>g</sub></i>) and liquid holdup (<i>&lambda;<sub>l</sub></i>) to compute homogeneous fluid mixture density (<i>&rho;<sub>m</sub></i>).</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>P<sub>pc</sub>, T<sub>pc</sub></i></b>: Gas pseudo-critical pressure [psia] and temperature [°R]<br/>
-• <b><i>Q<sub>g</sub></i></b>: Surface gas production rate [MMscf/D]<br/>
-• <b><i>T<sub>avg,R</sub></i></b>: Mean wellbore absolute temperature [°R] (T<sub>avg,F</sub> + 459.67)<br/>
-• <b><i>Z</i></b>: Dynamic gas compressibility factor [-] (0.65 - 1.25)<br/>
-• <b><i>q<sub>g</sub></i></b>: Downhole volumetric gas flow rate [ft<sup>3</sup>/s]<br/>
-• <b><i>&rho;<sub>g</sub></i></b>: Dynamic in-situ gas density [lb/ft<sup>3</sup>]<br/>
-• <b><i>&lambda;<sub>l</sub></i></b>: No-slip liquid volume holdup fraction [0.0 - 1.0]<br/>
-• <b><i>&rho;<sub>m</sub></i></b>: Homogeneous multiphase fluid mixture density [lb/ft<sup>3</sup>]
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where in-situ gas compressibility factor <i>Z</i> falls outside valid thermodynamic range (0.65 &le; <i>Z</i> &le; 1.25).</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # -------------------------------------------------------------------------
-    # STEP 2
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 2: Solid Particle Slurry Density & Volumetric Concentration")
-    st.markdown("""<div class="formula-card"><h4 style="color: #1E40AF; margin-top: 0; font-size: 1.05rem; font-weight: 700;">2.1 Solid Particle Slurry Integration</h4>""", unsafe_allow_html=True)
-    
-    st.latex(r"C_v = \frac{V_{sand}}{V_{liquid} + V_{sand}} = \frac{\frac{W_s}{\rho_s}}{\left(\frac{Q_{liq} \cdot 5.615}{86400}\right) + \frac{W_s}{\rho_s}}, \quad \rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s")
-    
-    st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates the volumetric concentration fraction (<i>C<sub>v</sub></i>) of solid formation sand produced alongside wellbore fluids. Modifies the baseline mixture density (<i>&rho;<sub>m</sub></i>) to establish bulk slurry density (<i>&rho;<sub>slurry</sub></i>), ensuring accurate hydrostatic column head calculations in sand-producing reservoirs.</div>""", unsafe_allow_html=True)
-    
-    st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>C<sub>v</sub></i></b>: Solid sand volumetric concentration fraction [0.0 - 1.0]<br/>
-• <b><i>V<sub>sand</sub></i></b>: Volumetric production rate of solid sand particles [ft<sup>3</sup>/s]<br/>
-• <b><i>V<sub>liquid</sub></i></b>: Volumetric production rate of liquid phases [ft<sup>3</sup>/s]<br/>
-• <b><i>W<sub>s</sub></i></b>: Sand mass flow rate [lb/s] (Derived from PPTB input: pounds per thousand barrels of liquid)<br/>
-• <b><i>&rho;<sub>s</sub></i></b>: Solid sand grain density [lb/ft<sup>3</sup>] (Quartz Sand = 165.4 lb/ft<sup>3</sup>, SG<sub>s</sub> = 2.65)<br/>
-• <b><i>Q<sub>liq</sub></i></b>: Total surface liquid flow rate [STB/D]<br/>
-• <b><i>&rho;<sub>slurry</sub></i></b>: Bulk solid-liquid-gas slurry mixture density [lb/ft<sup>3</sup>]
-</div>""", unsafe_allow_html=True)
-
-    st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where sand volumetric concentration <i>C<sub>v</sub></i> > 0.15 (15% by volume), as hyper-concentrated sand slurry breaches standard multiphase transport models.</div>""", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # =========================================================================
-    # DOMAIN B: FLOW HYDRODYNAMICS & VELOCITY BOUNDARIES
-    # =========================================================================
     st.markdown("""
-<div style="background-color: #FEF3C7; border-left: 6px solid #D97706; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem;">
-    <h2 style="color: #92400E; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain B: Flow Hydrodynamics & Velocity Boundaries</h2>
+<div style="background-color: #FEF3C7; border-left: 6px solid #D97706; padding: 0.75rem 1rem; border-radius: 6px; margin: 0.5rem 0 1.25rem;">
+    <h2 style="color: #92400E; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain B: Flow Hydrodynamics &amp; Velocity Boundaries</h2>
 </div>
 """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # STEP 3
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 3: Multiphase Frictional Hydraulics & Pressure Loss (&Delta;P<sub>total</sub>)")
-    col3_1, col3_2 = st.columns(2)
+    st.markdown('<div id="step-3"></div>', unsafe_allow_html=True)
+    with st.expander("Step 3  ·  Multiphase Frictional Hydraulics & Pressure Loss   —   Domain B", expanded=(active_step == 3)):
+        formula_card(
+            "3.1",
+            "Total Slurry Wellbore Pressure Loss",
+            "#92400E",
+            [
+                (r"\Delta P_{total} = \underbrace{\frac{\rho_{\text{slurry}} \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_{\text{slurry}} \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}", "Weight of the fluid column plus wall friction"),
+            ],
+            f"Adds the two things that consume pressure on the way up: the {term('hydrostatic')} weight of the column, and friction against the pipe wall. The total is compared against the {term('drawdown', 'available drawdown')} — if losses exceed the reservoir's pressure budget, the well cannot flow unaided.",
+            [
+                ("&Delta;P<sub>total</sub>", "Total expected wellbore pressure drop", "psi"),
+                ("TVD", "True vertical depth — drives hydrostatic head", "ft"),
+                ("MD", "Measured depth along the trajectory — drives friction", "ft"),
+                ("f", "Fanning turbulent friction factor", "dimensionless"),
+                ("v<sub>m</sub>", "Mean mixture velocity, q<sub>m</sub> / A<sub>id</sub>", "ft/s"),
+                ("g<sub>c</sub>", "Unit conversion constant", "32.174 lbm&middot;ft/(lbf&middot;s<sup>2</sup>)"),
+                ("d<sub>i</sub>", "Inner diameter of the candidate tubing", "ft"),
+            ],
+            "Rejects a candidate when total pressure drop exceeds the available drawdown (<i>&Delta;P<sub>total</sub></i> &gt; P<sub>bhp</sub> &minus; P<sub>wh</sub>), leaving the well unable to flow naturally.",
+        )
 
-    with col3_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #92400E; margin-top: 0; font-size: 1.05rem; font-weight: 700;">3.1 Total Slurry Wellbore Pressure Loss</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\Delta P_{total} = \underbrace{\frac{\rho_{\text{slurry}} \cdot TVD}{144}}_{\Delta P_{hydrostatic}} + \underbrace{\frac{f \cdot MD \cdot \rho_{\text{slurry}} \cdot v_m^2}{2 \cdot g_c \cdot d_i \cdot 144}}_{\Delta P_{friction}}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates the total pressure loss along the production tubing string by integrating hydrostatic gravity head and turbulent pipe wall friction. Candidates are rejected if <i>&Delta;P<sub>total</sub></i> exceeds available drawdown drive (<i>&Delta;P<sub>available</sub> = P<sub>bhp</sub> - P<sub>wh</sub></i>).</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>&Delta;P<sub>total</sub></i></b>: Total expected wellbore pressure drop [psi]<br/>
-• <b><i>TVD</i></b>: True Vertical Depth of the wellbore [ft]<br/>
-• <b><i>MD</i></b>: Total Measured Depth along wellbore trajectory [ft]<br/>
-• <b><i>f</i></b>: Fanning turbulent friction factor [-]<br/>
-• <b><i>v<sub>m</sub></i></b>: Mean mixture flow velocity [ft/s] (q<sub>m</sub> / A<sub>id</sub>)<br/>
-• <b><i>g<sub>c</sub></i></b>: Dimensional conversion constant [32.174 lbm·ft/(lbf·s<sup>2</sup>)]<br/>
-• <b><i>d<sub>i</sub></i></b>: Inner diameter of candidate tubing string [ft]
-</div>""", unsafe_allow_html=True)
+        formula_card(
+            "3.2",
+            "Colebrook-White Friction Factor &amp; Reynolds Number",
+            "#92400E",
+            [
+                (r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right]", "Friction factor for fully turbulent flow"),
+                (r"Re = \frac{\rho_{\text{slurry}} v_m d_i}{\mu_m}", "Flow regime indicator"),
+            ],
+            f"Establishes how rough-and-turbulent the flow is, which sets the friction term above. The {term('friction-factor')} depends on the {term('reynolds', 'Reynolds number')} and on the pipe's {term('roughness', 'relative roughness')} — the same surface finish matters far more in a narrow pipe.",
+            [
+                ("f", "Turbulent friction factor", "dimensionless"),
+                ("&epsilon;", "Absolute internal wall roughness", "0.0006 in (new steel)"),
+                ("d<sub>i</sub>", "Tubing inner diameter", "ft"),
+                ("Re", "Reynolds number — laminar below ~2000, turbulent above ~4000", "dimensionless"),
+                ("&mu;<sub>m</sub>", "Dynamic mixture viscosity, cP × 0.000672", "lb/(ft&middot;s)"),
+            ],
+            f'"Rejects a candidate when severe internal restriction produces a non-physical friction '
+            f'factor (<i>f</i> &gt; {FRICTION_FACTOR_MAX})."',
+        )
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where total calculated pressure drop exceeds available drawdown drive (<i>&Delta;P<sub>total</sub> > P<sub>bhp</sub> - P<sub>wh</sub></i>), rendering the well unable to flow naturally.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('<div id="step-4"></div>', unsafe_allow_html=True)
+    with st.expander("Step 4  ·  Triple Velocity Operating Envelope (Erosion, Loading & Settling)   —   Domain B", expanded=(active_step == 4)):
+        formula_card(
+            "4.1",
+            "Salama Sand Erosional Velocity Limit (1983)",
+            "#92400E",
+            [
+                (r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}}", "Upper speed limit set by sand impact damage"),
+            ],
+            f"Sets the ceiling of the velocity window. Sand grains striking the wall remove metal, so this gives the {term('erosional', 'erosional velocity')} above which the pipe thins faster than the well's design life allows. In sand-producing wells this replaces the clean-fluid API 14E limit, which is unconservative when solids are present.",
+            [
+                ("v<sub>erosional</sub>", "Maximum allowable velocity before sand erosion", "ft/s"),
+                ("C<sub>salama</sub>", "Empirical alloy erosion coefficient", "200 carbon / 450 CRA"),
+                ("&rho;<sub>slurry</sub>", "Bulk slurry density", "lb/ft<sup>3</sup>"),
+                ("d<sub>i</sub>", "Tubing inner diameter", "in"),
+                ("W<sub>s</sub>", "Sand production mass rate", "lb/day"),
+            ],
+            "Rejects a candidate when early-life peak mixture velocity exceeds the Salama erosion threshold (<i>v<sub>m</sub></i> &gt; <i>v<sub>erosional</sub></i>), which would wash out the wall.",
+        )
 
-    with col3_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #92400E; margin-top: 0; font-size: 1.05rem; font-weight: 700;">3.2 Colebrook-White Friction Factor & Reynolds Number</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\frac{1}{\sqrt{f}} = -1.8 \log_{10} \left[ \left( \frac{\epsilon / d_i}{3.7} \right)^{1.11} + \frac{6.9}{Re} \right], \quad Re = \frac{\rho_{\text{slurry}} v_m d_i}{\mu_m}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Determines the dimensionless friction factor (<i>f</i>) for fully developed turbulent flow as a function of pipe internal relative roughness (<i>&epsilon; / d<sub>i</sub></i>) and slurry Reynolds number (<i>Re</i>).</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>f</i></b>: Turbulent friction factor [-]<br/>
-• <b><i>&epsilon;</i></b>: Absolute internal pipe wall roughness [ft] (Standard steel = 0.0006 in)<br/>
-• <b><i>d<sub>i</sub></i></b>: Tubing inner diameter [ft]<br/>
-• <b><i>Re</i></b>: Slurry flow Reynolds number [-]<br/>
-• <b><i>&mu;<sub>m</sub></i></b>: Dynamic mixture viscosity [lb/(ft·s)] (cP × 0.000672)
-</div>""", unsafe_allow_html=True)
+        formula_card(
+            "4.2",
+            "Solid Settling &amp; Critical Liquid Lift Criteria",
+            "#92400E",
+            [
+                (r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + 36 \nu^2} - \frac{6 \nu}{d_p}", "Rubey: how fast a sand grain falls"),
+                (r"v_{\text{critical}} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}", "Turner: speed needed to carry a liquid droplet"),
+                (r"v_{\text{carrying}} = \max(v_{\text{critical}}, 1.35 v_t)", "Governing minimum — the stricter of the two"),
+            ],
+            f"Sets the floor of the velocity window. Rubey's {term('terminal-velocity', 'terminal settling velocity')} gives how fast sand falls, and Turner's criterion — driven by {term('interfacial-tension')} — gives the speed needed to carry droplets. The stricter of the two becomes the {term('carrying', 'carrying velocity')}; below it, solids drop out and {term('liquid-loading')} sets in.",
+            [
+                ("v<sub>t</sub>", "Rubey terminal settling velocity of sand grains", "ft/s"),
+                ("g", "Gravitational acceleration", "32.174 ft/s<sup>2</sup>"),
+                ("d<sub>p</sub>", "Mean sand particle diameter, microns × 3.28084 × 10<sup>-6</sup>", "ft"),
+                ("&nu;", "Kinematic viscosity, &mu;<sub>m</sub> / &rho;<sub>slurry</sub>", "ft<sup>2</sup>/s"),
+                ("v<sub>critical</sub>", "Turner critical droplet lift velocity", "ft/s"),
+                ("&sigma;", "Liquid-gas interfacial tension", "20.0 dynes/cm default"),
+                ("v<sub>carrying</sub>", "Governing minimum allowable velocity", "ft/s"),
+            ],
+            "Rejects a candidate when velocity falls below the carrying minimum (<i>v<sub>m</sub></i> &lt; <i>v<sub>carrying</sub></i>) in either early or late life, which would plug the well with sand or load it with liquid.",
+        )
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where severe internal restriction creates non-physical friction factors (<i>f</i> > 0.15).</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # -------------------------------------------------------------------------
-    # STEP 4
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 4: Triple Velocity Operating Envelope (Erosion, Loading & Settling)")
-    col4_1, col4_2 = st.columns(2)
-
-    with col4_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #92400E; margin-top: 0; font-size: 1.05rem; font-weight: 700;">4.1 Salama Sand Erosional Velocity Limit (1983)</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"v_{\text{erosional, sand}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Defines the maximum allowable flow velocity (<i>v<sub>erosional</sub></i>) to prevent premature pipe wall thinning due to solid particle kinetic impact. Replaces clean fluid API 14E limits in sand-producing wells.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>v<sub>erosional</sub></i></b>: Maximum allowable erosional velocity limit [ft/s]<br/>
-• <b><i>C<sub>salama</sub></i></b>: Empirical alloy erosion coefficient [200 for Carbon Steel, 450 for 13Cr/CRA alloys]<br/>
-• <b><i>&rho;<sub>slurry</sub></i></b>: Bulk slurry density [lb/ft<sup>3</sup>]<br/>
-• <b><i>d<sub>i</sub></i></b>: Tubing inner diameter [in]<br/>
-• <b><i>W<sub>s</sub></i></b>: Sand production mass rate [lb/day]
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidate tubing sizes where Early-Life peak mixture velocity exceeds the Salama sand erosion threshold (<i>v<sub>m</sub> > v<sub>erosional</sub></i>), preventing wall erosion washout.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col4_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #92400E; margin-top: 0; font-size: 1.05rem; font-weight: 700;">4.2 Solid Settling & Critical Liquid Lift Criteria</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + 36 \nu^2} - \frac{6 \nu}{d_p}")
-        st.latex(r"v_{\text{critical}} = \frac{1.3 \cdot \sigma^{0.25}(\rho_l - \rho_g)^{0.25}}{\rho_g^{0.5}}, \quad v_{\text{carrying}} = \max(v_{\text{critical}}, 1.35 v_t)")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates Rubey's terminal settling velocity (<i>v<sub>t</sub></i>) for solid grains and Turner's critical droplet lift velocity (<i>v<sub>critical</sub></i>). Establishes minimum carrying velocity (<i>v<sub>carrying</sub></i>) to ensure fluid velocity prevents sand deposition or liquid loading downhole.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>v<sub>t</sub></i></b>: Rubey terminal settling velocity of sand grains [ft/s]<br/>
-• <b><i>g</i></b>: Gravitational acceleration [32.174 ft/s<sup>2</sup>]<br/>
-• <b><i>d<sub>p</sub></i></b>: Mean sand particle diameter [ft] (microns × 3.28084 × 10<sup>-6</sup>)<br/>
-• <b><i>&nu;</i></b>: Kinematic fluid viscosity [ft<sup>2</sup>/s] (&mu;<sub>m</sub> / &rho;<sub>slurry</sub>)<br/>
-• <b><i>v<sub>critical</sub></i></b>: Turner critical droplet lift velocity [ft/s]<br/>
-• <b><i>&sigma;</i></b>: Liquid-gas interfacial tension [dynes/cm] (Default = 20.0 dynes/cm)<br/>
-• <b><i>v<sub>carrying</sub></i></b>: Absolute minimum allowable flow velocity [ft/s]
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where flow velocity drops below minimum carrying velocity (<i>v<sub>m</sub> < v<sub>carrying</sub></i>) during either Initial or Late-Life, preventing downhole sand plugging and liquid loading.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # =========================================================================
-    # DOMAIN C: STRUCTURAL MECHANICS & INTEGRITY GATES
-    # =========================================================================
     st.markdown("""
-<div style="background-color: #D1FAE5; border-left: 6px solid #059669; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem;">
-    <h2 style="color: #065F46; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain C: Structural Mechanics & Environmental Integrity</h2>
+<div style="background-color: #D1FAE5; border-left: 6px solid #059669; padding: 0.75rem 1rem; border-radius: 6px; margin: 0.5rem 0 1.25rem;">
+    <h2 style="color: #065F46; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain C: Structural Mechanics &amp; Environmental Integrity</h2>
 </div>
 """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # STEP 5
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 5: Lubinski 5-Force Net Axial Load & Trapped Annular APB")
-    col5_1, col5_2 = st.columns(2)
+    st.markdown('<div id="step-5"></div>', unsafe_allow_html=True)
+    with st.expander("Step 5  ·  Lubinski 5-Force Net Axial Load & Trapped Annular APB   —   Domain C", expanded=(active_step == 5)):
+        formula_card(
+            "5.1",
+            "Lubinski Net Axial Force Balance",
+            "#065F46",
+            [
+                (r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}", "The five forces, summed"),
+                (r"F_{gravity} = W_{lbft} \cdot MD \left(1 - \frac{\rho_{\text{slurry}}}{490}\right), \quad F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}", "Buoyed pipe weight, and restrained thermal growth"),
+                (r"F_{piston} = P_{bhp} A_{id} - P_{annular} (A_{od} - A_{id}), \quad F_{ballooning} = 2 \nu_p (P_{bhp} A_{id} - P_{annular} A_{od})", "Pressure end-load at the packer, and radial swelling"),
+            ],
+            f"Totals the {term('axial-load', 'net axial load')} carried by the string during production. It combines buoyed pipe weight, the {term('thermal-force', 'thermal expansion force')} that appears when a {term('packer')} prevents the heated string from lengthening, the {term('piston')} force from pressure acting across the area change, {term('ballooning')}, and fluid drag.",
+            [
+                ("F<sub>axial</sub>", "Total net axial load — positive tension, negative compression", "lbs"),
+                ("W<sub>lbft</sub>", "Nominal tubing linear weight", "lb/ft"),
+                ("E", "Young’s modulus of steel", "30 × 10<sup>6</sup> psi"),
+                ("A<sub>steel</sub>", "Steel cross-sectional area of the wall", "in<sup>2</sup>"),
+                ("&alpha;", "Thermal expansion coefficient of steel", "6.9 × 10<sup>-6</sup> /&deg;F"),
+                ("&Delta;T<sub>annular</sub>", "Mean thermal rise in the trapped annulus", "&deg;F"),
+                ("A<sub>id</sub>, A<sub>od</sub>", "Internal and external cross-sectional area", "ft<sup>2</sup>"),
+                ("&nu;<sub>p</sub>", "Poisson’s ratio of steel", "0.30"),
+            ],
+            "Rejects a candidate when the magnitude of net axial load |<i>F<sub>axial</sub></i>| exceeds the pipe body rating (SMYS × A<sub>steel</sub>).",
+        )
 
-    with col5_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #065F46; margin-top: 0; font-size: 1.05rem; font-weight: 700;">5.1 Lubinski Net Axial Force Balance Summation</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"F_{axial} = F_{gravity} + F_{thermal} + F_{piston} + F_{ballooning} + F_{drag}")
-        st.latex(r"F_{gravity} = W_{lbft} \cdot MD \left(1 - \frac{\rho_{\text{slurry}}}{490}\right), \quad F_{thermal} = E \cdot A_{steel} \cdot \alpha \cdot \Delta T_{annular}")
-        st.latex(r"F_{piston} = P_{bhp} A_{id} - P_{annular} (A_{od} - A_{id}), \quad F_{ballooning} = 2 \nu_p (P_{bhp} A_{id} - P_{annular} A_{od})")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Summates the 5 primary longitudinal forces acting along the string length under production heating: buoyant pipe weight, constrained thermal expansion, piston differential pressure across the packer, radial ballooning, and fluid drag.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>F<sub>axial</sub></i></b>: Total net axial tensile or compressive load [lbs]<br/>
-• <b><i>W<sub>lbft</sub></i></b>: Nominal tubing linear weight [lb/ft]<br/>
-• <b><i>E</i></b>: Young's Modulus of Elasticity [30 × 10<sup>6</sup> psi]<br/>
-• <b><i>A<sub>steel</sub></i></b>: Tubing wall steel cross-sectional area [in<sup>2</sup>]<br/>
-• <b><i>&alpha;</i></b>: Thermal expansion coefficient of steel [6.9 × 10<sup>-6</sup> /°F]<br/>
-• <b><i>&Delta;T<sub>annular</sub></i></b>: Average thermal rise in trapped packer annulus [°F]<br/>
-• <b><i>A<sub>id</sub>, A<sub>od</sub></i></b>: Internal and external cross-sectional pipe area [ft<sup>2</sup>]<br/>
-• <b><i>&nu;<sub>p</sub></i></b>: Poisson's ratio of steel [0.30]
-</div>""", unsafe_allow_html=True)
+        formula_card(
+            "5.2",
+            "Trapped Annular Pressure Build-up (APB)",
+            "#065F46",
+            [
+                (r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular, °C}", "Pressure rise from fluid that cannot expand"),
+                (r"\Delta T_{annular, °C} = \frac{5}{9}\left(T_{avg} - T_{ambient}\right)_{°F}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}", "Temperature rise above surface datum, and total external pressure"),
+            ],
+            f"Captures {term('apb')}: completion fluid sealed in the {term('annulus')} is heated by production but has nowhere to expand, so pressure climbs. The rise is measured from the ambient surface datum and converted to &deg;C to match the units of <i>&alpha;<sub>v</sub></i>. The result raises external pressure on the tubing, feeding the collapse and {term('ballooning')} checks.",
+            [
+                ("&Delta;P<sub>APB</sub>", "Pressure rise in the sealed annulus", "psi"),
+                ("&alpha;<sub>v</sub>", "Volumetric thermal expansion coefficient of brine", "/&deg;C"),
+                ("&kappa;<sub>T</sub>", "Isothermal compressibility of the fluid", "/psi"),
+                ("&Delta;T<sub>annular</sub>", "Mean temperature change in the annulus", "&deg;C"),
+                ("P<sub>annular,total</sub>", "Total external pressure acting on the tubing", "psi"),
+            ],
+            "Rejects a configuration when APB exceeds 1500 psi, which erodes the external collapse safety margin.",
+        )
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where the magnitude of total net axial load (<i>|F<sub>axial</sub>|</i>) exceeds the pipe body rating (SMYS × A<sub>steel</sub>).</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('<div id="step-6"></div>', unsafe_allow_html=True)
+    with st.expander("Step 6  ·  Lamé 3D Principal Stresses & von Mises Triaxial Yield   —   Domain C", expanded=(active_step == 6)):
+        formula_card(
+            "6.1",
+            "Lam&eacute; Thick-Wall Principal &amp; Bending Stresses",
+            "#065F46",
+            [
+                (r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}", "Axial stress, including bending through doglegs"),
+                (r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}", "Hoop and radial stress at the inner wall"),
+            ],
+            f"Resolves the three-dimensional stress state in the pipe wall using the {term('lame')}. It produces axial stress including {term('dogleg', 'dogleg')} bending, {term('hoop', 'hoop stress')} acting circumferentially, and {term('radial-stress', 'radial stress')} through the wall — the three inputs the von Mises check needs.",
+            [
+                ("&sigma;<sub>axial</sub>", "Total axial stress including dogleg bending", "psi"),
+                ("OD", "Tubing outer diameter", "in"),
+                ("DLS", "Maximum dogleg severity", "deg/100 ft"),
+                ("&sigma;<sub>&theta;</sub>", "Hoop stress at the inner wall", "psi"),
+                ("&sigma;<sub>r</sub>", "Radial stress at the inner wall", "psi"),
+                ("P<sub>int</sub>, P<sub>ext</sub>", "Internal (P<sub>bhp</sub>) and external (P<sub>annular</sub>) pressure", "psi"),
+                ("r<sub>i</sub>, r<sub>o</sub>", "Inner and outer pipe radii", "in"),
+            ],
+            "Rejects a candidate when dogleg bending stress combined with axial tension exceeds structural yield.",
+        )
 
-    with col5_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #065F46; margin-top: 0; font-size: 1.05rem; font-weight: 700;">5.2 Trapped Annular Pressure Build-up (APB)</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\Delta P_{APB} = \left( \frac{\alpha_v}{\kappa_T} \right) \Delta T_{annular, °C}, \quad \Delta T_{annular, °C} = \frac{5}{9}\left(T_{avg} - T_{ambient}\right)_{°F}, \quad P_{annular,total} = P_{wh} + \Delta P_{APB}")
+        formula_card(
+            "6.2",
+            "von Mises Triaxial Equivalent Yield Stress",
+            "#065F46",
+            [
+                (r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_{axial})^2 + (\sigma_{axial} - \sigma_\theta)^2 \right]}", "Three stresses collapsed into one comparable number"),
+                (r"SF_{triaxial} = \frac{Y_{yield}}{\sigma_{VME}} \ge 1.25", "Margin against yield"),
+            ],
+            f"Reduces the 3D stress state to a single {term('von-mises', 'equivalent stress')} that can be compared directly against the steel’s {term('smys', 'yield strength')}. The ratio of the two is the {term('safety-factor')}, and 1.25 is the threshold this engine enforces.",
+            [
+                ("&sigma;<sub>VME</sub>", "von Mises equivalent triaxial stress", "psi"),
+                ("Y<sub>yield</sub>", "Specified minimum yield strength of the grade", "L80 = 80,000 psi"),
+                ("SF<sub>triaxial</sub>", "Triaxial safety factor", "target &ge; 1.25"),
+            ],
+            "Rejects a candidate failing the triaxial safety factor (<i>SF<sub>triaxial</sub></i> &lt; 1.25), which would allow plastic deformation under combined loading.",
+        )
 
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates pressure rise (<i>&Delta;P<sub>APB</sub></i>) inside an isolated tubing-casing annulus caused by thermal expansion of trapped completion fluid. The annular temperature rise is measured from the ambient/static surface datum and converted to °C to match the units of <i>&alpha;<sub>v</sub></i>. Used to evaluate collapse and ballooning forces on the tubing.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>&Delta;P<sub>APB</sub></i></b>: Pressure rise in sealed annulus [psi]<br/>
-• <b><i>&alpha;<sub>v</sub></i></b>: Isobaric volumetric thermal expansion coefficient of brine [/°C]<br/>
-• <b><i>&kappa;<sub>T</sub></i></b>: Isothermal fluid compressibility coefficient [/psi]<br/>
-• <b><i>&Delta;T<sub>annular</sub></i></b>: Mean temperature change in annulus [°C]<br/>
-• <b><i>P<sub>annular,total</sub></i></b>: Total dynamic external pressure acting on tubing [psi]
-</div>""", unsafe_allow_html=True)
+    st.markdown('<div id="step-7"></div>', unsafe_allow_html=True)
+    with st.expander("Step 7  ·  Shut-In CITHP Surface Burst, NACE Sour & Connection Gate   —   Domain C", expanded=(active_step == 7)):
+        formula_card(
+            "7.1",
+            "Static CITHP Surface Burst Check",
+            "#5B21B6",
+            [
+                (r"\text{CITHP} = P_{bhp} \cdot e^{-\left(\frac{M \cdot TVD}{Z \cdot R \cdot T_{avg}}\right)}", "Surface pressure once the well is shut in"),
+                (r"SF_{burst} = \frac{\text{Candidate Burst Limit [psi]}}{\text{CITHP [psi]}} \ge 1.10", "Margin against rupture"),
+            ],
+            f"Checks the worst internal-pressure case. When a gas well is shut in, the light gas column adds almost no weight, so {term('cithp')} at surface approaches reservoir pressure. This verifies the candidate’s {term('burst', 'burst rating')} keeps a {term('safety-factor')} of at least 1.10 against that.",
+            [
+                ("CITHP", "Closed-in tubing head pressure at surface", "psi"),
+                ("M", "Gas molecular weight, SG<sub>g</sub> × 28.97", "lbm/lb-mol"),
+                ("R", "Universal gas constant", "10.731 psi&middot;ft<sup>3</sup>/(lb-mol&middot;&deg;R)"),
+                ("SF<sub>burst</sub>", "Surface burst safety factor", "target &ge; 1.10"),
+            ],
+            "Rejects a candidate failing the static surface burst factor (<i>SF<sub>burst</sub></i> &lt; 1.10), which risks wellhead rupture during shut-in.",
+        )
 
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidate configurations where excessive APB pressure rise (<i>&Delta;P<sub>APB</sub></i> > 1500 psi) compromises external collapse safety margins.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        formula_card(
+            "7.2",
+            "NACE MR0175 Sour Service &amp; Premium Connection Logic",
+            "#5B21B6",
+            [
+                (r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}", "H₂S partial pressure against the NACE sour threshold"),
+            ],
+            f"Applies the environmental and mechanical gates. The {term('partial-pressure')} of H₂S decides whether {term('sour', 'sour service')} rules apply; above 0.05 psia, {term('nace')} caps hardness at 26 HRC or mandates a {term('cra')}. Separately, high gas rate, APB, depth or CRA metallurgy force a {term('premium-connection')} for gas-tight sealing.",
+            [
+                ("p<sub>H<sub>2</sub>S</sub>", "Partial pressure of hydrogen sulphide", "psia"),
+                ("H<sub>2</sub>S", "Concentration in the produced gas stream", "PPM"),
+                ("T<sub>max,grade</sub>", "Max continuous service temperature per grade", "13Cr 150 &rarr; 25Cr 250 &deg;C"),
+                ("Premium triggers", "Gas well, GOR &gt; 2000, Q<sub>g</sub> &gt; 10 MMscf/D, CITHP &gt; 3000 psi, &Delta;P<sub>APB</sub> &gt; 1500 psi, depth &gt; 10,000 ft, or CRA", "any one applies"),
+            ],
+            "Rejects non-NACE-compliant grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia), grades whose maximum service temperature is below bottomhole temperature, and standard API EUE threads where gas-tight premium connections are required.",
+        )
 
-    # -------------------------------------------------------------------------
-    # STEP 6
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 6: Lamé 3D Principal Stresses & von Mises Triaxial Yield (&sigma;<sub>VME</sub>)")
-    col6_1, col6_2 = st.columns(2)
-
-    with col6_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #065F46; margin-top: 0; font-size: 1.05rem; font-weight: 700;">6.1 Lamé Thick-Wall Principal & Bending Stresses</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}")
-        st.latex(r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates 3-dimensional principal stresses acting on the pipe wall: Longitudinal Axial (<i>&sigma;<sub>axial</sub></i>) including dogleg curvature bending, Circumferential Hoop (<i>&sigma;<sub>&theta;</sub></i>), and Radial (<i>&sigma;<sub>r</sub></i>).</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>&sigma;<sub>axial</sub></i></b>: Total axial stress including dogleg bending [psi]<br/>
-• <b><i>OD</i></b>: Tubing outer diameter [in]<br/>
-• <b><i>DLS</i></b>: Maximum dogleg severity [deg/100ft]<br/>
-• <b><i>&sigma;<sub>&theta;</sub></i></b>: Hoop stress at inner pipe wall [psi]<br/>
-• <b><i>&sigma;<sub>r</sub></i></b>: Radial stress at inner pipe wall [psi]<br/>
-• <b><i>P<sub>int</sub>, P<sub>ext</sub></i></b>: Internal tubing pressure (P<sub>bhp</sub>) and external annular pressure (P<sub>annular</sub>) [psi]<br/>
-• <b><i>r<sub>i</sub>, r<sub>o</sub></i></b>: Inner and outer pipe radii [in]
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates where dogleg bending stress (<i>&sigma;<sub>bending</sub></i>) combined with axial tension exceeds structural yield.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col6_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #065F46; margin-top: 0; font-size: 1.05rem; font-weight: 700;">6.2 von Mises Triaxial Equivalent Yield Stress</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_{axial})^2 + (\sigma_{axial} - \sigma_\theta)^2 \right]}")
-        st.latex(r"SF_{triaxial} = \frac{Y_{yield}}{\sigma_{VME}} \ge 1.25")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Combines 3D principal stresses into a single Equivalent Stress (<i>&sigma;<sub>VME</sub></i>) based on Distortion Energy Theory. Rejects candidates failing the target triaxial safety factor (<i>SF<sub>triaxial</sub></i> &ge; 1.25).</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>&sigma;<sub>VME</sub></i></b>: von Mises equivalent triaxial stress [psi]<br/>
-• <b><i>Y<sub>yield</sub></i></b>: Specified minimum yield strength of candidate steel grade [psi] (e.g., L80 = 80,000 psi, P110 = 110,000 psi)<br/>
-• <b><i>SF<sub>triaxial</sub></i></b>: Calculated triaxial safety factor [-] (Target limit &ge; 1.25)
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates failing the mandatory triaxial safety factor threshold (<i>SF<sub>triaxial</sub></i> < 1.25), preventing material plastic deformation under combined loading.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # -------------------------------------------------------------------------
-    # STEP 7
-    # -------------------------------------------------------------------------
-    st.markdown("### Step 7: Shut-In Static CITHP Surface Burst, NACE Sour & Connection Gate")
-    col7_1, col7_2 = st.columns(2)
-
-    with col7_1:
-        st.markdown("""<div class="formula-card"><h4 style="color: #5B21B6; margin-top: 0; font-size: 1.05rem; font-weight: 700;">7.1 Static CITHP Surface Burst Check</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"\text{CITHP} = P_{bhp} \cdot e^{-\left(\frac{M \cdot TVD}{Z \cdot R \cdot T_{avg}}\right)}, \quad SF_{burst} = \frac{\text{Candidate Burst Limit [psi]}}{\text{CITHP [psi]}} \ge 1.10")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Computes surface Closed-In Tubing Head Pressure (<b>CITHP</b>) under static gas shut-in. Verifies that the candidate burst rating provides a minimum safety factor of <i>SF<sub>burst</sub></i> &ge; 1.10 against surface wellhead failure.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b>CITHP</b>: Static Closed-In Tubing Head Pressure at surface [psi]<br/>
-• <b><i>M</i></b>: Gas molecular weight [lbm/lb-mol] (SG<sub>g</sub> × 28.97)<br/>
-• <b><i>R</i></b>: Universal gas constant [10.731 psi·ft<sup>3</sup>/(lb-mol·°R)]<br/>
-• <b><i>SF<sub>burst</sub></i></b>: Surface burst safety factor [-] (Target limit &ge; 1.10)
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects candidates failing the static surface burst safety factor (<i>SF<sub>burst</sub></i> < 1.10), preventing surface wellhead rupture during shut-in.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col7_2:
-        st.markdown("""<div class="formula-card"><h4 style="color: #5B21B6; margin-top: 0; font-size: 1.05rem; font-weight: 700;">7.2 NACE MR0175 Sour Service & Premium Connection Logic</h4>""", unsafe_allow_html=True)
-        
-        st.latex(r"p_{H_2S} = P_{bhp} \times \left( \frac{\text{H}_2\text{S [PPM]}}{10^6} \right) \ge 0.05 \text{ psia}")
-        
-        st.markdown("""<div class="purpose-box"><b>Purpose & Operational Uses:</b> Calculates H<sub>2</sub>S partial pressure (<i>p<sub>H<sub>2</sub>S</sub></i>) to enforce NACE MR0175 material selection (restricts hardness to 26 HRC max or mandates CRA alloys). Mandates metal-to-metal seal Premium Connections when high gas rates, APB rise, or CRA alloys present thread leak risks.</div>""", unsafe_allow_html=True)
-        
-        st.markdown("""<div class="param-key">
-<b>Parameter Definition Key:</b><br/>
-• <b><i>p<sub>H<sub>2</sub>S</sub></i></b>: Partial pressure of hydrogen sulfide gas [psia]<br/>
-• <b>H<sub>2</sub>S [PPM]</b>: Concentration of H<sub>2</sub>S in produced gas stream [PPM]<br/>
-• <b><i>T<sub>max,grade</sub></i></b>: Indicative maximum continuous service temperature per grade [°C] (carbon & 13Cr = 150, S13Cr-110 = 175, 17Cr = 180, 22Cr = 232, 25Cr = 250)<br/>
-• <b>Premium Mandate Triggers</b>: Enforced if Gas Well, GOR > 2000, Q<sub>g</sub> > 10 MMscf/D, CITHP > 3000 psi, &Delta;P<sub>APB</sub> > 1500 psi, Depth > 10,000 ft, or CRA metallurgy.
-</div>""", unsafe_allow_html=True)
-
-        st.markdown("""<div class="filter-box"><b>🚫 Rejection Criteria (What is Filtered Out):</b> Rejects non-NACE compliant steel grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia), grades whose maximum service temperature is below the bottomhole temperature (BHT > <i>T<sub>max,grade</sub></i>), and standard API EUE threads when gas-tight Premium Connections are required.</div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    with st.expander("📘 Full glossary — every highlighted term on this page", expanded=False):
+        st.markdown(
+            "".join(
+                f'<div style="padding: 0.5rem 0; border-bottom: 1px solid #EEF2F6;">'
+                f'<b style="color: #1D4ED8;">{title}</b><br/>'
+                f'<span style="font-size: 0.88rem; color: #334155; line-height: 1.6;">{body}</span></div>'
+                for title, body in sorted(GLOSSARY.values())
+            ),
+            unsafe_allow_html=True,
+        )
 
 # ----------------------------------------------------------------------------- 
 # PAGE 3: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
