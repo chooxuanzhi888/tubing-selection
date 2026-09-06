@@ -136,6 +136,80 @@ def test_tension_derates_collapse_capacity():
     assert (deep.loc[both, 'p_collapse_psi'] < shallow.loc[both, 'p_collapse_psi']).all()
 
 
+def test_api_5ct_columns_present(results):
+    expected = {
+        'p_test_psi', 'hydro_test_sf', 'hydro_design_factor', 'Hydro_Pass', 'Hydro_Reason',
+        'min_elongation_pct', 'elongation_specimen', 'Elongation_Note',
+        'cvn_body_trans_j', 'cvn_body_long_j', 'cvn_cplg_trans_j', 'cvn_cplg_long_j',
+        'cvn_testing_waived', 'CVN_Note',
+        'hrc_min_as_quenched', 'hrc_applicable', 'Hardenability_Note', 'API_5CT_Flags',
+    }
+    assert expected <= set(results.columns)
+
+
+def test_every_candidate_gets_a_proof_test_pressure(results):
+    """The hydro gate is a hard gate, so it must evaluate for every candidate."""
+    assert results['p_test_psi'].notna().all()
+    assert (results['p_test_psi'] > 0).all()
+    assert results['hydro_design_factor'].isin([0.60, 0.80]).all()
+
+
+def test_hydro_gate_genuinely_gates(results):
+    """A candidate whose mill test pressure is below CITHP must fail and say so."""
+    failed = results[~results['Hydro_Pass']]
+    assert not failed.empty, "expected some low-grade candidates below shut-in CITHP"
+    assert (failed['p_test_psi'] < failed['cithp_psi']).all()
+    assert failed['Hydro_Reason'].str.startswith("Fail:").all()
+    assert (~failed['Overall_Pass']).all()
+
+
+def test_overall_pass_is_the_conjunction_of_the_hard_gates_only(results):
+    """The three advisory 5CT checks must never affect Overall_Pass."""
+    gates = [c for c in results.columns if c.endswith('_Pass') and c != 'Overall_Pass']
+    assert 'Hydro_Pass' in gates
+    assert (results['Overall_Pass'] == results[gates].all(axis=1)).all()
+
+
+def test_advisory_checks_do_not_reject_candidates(results):
+    """Waived CVN testing and non-applicable hardenability are notes, not failures."""
+    waived = results[results['cvn_testing_waived']]
+    assert not waived.empty
+    # Some waived-CVN candidates must still pass overall, proving it is advisory.
+    assert waived['Overall_Pass'].any()
+    not_applicable = results[~results['hrc_applicable']]
+    assert not not_applicable.empty
+    assert not_applicable['Overall_Pass'].any()
+
+
+def test_every_candidate_gets_an_elongation_requirement(results):
+    assert results['min_elongation_pct'].notna().all()
+    assert (results['min_elongation_pct'] > 0).all()
+    assert set(results['elongation_specimen']) <= {
+        "strip", "round_bar_8.9mm", "round_bar_12.7mm"
+    }
+
+
+def test_coupling_cvn_always_exceeds_pipe_body(results):
+    """Couplings are rated on specified maximum yield, so they demand more."""
+    assert (results['cvn_cplg_trans_j'] >= results['cvn_body_trans_j']).all()
+    assert (results['cvn_cplg_long_j'] >= results['cvn_body_long_j']).all()
+
+
+def test_cra_grades_report_hardenability_as_not_applicable(results):
+    """CRA grades have no as-quenched martensite target -- reported, not raised."""
+    cra = results[results['Grade'].str.contains("Cr", case=False, na=False)]
+    assert not cra.empty
+    assert (~cra['hrc_applicable']).all()
+    assert cra['Hardenability_Note'].str.contains("corrosion-resistant").all()
+
+
+def test_alternative_test_pressure_is_flagged(results):
+    """Above the 10,000 psi cap the flag must fire without failing the gate."""
+    flagged = results[results['API_5CT_Flags'].str.contains("Alternative Test Pressures")]
+    assert not flagged.empty
+    assert (flagged['p_test_psi'] > 10000.0).all()
+
+
 def test_extreme_tension_reports_yield_cutoff_not_a_crash():
     """Y_pa below the API curve-fit validity floor must degrade to a failed gate
     with an explanatory reason, never an unhandled exception."""

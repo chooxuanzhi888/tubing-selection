@@ -17,6 +17,13 @@ from api_5c3 import (
     calculate_ductile_rupture,
     calculate_vme,
 )
+from api_5ct import (
+    APIProductSpecError,
+    calculate_as_quenched_hardness,
+    calculate_hydrostatic_test_pressure,
+    calculate_min_cvn,
+    calculate_min_elongation,
+)
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
@@ -379,6 +386,22 @@ GLOSSARY = {
                  "Inward buckling of the pipe wall when external pressure exceeds internal by enough to make the "
                  "cross-section unstable. Unlike burst, it is a stability failure as much as a strength one, so it "
                  "depends strongly on the diameter-to-thickness ratio D/t and is made worse by axial tension."),
+    "elongation": ("Elongation",
+                   "How far a tensile specimen stretches before it breaks, as a percentage of a fixed 50.8 mm (2 in) "
+                   "gauge length. It is the practical measure of ductility: a pipe that meets its strength numbers but "
+                   "not its elongation will fracture rather than deform when overloaded, giving no warning."),
+    "charpy": ("Charpy V-notch (CVN)",
+               "A notched bar struck by a swinging pendulum; the energy absorbed in breaking it measures toughness, "
+               "the resistance to brittle fracture from an existing flaw. Required because a pipe can be strong and "
+               "ductile in tension yet still shatter at a notch under impact loading."),
+    "martensite": ("Martensite",
+                   "The hard, supersaturated phase formed when steel is quenched fast enough to trap carbon in the "
+                   "lattice. The as-quenched hardness is measured as proof that the required martensite fraction was "
+                   "actually achieved through the full wall before tempering brings the strength back down."),
+    "hydro-test": ("Hydrostatic proof test",
+                   "The pressure every joint is held at in the mill before shipment, set as a fixed fraction of "
+                   "yield. It is a proof of integrity for that individual joint, not a design rating: the pipe is "
+                   "never intended to operate above the pressure at which it was demonstrated sound."),
 }
 
 
@@ -1166,6 +1189,91 @@ def run_engineering_calculations(inputs, candidate_df):
             collapse_regime, collapse_pass = "not evaluated", False
             collapse_reason = f"Fail: Clause 8 collapse check unavailable — {error}"
 
+        # --- API 5CT / ISO 11960 product specification verification ----------
+        # Mill acceptance requirements, not well-load capacities. Only the
+        # hydrostatic proof test is a hard gate: operating above the pressure at
+        # which the joint's integrity was demonstrated is a design deficiency,
+        # not a QA note. The other three are reported requirements, so their
+        # notes never touch overall_pass.
+        api_5ct_flags = []
+        try:
+            hydro = calculate_hydrostatic_test_pressure(
+                od=row['OD_in'], wall=wall_in, yield_strength=row['Yield_psi'], grade=row['Grade'],
+            )
+            p_test_psi = hydro['p_test_psi']
+            hydro_design_factor = hydro['design_factor']
+            hydro_sf = (p_test_psi / cithp_val) if cithp_val > 0 else float('inf')
+            hydro_pass = p_test_psi >= cithp_val
+            hydro_reason = (
+                "Compatible" if hydro_pass else
+                f"Fail: mill proof-test pressure {round(p_test_psi, 0)} psi (f = {hydro_design_factor}) "
+                f"is below the shut-in CITHP {round(cithp_val, 0)} psi the string must hold"
+            )
+            api_5ct_flags.extend(hydro['flags'])
+        except (APIProductSpecError, ValueError) as error:
+            p_test_psi, hydro_sf = float('nan'), float('nan')
+            hydro_design_factor, hydro_pass = float('nan'), False
+            hydro_reason = f"Fail: 5CT hydrostatic proof-test check unavailable — {error}"
+
+        try:
+            elong = calculate_min_elongation(wall=wall_in, grade=row['Grade'])
+            min_elongation_pct = elong['min_elongation_pct']
+            elongation_specimen = elong['specimen_basis']
+            elongation_note = (
+                f"Requires {min_elongation_pct}% elongation in a 2 in gauge length "
+                f"({elongation_specimen.replace('_', ' ')} specimen)"
+            )
+            if elong['area_capped']:
+                api_5ct_flags.append("Elongation specimen area capped at the 490 mm² maximum")
+        except (APIProductSpecError, ValueError) as error:
+            min_elongation_pct = float('nan')
+            elongation_specimen = "not evaluated"
+            elongation_note = f"Not evaluated — {error}"
+
+        # Four CVN requirements: pipe body and coupling, each transverse and
+        # longitudinal. The coupling runs on specified MAXIMUM yield, so it is
+        # always the more demanding of the pair.
+        try:
+            cvn_values = {}
+            cvn_waived = False
+            for comp, orient, key in (
+                ("pipe_body", "transverse", "body_trans"), ("pipe_body", "longitudinal", "body_long"),
+                ("coupling", "transverse", "cplg_trans"), ("coupling", "longitudinal", "cplg_long"),
+            ):
+                cvn = calculate_min_cvn(
+                    wall=wall_in, yield_strength=row['Yield_psi'], grade=row['Grade'],
+                    component=comp, orientation=orient,
+                )
+                cvn_values[key] = cvn['cvn_required_j']
+                cvn_waived = cvn_waived or cvn['testing_waived']
+            cvn_note = (
+                f"Pipe body {round(cvn_values['body_trans'], 1)} J transverse / "
+                f"{round(cvn_values['body_long'], 1)} J longitudinal; coupling "
+                f"{round(cvn_values['cplg_trans'], 1)} J / {round(cvn_values['cplg_long'], 1)} J"
+            )
+            if cvn_waived:
+                api_5ct_flags.append(
+                    "CVN testing waived (wall too thin for a half-size specimen) — QA process check required"
+                )
+        except (APIProductSpecError, ValueError) as error:
+            cvn_values = {k: float('nan') for k in ("body_trans", "body_long", "cplg_trans", "cplg_long")}
+            cvn_waived = False
+            cvn_note = f"Not evaluated — {error}"
+
+        try:
+            hardness = calculate_as_quenched_hardness(grade=row['Grade'])
+            hrc_applicable = hardness['applicable']
+            hrc_min_as_quenched = hardness['hrc_min'] if hrc_applicable else float('nan')
+            hardenability_note = (
+                f"{round(hrc_min_as_quenched, 1)} HRC minimum at mid-wall "
+                f"({round(hardness['martensite_fraction_min_pct'], 0)}% martensite, "
+                f"C = {hardness['carbon_pct']} wt%)"
+                if hrc_applicable else hardness['reason']
+            )
+        except (APIProductSpecError, ValueError) as error:
+            hrc_min_as_quenched, hrc_applicable = float('nan'), False
+            hardenability_note = f"Not evaluated — {error}"
+
         # Pipe body tensile rating: SMYS across the steel cross-section.
         tensile_rating_lbs = row['Yield_psi'] * area_steel_in2
         axial_pass = abs(f_axial_total_lbs) <= tensile_rating_lbs
@@ -1257,7 +1365,7 @@ def run_engineering_calculations(inputs, candidate_df):
         overall_pass = (casing_clearance_pass and hydraulics_pass and friction_pass and velocity_pass and
                         late_life_pass and material_pass and stress_pass and axial_pass and connection_pass and
                         temp_pass and burst_pass and apb_pass and pvt_pass and cv_in_range and
-                        rupture_pass and collapse_pass)
+                        rupture_pass and collapse_pass and hydro_pass)
 
         results.append({
             "Name": row['Name'],
@@ -1293,6 +1401,18 @@ def run_engineering_calculations(inputs, candidate_df):
             "collapse_sf": round(collapse_sf, 2),
             "collapse_regime": collapse_regime,
             "y_pa_psi": round(y_pa_psi, 0),
+            "p_test_psi": round(p_test_psi, 0),
+            "hydro_test_sf": round(hydro_sf, 2),
+            "hydro_design_factor": hydro_design_factor,
+            "min_elongation_pct": min_elongation_pct,
+            "elongation_specimen": elongation_specimen,
+            "cvn_body_trans_j": round(cvn_values['body_trans'], 1),
+            "cvn_body_long_j": round(cvn_values['body_long'], 1),
+            "cvn_cplg_trans_j": round(cvn_values['cplg_trans'], 1),
+            "cvn_cplg_long_j": round(cvn_values['cplg_long'], 1),
+            "cvn_testing_waived": cvn_waived,
+            "hrc_min_as_quenched": round(hrc_min_as_quenched, 1),
+            "hrc_applicable": hrc_applicable,
             "burst_sf": round(burst_sf, 2),
             "Z_Factor": round(z_factor, 3),
             "Bo_rb_stb": round(bo_rb_stb, 3),
@@ -1308,8 +1428,14 @@ def run_engineering_calculations(inputs, candidate_df):
             "Burst_Pass": burst_pass,
             "Rupture_Pass": rupture_pass,
             "Collapse_Pass": collapse_pass,
+            "Hydro_Pass": hydro_pass,
             "Rupture_Reason": rupture_reason,
             "Collapse_Reason": collapse_reason,
+            "Hydro_Reason": hydro_reason,
+            "Elongation_Note": elongation_note,
+            "CVN_Note": cvn_note,
+            "Hardenability_Note": hardenability_note,
+            "API_5CT_Flags": "; ".join(api_5ct_flags),
             "Temp_Pass": temp_pass,
             "APB_Pass": apb_pass,
             "PVT_Pass": pvt_pass,
@@ -1898,6 +2024,19 @@ elif page == "2. Calculation Methodology":
     </a>
     <div class="flow-arrow">
         <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
+        <span class="flow-arrow-label">Environmentally &amp; Mechanically Compliant Candidates</span>
+    </div>
+    <a class="flow-link" href="?step=8#step-8" target="_self">
+    <div class="flow-box" style="background-color: #FFF7ED; border-left: 5px solid #EA580C;">
+        <div class="flow-box-header">
+            <span class="flow-step-title" style="color: #9A3412;">Step 8: API 5CT / ISO 11960 Product Specification Verification</span>
+            <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #FFEDD5; color: #9A3412;">Domain D</span></span>
+        </div>
+        <div class="flow-box-body">Mill acceptance requirements: gauge-length elongation, hydrostatic proof-test pressure (screening gate), Charpy V-notch toughness, and as-quenched hardenability.</div>
+    </div>
+    </a>
+    <div class="flow-arrow">
+        <div class="flow-arrow-line"></div><div class="flow-arrow-head"></div>
         <span class="flow-arrow-label">Fully Compliant Candidate Profile</span>
     </div>
     <div class="flow-box" style="background-color: #059669; color: white; border-color: #047857; text-align: center;">
@@ -2293,6 +2432,136 @@ elif page == "2. Calculation Methodology":
                 ("Premium triggers", "Gas well, GOR &gt; 2000, Q<sub>g</sub> &gt; 10 MMscf/D, CITHP &gt; 3000 psi, &Delta;P<sub>APB</sub> &gt; 1500 psi, depth &gt; 10,000 ft, or CRA", "any one applies"),
             ],
             "Rejects non-NACE-compliant grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia), grades whose maximum service temperature is below bottomhole temperature, and standard API EUE threads where gas-tight premium connections are required.",
+        )
+
+    st.markdown("""
+<div style="background-color: #FFEDD5; border-left: 6px solid #EA580C; padding: 0.75rem 1rem; border-radius: 6px; margin: 1.5rem 0 1.25rem;">
+    <h2 style="color: #9A3412; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain D: Product Specification &amp; Mill Acceptance</h2>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown('<div id="step-8"></div>', unsafe_allow_html=True)
+    with st.expander("Step 8  ·  API 5CT / ISO 11960 Product Specification Verification   —   Domain D", expanded=(active_step == 8)):
+        st.markdown(
+            '<div style="background-color: #FFF7ED; border-left: 4px solid #EA580C; padding: 0.7rem 1rem; '
+            'border-radius: 5px; margin-bottom: 1rem; font-size: 0.9rem; color: #7C2D12;">'
+            '<b>These are manufacturing requirements, not well-load capacities.</b> Steps 1&ndash;7 ask whether the '
+            'pipe can survive the well. Step 8 asks a different question: what the mill had to demonstrate before the '
+            'joint was ever shipped. Of the four, only the hydrostatic proof test screens a candidate out &mdash; '
+            'operating above the pressure at which a joint was proved sound is a design deficiency. The other three '
+            'are reported requirements that belong in the purchase specification and the mill certificate review.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+        formula_card(
+            "8.1",
+            "Minimum Tensile Gauge-Length Elongation (Ductility)",
+            "#9A3412",
+            [
+                (r"e = C \cdot \frac{A^{0.2}}{U^{0.9}}", "Minimum elongation in a 50.8 mm (2.0 in) gauge length"),
+                (r"C = 625{,}000 \;\; (A\,[\text{in}^2],\, U\,[\text{psi}]) \qquad C = 1944 \;\; (A\,[\text{mm}^2],\, U\,[\text{MPa}])", "The constant absorbs the units, so it is not a free parameter"),
+                (r"A = \min\left(A_{\text{physical}},\; 490\,\text{mm}^2 \;/\; 0.75\,\text{in}^2\right)", "Area cap: a larger specimen earns no relief"),
+            ],
+            f"Sets the {term('elongation', 'ductility')} floor the material must clear. Strength alone is not "
+            f"sufficient: a pipe meeting its {term('smys', 'yield')} and tensile numbers but failing elongation will "
+            f"fracture rather than deform when overloaded, giving no warning. Note the <b>negative power on "
+            f"<i>U</i></b> &mdash; the stronger the grade, the less elongation is demanded of it, which is why a Q125 "
+            f"requirement sits well below an H40 one. Specimen geometry is selected automatically from the wall "
+            f"thickness: the largest permissible round bar, or a strip when the wall is too thin to machine one.",
+            [
+                ("e", "Minimum elongation in a 2 in gauge length", "%"),
+                ("A", "Specimen cross-sectional area, capped", "in<sup>2</sup> or mm<sup>2</sup>"),
+                ("U", "Minimum specified tensile strength", "L80 = 95,000 psi"),
+                ("Round bar", "Fixed area: 130 mm<sup>2</sup> (12.7 mm dia) or 62 mm<sup>2</sup> (8.9 mm dia)", "prohibited on thin walls"),
+                ("Strip", "<i>A</i> = wall &times; 38.1 mm standard reduced-section width", "the thin-wall fallback"),
+                ("Rounding", "Nearest 0.5% below 10%; nearest 1% at or above", "tested on the unrounded value"),
+            ],
+            "<b>Reported, not a rejection criterion.</b> This is the acceptance requirement the mill certificate must evidence for the grade and wall supplied. An explicitly requested round bar the wall cannot produce is refused outright rather than silently substituted.",
+        )
+
+        formula_card(
+            "8.2",
+            "Production Hydrostatic Proof-Test Pressure &mdash; Screening Gate",
+            "#9A3412",
+            [
+                (r"P = \frac{2 \cdot Y_S \cdot f \cdot t}{D}", "Mill proof-test pressure for each individual joint"),
+                (r"f = 0.80 \;\; \text{(default)}, \qquad f = 0.60 \;\; \text{for H40 / J55 / K55 with } D > 9\tfrac{5}{8}\,\text{in}", "Design stress factor; 0.80 is a permitted alternative in the 0.60 case"),
+                (r"P \le 69.0\,\text{MPa}\;(10{,}000\,\text{psi}) \quad\Rightarrow\quad \text{else flag ``Alternative Test Pressures''}", "The cap flags a specially agreed test; it does not lower P"),
+                (r"P \leftarrow \min\left(P,\; P_{\text{thread leak}}\right), \qquad P_{\text{floor}} = 20.5\,\text{MPa}\;(3{,}000\,\text{psi})", "Connection override and the minimum mill testing floor"),
+            ],
+            f"The {term('hydro-test', 'proof test')} every joint is held at before shipment, as a fixed fraction of "
+            f"{term('smys', 'yield')}. This is the one Step 8 check that <b>screens candidates out</b>: it is a proof "
+            f"of integrity for that specific joint, so a string expected to see a shut-in {term('cithp')} above the "
+            f"pressure at which it was proved sound is a genuine design deficiency. Caps are applied in specification "
+            f"order and rounding happens <b>last</b>, so it never moves a value back across a threshold it has just "
+            f"been checked against. Where a connection is weaker than the pipe body, the thread leak / jump-out "
+            f"pressure governs &mdash; but that rating is only applied when supplied, never invented.",
+            [
+                ("P", "Hydrostatic proof-test pressure", "psi or MPa"),
+                ("Y<sub>S</sub>", "Specified minimum yield strength", "L80 = 80,000 psi"),
+                ("f", "Design stress factor", "0.80, or 0.60 for large low-grade"),
+                ("t, D", "Specified nominal wall and outside diameter", "in or mm"),
+                ("Cap behaviour", "Above 10,000 psi the value is <b>flagged, not clamped</b>", "a lower test would not be equivalent"),
+                ("Mill floor", "Below 3,000 psi flagged; raised only on request", "over-testing is the user's call"),
+                ("Rounding", "Nearest 100 psi or 0.5 MPa", "applied last"),
+            ],
+            "<b>Rejects</b> a candidate whose proof-test pressure falls below the shut-in CITHP the string must hold &mdash; the joint would be operated above the pressure at which its integrity was demonstrated. Exceeding the 10,000 psi cap is <i>flagged</i> rather than rejected: it means a specially agreed test is required, not that the pipe is unsuitable.",
+        )
+
+        formula_card(
+            "8.3",
+            "Charpy V-Notch Minimum Absorbed Energy (Toughness)",
+            "#9A3412",
+            [
+                (r"\text{transverse:} \quad CVN_{\text{full}} = Y \cdot \left(0.00118\,t + 0.01288\right) + 2.04", "Y in MPa, t in mm, result in J"),
+                (r"\text{longitudinal:} \quad CVN_{\text{full}} = Y \cdot \left(0.00236\,t + 0.02576\right) + 4.08", "Exactly twice the transverse coefficient set"),
+                (r"Y = Y_S \;\text{(pipe body)}, \qquad Y = Y_{S,\max} \;\text{(coupling)}", "The coupling is rated on specified MAXIMUM yield"),
+                (r"CVN_{\text{required}} = CVN_{\text{full}} \cdot f_{\text{sub}}, \qquad f_{\text{sub}} \in \{1.0,\; 0.75,\; 0.50\}", "Sub-size specimen scaling, then an 11 J (8 ft-lb) absolute floor"),
+            ],
+            f"Sets the {term('charpy', 'toughness')} floor: resistance to brittle fracture from an existing flaw. A "
+            f"pipe can be strong and perfectly {term('elongation', 'ductile')} in a smooth tensile test and still "
+            f"shatter at a notch under impact. The critical detail is that <b>couplings are rated on specified "
+            f"<i>maximum</i> yield</b>, not minimum &mdash; the hardest coupling the specification permits is the "
+            f"safety-critical case, since hardness and toughness trade off against each other. That differential is "
+            f"why the coupling requirement always exceeds the pipe-body one for the same geometry.",
+            [
+                ("Y<sub>S</sub>", "Pipe body: specified <i>minimum</i> yield", "L80 = 80,000 psi"),
+                ("Y<sub>S,max</sub>", "Coupling: specified <i>maximum</i> yield", "L80 = 95,000 psi"),
+                ("t", "Critical wall thickness", "mm or in"),
+                ("Full-size floor", "Transverse 20 J / longitudinal 41 J for P110, Q125, C110", "14 J / 27 J other Q&amp;T"),
+                ("f<sub>sub</sub>", "1.0 full (10&times;10 mm), 0.75 (10&times;7.5), 0.50 (10&times;5)", "applied after the grade floor"),
+                ("Absolute floor", "Sub-size requirement never below 11 J (8 ft-lb)", "applied last"),
+                ("Waive condition", "Wall too thin for a &frac12;-size longitudinal specimen", "QA process check instead"),
+            ],
+            "<b>Reported, not a rejection criterion.</b> Non-Q&amp;T grades (H40, J55, K55, M65) carry no floor class and are reported on the computed value alone. Where the wall cannot produce even a half-size longitudinal specimen, physical testing is waived and a QA manufacturing process check is flagged in its place &mdash; the candidate is not penalised for a geometry the test regime cannot accommodate.",
+        )
+
+        formula_card(
+            "8.4",
+            "As-Quenched Hardenability &amp; Martensite Fraction",
+            "#9A3412",
+            [
+                (r"\text{C90, T95} \;\;(\ge 90\%\ \text{martensite}): \quad HRC_{\min} = 58\,C + 17.2", None),
+                (r"\text{C110} \;\;(\ge 95\%\ \text{martensite}): \quad HRC_{\min} = 59\,C + 18.2", None),
+                (r"\text{other Q\&T} \;\;(\ge 50\%\ \text{martensite}): \quad HRC_{\min} = 52\,C + 14.0", None),
+                (r"0.15 \le C \le 0.50\ \text{wt\%}", "Validity range of the correlations"),
+            ],
+            f"Verifies that quenching actually produced the {term('martensite', 'martensite fraction')} the grade "
+            f"depends on, <b>before</b> tempering brings the hardness back down &mdash; once tempered, the evidence is "
+            f"gone. The measurement must be taken at <b>mid-wall</b>, the position of maximum section thickness: that "
+            f"is the location that cools slowest and is therefore the least martensitic, so it is the only one that "
+            f"proves hardening through the full section. The three coefficient pairs correspond to three different "
+            f"martensite targets, which is why C90 and C110 &mdash; both {term('sour', 'sour-service')} grades &mdash; "
+            f"sit well above the general Q&amp;T requirement.",
+            [
+                ("HRC<sub>min</sub>", "Required minimum as-quenched Rockwell C hardness", "before tempering"),
+                ("C", "Carbon content by weight", "<b>whole %</b>: enter 0.25 for 0.25%, not 0.0025"),
+                ("Evaluation depth", "Mid-wall &mdash; the slowest-quenching location", "governs through-wall hardening"),
+                ("Validity", "0.15 &le; C &le; 0.50 wt%", "outside this the correlation is refused"),
+                ("Applicability", "Quenched &amp; tempered carbon / low-alloy grades only", "CRAs have no martensite target"),
+            ],
+            "<b>Reported, not a rejection criterion.</b> CRA grades (13Cr, 22Cr, 25Cr) and non-Q&amp;T grades return <i>not applicable</i> with a stated reason rather than an error &mdash; a solution-annealed duplex has no as-quenched martensite target, and that is not a fault in the candidate. Carbon outside the 0.15&ndash;0.50 wt% validity range is refused outright, with an explicit hint when the value looks like a mass fraction rather than a percentage.",
         )
 
     st.markdown("---")
@@ -2712,6 +2981,7 @@ elif page == "5. Engineering Calculations":
         'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_carrying_late', 'v_erosional',
         'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'f_axial_rating_klbs', 'vme_stress_psi', 'triaxial_sf',
         'p_rupture_psi', 'rupture_sf', 'rupture_mode', 'p_collapse_psi', 'collapse_sf', 'collapse_regime', 'burst_sf',
+        'p_test_psi', 'hydro_test_sf',
         'friction_factor', 'cv_solids', 'Z_Factor', 'max_service_temp_c', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
 
@@ -2719,6 +2989,7 @@ elif page == "5. Engineering Calculations":
         'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Late Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
         'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'Axial Rating (klbs)', 'von Mises Stress (psi)', 'Triaxial SF',
         'Rupture Capacity (psi)', 'Rupture SF', 'Rupture Mode', 'Collapse Capacity (psi)', 'Collapse SF', 'Collapse Regime', 'Burst SF',
+        'Proof Test (psi)', 'Proof Test SF',
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
 
@@ -2733,6 +3004,7 @@ elif page == "5. Engineering Calculations":
         ('Late_Life_Pass', 'Late-Life Velocity'), ('Stress_Pass', 'Triaxial Stress'),
         ('Axial_Pass', 'Axial Load'), ('Burst_Pass', 'Surface Burst'),
         ('Rupture_Pass', 'Ductile Rupture (5C3 Cl.7)'), ('Collapse_Pass', 'Collapse (5C3 Cl.8)'),
+        ('Hydro_Pass', 'Hydro Proof Test (5CT)'),
         ('APB_Pass', 'APB Limit'), ('Temp_Pass', 'Temperature'),
         ('Material_Pass', 'NACE Sour'), ('Connection_Pass', 'Connection')
     ]
@@ -2766,6 +3038,8 @@ elif page == "5. Engineering Calculations":
                     reasons.append(r['Rupture_Reason'])
                 if not r['Collapse_Pass']:
                     reasons.append(r['Collapse_Reason'])
+                if not r['Hydro_Pass']:
+                    reasons.append(r['Hydro_Reason'])
                 if not r['Axial_Pass']:
                     reasons.append(r['Axial_Reason'])
                 if not r['Burst_Pass']:
@@ -2779,6 +3053,51 @@ elif page == "5. Engineering Calculations":
                 if not r['Connection_Pass']:
                     reasons.append(r['Connection_Reason'])
                 st.markdown(f"**{r['Name']}** — " + "; ".join(str(x) for x in reasons))
+
+    # API 5CT mill acceptance requirements. Only the proof test above screens a
+    # candidate out; these are the requirements the pipe must have been
+    # manufactured to, reported for the material take-off and QA dossier.
+    st.subheader("API 5CT / ISO 11960 Product Specification Verification")
+    st.caption(
+        "Mill acceptance requirements, not well-load capacities. The hydrostatic proof test is a "
+        "screening gate (above); elongation, Charpy toughness and as-quenched hardenability are "
+        "reported requirements for the purchase specification and mill certificate review."
+    )
+
+    spec_df = res_df[[
+        'Name', 'Grade', 'min_elongation_pct', 'elongation_specimen',
+        'cvn_body_trans_j', 'cvn_body_long_j', 'cvn_cplg_trans_j', 'cvn_cplg_long_j',
+        'hrc_min_as_quenched', 'p_test_psi', 'hydro_design_factor', 'API_5CT_Flags'
+    ]].copy()
+    spec_df['elongation_specimen'] = spec_df['elongation_specimen'].str.replace('_', ' ')
+    spec_df.columns = [
+        'Tubing Candidate', 'Grade', 'Min Elongation (%)', 'Elongation Specimen',
+        'CVN Body Trans (J)', 'CVN Body Long (J)', 'CVN Cplg Trans (J)', 'CVN Cplg Long (J)',
+        'As-Quenched HRC (mid-wall)', 'Proof Test (psi)', 'Design Factor f', 'Advisory Flags'
+    ]
+    st.dataframe(spec_df, use_container_width=True, height=350)
+
+    flagged = res_df[res_df['API_5CT_Flags'].astype(str) != ""]
+    if not flagged.empty:
+        with st.expander(f"📋 Product specification advisories ({len(flagged)} candidate(s) flagged)"):
+            st.markdown(
+                "These do **not** reject a candidate. They record where the standard test regime "
+                "cannot be applied as written, or where a specially agreed test is required."
+            )
+            for _, r in flagged.iterrows():
+                st.markdown(f"**{r['Name']}** — {r['API_5CT_Flags']}")
+
+    with st.expander("🔬 Per-candidate specification detail"):
+        for _, r in res_df.iterrows():
+            st.markdown(
+                f"**{r['Name']}** ({r['Grade']})  \n"
+                f"&nbsp;&nbsp;• Elongation: {r['Elongation_Note']}  \n"
+                f"&nbsp;&nbsp;• Charpy V-notch: {r['CVN_Note']}  \n"
+                f"&nbsp;&nbsp;• Hardenability: {r['Hardenability_Note']}  \n"
+                f"&nbsp;&nbsp;• Hydrostatic proof test: {r['Hydro_Reason']} "
+                f"({round(r['p_test_psi'], 0)} psi at f = {r['hydro_design_factor']})",
+                unsafe_allow_html=True,
+            )
 
 # -----------------------------------------------------------------------------
 # PAGE 6: RECOMMENDATION & SENSITIVITY
