@@ -11,6 +11,13 @@ import textwrap
 import base64
 import itertools
 
+from api_5c3 import (
+    APIDesignError,
+    calculate_collapse,
+    calculate_ductile_rupture,
+    calculate_vme,
+)
+
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------------------------
@@ -236,6 +243,10 @@ Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
 CV_SOLIDS_MAX = 0.15
 FRICTION_FACTOR_MAX = 0.15
 
+# API TR 5C3 / ISO 10400 limit-state design factors.
+RUPTURE_SF_TARGET = 1.25    # Clause 7 ductile rupture / axial necking
+COLLAPSE_SF_TARGET = 1.10   # Clause 8 external pressure resistance
+
 # -----------------------------------------------------------------------------
 # PAGE 2 METHODOLOGY: GLOSSARY & CARD BUILDERS
 # -----------------------------------------------------------------------------
@@ -364,6 +375,10 @@ GLOSSARY = {
     "drift": ("Drift diameter",
               "The largest diameter guaranteed to pass all the way through the string. It, rather than nominal ID, "
               "governs which intervention tools will physically fit."),
+    "collapse": ("Collapse",
+                 "Inward buckling of the pipe wall when external pressure exceeds internal by enough to make the "
+                 "cross-section unstable. Unlike burst, it is a stability failure as much as a strength one, so it "
+                 "depends strongly on the diameter-to-thickness ratio D/t and is made worse by axial tension."),
 }
 
 
@@ -1082,29 +1097,78 @@ def run_engineering_calculations(inputs, candidate_df):
         f_piston_lbs = (p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_val * area_id_ft2 * 144.0) - (p_annular_total_wh * area_od_ft2 * 144.0))
         f_drag_lbs = (f * rho_slurry * (v_m ** 2) * np.pi * id_ft * md_val) / (2.0 * 32.174)
-        sigma_bending_psi = 218.0 * row['OD_in'] * dls_val
 
         f_axial_total_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs
         f_axial_total_klbs = f_axial_total_lbs / 1000.0
 
+        p_int = p_bhp_val
+        p_ext = p_annular_total_wh
+        wall_in = (row['OD_in'] - row['ID_in']) / 2.0
+
+        # --- API TR 5C3 / ISO 10400 limit states -----------------------------
+        # Module 1 (Clause 6): triaxial yield across all critical radial and
+        # circumferential fibre coordinates, replacing the previous single-point
+        # bore evaluation. Torque is zero for a static completion string.
+        vme = calculate_vme(
+            od=row['OD_in'], wall=wall_in, yield_strength=row['Yield_psi'],
+            p_internal=p_int, p_external=p_ext, axial_force=f_axial_total_lbs,
+            dls=dls_val, torque=0.0, grade=row['Grade'],
+        )
+        vme_stress_psi = vme["sigma_vme_max_psi"]
+        triaxial_sf = vme["safety_factor"]
+        sf_triaxial_target = inputs.get('sf_triaxial', 1.25)
+        stress_pass = triaxial_sf >= sf_triaxial_target
+        vme_governing = f"{vme['governing_point']['radius']} radius / {vme['governing_point']['fibre']} fibre"
+
+        # Module 2 (Clause 7): ductile rupture capacity under the same axial
+        # load, solved for the fixed point P_i = P_br. Checked against the static
+        # shut-in surface load (CITHP), which is the governing burst case.
+        try:
+            rupture = calculate_ductile_rupture(
+                od=row['OD_in'], wall=wall_in, yield_strength=row['Yield_psi'],
+                p_external=p_wh_val, axial_force=f_axial_total_lbs, grade=row['Grade'],
+            )
+            p_rupture_psi = rupture["p_rupture_psi"]
+            rupture_mode = rupture["active_mode"]
+            rupture_sf = (p_rupture_psi / cithp_val) if cithp_val > 0 else float('inf')
+            rupture_pass = rupture_sf >= RUPTURE_SF_TARGET
+            rupture_reason = (
+                "Compatible" if rupture_pass else
+                f"Fail: ductile rupture SF {round(rupture_sf, 2)} below {RUPTURE_SF_TARGET} "
+                f"({rupture_mode} mode, capacity {round(p_rupture_psi, 0)} psi vs CITHP {round(cithp_val, 0)} psi)"
+            )
+        except (APIDesignError, ValueError) as error:
+            p_rupture_psi, rupture_sf = float('nan'), float('nan')
+            rupture_mode, rupture_pass = "not evaluated", False
+            rupture_reason = f"Fail: Clause 7 rupture check unavailable — {error}"
+
+        # Module 3 (Clause 8): collapse under APB-augmented external pressure.
+        # Bending is excluded from the axial stress by construction.
+        try:
+            collapse = calculate_collapse(
+                od=row['OD_in'], wall=wall_in, yield_strength=row['Yield_psi'],
+                axial_force=f_axial_total_lbs, p_internal=p_int, grade=row['Grade'],
+            )
+            p_collapse_psi = collapse["p_collapse_corrected_psi"]
+            collapse_regime = collapse["regime"]
+            y_pa_psi = collapse["y_pa_psi"]
+            p_ext_design = p_ext + dp_hydro  # annulus fluid column plus APB
+            collapse_sf = (p_collapse_psi / p_ext_design) if p_ext_design > 0 else float('inf')
+            collapse_pass = collapse_sf >= COLLAPSE_SF_TARGET
+            collapse_reason = (
+                "Compatible" if collapse_pass else
+                f"Fail: collapse SF {round(collapse_sf, 2)} below {COLLAPSE_SF_TARGET} "
+                f"({collapse_regime} regime, {round(p_collapse_psi, 0)} psi capacity vs "
+                f"{round(p_ext_design, 0)} psi external)"
+            )
+        except (APIDesignError, ValueError) as error:
+            p_collapse_psi, collapse_sf, y_pa_psi = float('nan'), float('nan'), float('nan')
+            collapse_regime, collapse_pass = "not evaluated", False
+            collapse_reason = f"Fail: Clause 8 collapse check unavailable — {error}"
+
         # Pipe body tensile rating: SMYS across the steel cross-section.
         tensile_rating_lbs = row['Yield_psi'] * area_steel_in2
         axial_pass = abs(f_axial_total_lbs) <= tensile_rating_lbs
-
-        sigma_axial_psi = (f_axial_total_lbs / area_steel_in2) + sigma_bending_psi
-
-        p_int = p_bhp_val
-        p_ext = p_annular_total_wh
-        r_i = row['ID_in'] / 2.0
-        r_o = row['OD_in'] / 2.0
-
-        sigma_hoop_psi = (p_int * (r_i**2) - p_ext * (r_o**2) + (r_i**2 * r_o**2 * (p_int - p_ext) / (r_i**2))) / (r_o**2 - r_i**2)
-        sigma_radial_psi = -p_int
-
-        vme_stress_psi = np.sqrt(0.5 * ((sigma_hoop_psi - sigma_radial_psi)**2 + (sigma_radial_psi - sigma_axial_psi)**2 + (sigma_axial_psi - sigma_hoop_psi)**2))
-        triaxial_sf = row['Yield_psi'] / vme_stress_psi if vme_stress_psi > 0 else 99.0
-        sf_triaxial_target = inputs.get('sf_triaxial', 1.25)
-        stress_pass = triaxial_sf >= sf_triaxial_target
 
         burst_sf = row['Burst_psi'] / cithp_val if cithp_val > 0 else 99.0
         burst_pass = burst_sf >= 1.10
@@ -1192,7 +1256,8 @@ def run_engineering_calculations(inputs, candidate_df):
 
         overall_pass = (casing_clearance_pass and hydraulics_pass and friction_pass and velocity_pass and
                         late_life_pass and material_pass and stress_pass and axial_pass and connection_pass and
-                        temp_pass and burst_pass and apb_pass and pvt_pass and cv_in_range)
+                        temp_pass and burst_pass and apb_pass and pvt_pass and cv_in_range and
+                        rupture_pass and collapse_pass)
 
         results.append({
             "Name": row['Name'],
@@ -1219,6 +1284,15 @@ def run_engineering_calculations(inputs, candidate_df):
             "cv_solids": round(c_v_solids, 5),
             "vme_stress_psi": round(vme_stress_psi, 0),
             "triaxial_sf": round(triaxial_sf, 2),
+            "vme_governing_point": vme_governing,
+            "vme_n_points": vme["n_points"],
+            "p_rupture_psi": round(p_rupture_psi, 0),
+            "rupture_sf": round(rupture_sf, 2),
+            "rupture_mode": rupture_mode,
+            "p_collapse_psi": round(p_collapse_psi, 0),
+            "collapse_sf": round(collapse_sf, 2),
+            "collapse_regime": collapse_regime,
+            "y_pa_psi": round(y_pa_psi, 0),
             "burst_sf": round(burst_sf, 2),
             "Z_Factor": round(z_factor, 3),
             "Bo_rb_stb": round(bo_rb_stb, 3),
@@ -1232,6 +1306,10 @@ def run_engineering_calculations(inputs, candidate_df):
             "Stress_Pass": stress_pass,
             "Axial_Pass": axial_pass,
             "Burst_Pass": burst_pass,
+            "Rupture_Pass": rupture_pass,
+            "Collapse_Pass": collapse_pass,
+            "Rupture_Reason": rupture_reason,
+            "Collapse_Reason": collapse_reason,
             "Temp_Pass": temp_pass,
             "APB_Pass": apb_pass,
             "PVT_Pass": pvt_pass,
@@ -1799,10 +1877,10 @@ elif page == "2. Calculation Methodology":
     <a class="flow-link" href="?step=6#step-6" target="_self">
     <div class="flow-box" style="background-color: #ECFDF5; border-left: 5px solid #10B981;">
         <div class="flow-box-header">
-            <span class="flow-step-title" style="color: #065F46;">Step 6: Lam&eacute; 3D Principal Stresses &amp; von Mises Triaxial Yield (&sigma;<sub>VME</sub>)</span>
+            <span class="flow-step-title" style="color: #065F46;">Step 6: API TR 5C3 / ISO 10400 Triaxial Yield, Ductile Rupture &amp; Collapse</span>
             <span><span class="flow-jump">open &rsaquo;</span> <span class="flow-domain-badge" style="background-color: #D1FAE5; color: #065F46;">Domain C</span></span>
         </div>
-        <div class="flow-box-body">Evaluates 3D axial, hoop, radial, and dogleg bending stresses against yield strength (SF<sub>triaxial</sub> &ge; 1.25).</div>
+        <div class="flow-box-body">Three limit states: von Mises triaxial yield swept across all critical wall coordinates (SF &ge; 1.25), ductile rupture under combined loading (SF &ge; 1.25), and external pressure collapse with axial interaction (SF &ge; 1.10).</div>
     </div>
     </a>
     <div class="flow-arrow">
@@ -2055,43 +2133,129 @@ elif page == "2. Calculation Methodology":
         )
 
     st.markdown('<div id="step-6"></div>', unsafe_allow_html=True)
-    with st.expander("Step 6  ·  Lamé 3D Principal Stresses & von Mises Triaxial Yield   —   Domain C", expanded=(active_step == 6)):
+    with st.expander("Step 6  ·  API TR 5C3 / ISO 10400 Triaxial Yield, Ductile Rupture & Collapse   —   Domain C", expanded=(active_step == 6)):
+        st.markdown(
+            '<div class="m2-purpose" style="margin-bottom: 1.1rem;">'
+            'Steps 6.1&ndash;6.4 implement the three limit states of <b>API TR 5C3 / ISO 10400</b>: '
+            'triaxial yield of the pipe body (Clause 6), ductile rupture under combined loading '
+            '(Clause 7), and external pressure resistance (Clause 8). All three are computed in '
+            'native USCS units internally &mdash; the Clause 8 constants are dimensional and only '
+            'valid with <i>Y<sub>pa</sub></i> in psi &mdash; and converted back on output.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
         formula_card(
             "6.1",
-            "Lam&eacute; Thick-Wall Principal &amp; Bending Stresses",
+            "Lam&eacute; Thick-Wall Component Stresses (Clause 6)",
             "#065F46",
             [
-                (r"\sigma_{axial} = \frac{F_{axial}}{A_{steel}} + \underbrace{218 \cdot OD \cdot DLS}_{\sigma_{bending}}", "Axial stress, including bending through doglegs"),
-                (r"\sigma_\theta = \frac{P_{int} r_i^2 - P_{ext} r_o^2 + \frac{r_i^2 r_o^2 (P_{int} - P_{ext})}{r^2}}{r_o^2 - r_i^2}, \quad \sigma_r = -P_{int}", "Hoop and radial stress at the inner wall"),
+                (r"\sigma_r(r) = \frac{P_i r_{iw}^2 - P_e r_o^2}{r_o^2 - r_{iw}^2} - \frac{(P_i - P_e) r_{iw}^2 r_o^2}{r^2 (r_o^2 - r_{iw}^2)}, \quad \sigma_\theta(r) = \frac{P_i r_{iw}^2 - P_e r_o^2}{r_o^2 - r_{iw}^2} + \frac{(P_i - P_e) r_{iw}^2 r_o^2}{r^2 (r_o^2 - r_{iw}^2)}", "Radial and hoop stress, evaluated on the tolerance-reduced bore"),
+                (r"\sigma_z(r, \theta_{fiber}) = \frac{F_a}{A_n} \pm \frac{E \cdot D \cdot \beta}{2}, \quad \tau(r) = \frac{T \cdot r}{J_n}", "Axial stress with bending on either fibre, and torsional shear"),
+                (r"r_{iw} = \frac{D - 2 w_n k_{wall}}{2}, \quad \beta \, [\text{rad/in}] = DLS \, [\text{deg}/100\text{ft}] \times \frac{\pi}{180} \times \frac{1}{1200}", "Wall tolerance applies to pressure stresses only; curvature conversion"),
             ],
-            f"Resolves the three-dimensional stress state in the pipe wall using the {term('lame')}. It produces axial stress including {term('dogleg', 'dogleg')} bending, {term('hoop', 'hoop stress')} acting circumferentially, and {term('radial-stress', 'radial stress')} through the wall — the three inputs the von Mises check needs.",
+            f"Resolves the full three-dimensional stress state using the {term('lame')}. The 12.5% wall "
+            f"manufacturing tolerance (<i>k<sub>wall</sub></i> = 0.875) is applied <b>only</b> to the bore "
+            f"radius used for pressure stresses; axial, {term('dogleg', 'bending')} and torsional stresses "
+            f"use nominal section properties <i>A<sub>n</sub></i> and <i>J<sub>n</sub></i>, as the standard "
+            f"requires. Curvature converts from deg/100&nbsp;ft or deg/30&nbsp;m to rad/in.",
             [
-                ("&sigma;<sub>axial</sub>", "Total axial stress including dogleg bending", "psi"),
-                ("OD", "Tubing outer diameter", "in"),
-                ("DLS", "Maximum dogleg severity", "deg/100 ft"),
-                ("&sigma;<sub>&theta;</sub>", "Hoop stress at the inner wall", "psi"),
-                ("&sigma;<sub>r</sub>", "Radial stress at the inner wall", "psi"),
-                ("P<sub>int</sub>, P<sub>ext</sub>", "Internal (P<sub>bhp</sub>) and external (P<sub>annular</sub>) pressure", "psi"),
-                ("r<sub>i</sub>, r<sub>o</sub>", "Inner and outer pipe radii", "in"),
+                ("&sigma;<sub>r</sub>, &sigma;<sub>&theta;</sub>", "Radial and hoop stress at radius <i>r</i>", "psi"),
+                ("&sigma;<sub>z</sub>", "Axial stress: uniform load &plusmn; bending fibre", "psi"),
+                ("&tau;", "Torsional shear stress", "psi"),
+                ("r<sub>iw</sub>", "Tolerance-reduced inner radius (pressure stresses only)", "in"),
+                ("A<sub>n</sub>, J<sub>n</sub>", "Nominal steel area and polar moment, from <i>d<sub>n</sub></i> = <i>D</i> &minus; 2<i>w<sub>n</sub></i>", "in<sup>2</sup>, in<sup>4</sup>"),
+                ("k<sub>wall</sub>", "Wall manufacturing tolerance factor", "0.875 (12.5%)"),
+                ("&beta;", "Wellbore curvature converted from DLS", "rad/in"),
+                ("E", "Young&rsquo;s modulus &mdash; grade-dependent", "30 &times; 10<sup>6</sup> psi (28.5 &times; 10<sup>6</sup> duplex)"),
             ],
-            "Rejects a candidate when dogleg bending stress combined with axial tension exceeds structural yield.",
+            "Feeds Step 6.2; no rejection occurs at this stage.",
         )
 
         formula_card(
             "6.2",
-            "von Mises Triaxial Equivalent Yield Stress",
+            "von Mises Triaxial Yield &mdash; Multi-Coordinate Evaluation (Clause 6)",
             "#065F46",
             [
-                (r"\sigma_{VME} = \sqrt{\frac{1}{2} \left[ (\sigma_\theta - \sigma_r)^2 + (\sigma_r - \sigma_{axial})^2 + (\sigma_{axial} - \sigma_\theta)^2 \right]}", "Three stresses collapsed into one comparable number"),
-                (r"SF_{triaxial} = \frac{Y_{yield}}{\sigma_{VME}} \ge 1.25", "Margin against yield"),
+                (r"\sigma_{VME} = \sqrt{\frac{1}{2}\left[(\sigma_r - \sigma_\theta)^2 + (\sigma_\theta - \sigma_z)^2 + (\sigma_z - \sigma_r)^2\right] + 3\tau^2}", "Full form, including the torsional shear term"),
+                (r"\sigma_{VME,max} = \max\left(\sigma_{VME,1}, \sigma_{VME,2}, \ldots, \sigma_{VME,n}\right) \le Y_p", "The governing point across all evaluated coordinates"),
+                (r"SF_{triaxial} = \frac{Y_p}{\sigma_{VME,max}} \ge 1.25", "Margin against yield"),
             ],
-            f"Reduces the 3D stress state to a single {term('von-mises', 'equivalent stress')} that can be compared directly against the steel’s {term('smys', 'yield strength')}. The ratio of the two is the {term('safety-factor')}, and 1.25 is the threshold this engine enforces.",
+            f"Reduces the 3D stress state to a single {term('von-mises', 'equivalent stress')} comparable "
+            f"against {term('smys', 'yield strength')}. Critically, <b>&sigma;<sub>VME</sub> is not evaluated at "
+            f"a single point</b>: the engine sweeps the critical radial and circumferential fibre coordinates "
+            f"and reports the maximum, because the governing location shifts with the load case. "
+            f"With bending and torsion present that is 4 points; with torsion alone 2; with neither 1. "
+            f"The screening matrix reports which coordinate governed.",
             [
-                ("&sigma;<sub>VME</sub>", "von Mises equivalent triaxial stress", "psi"),
-                ("Y<sub>yield</sub>", "Specified minimum yield strength of the grade", "L80 = 80,000 psi"),
+                ("&sigma;<sub>VME,max</sub>", "Governing von Mises stress across all coordinates", "psi"),
+                ("Combined bending &amp; torsion", "<i>r</i> &isin; {<i>r<sub>iw</sub></i>, <i>r<sub>o</sub></i>} &times; fibre &isin; {+&sigma;<sub>zb</sub>, &minus;&sigma;<sub>zb</sub>}", "4 points"),
+                ("Torsion, no bending", "<i>r</i> &isin; {<i>r<sub>iw</sub></i>, <i>r<sub>o</sub></i>}, &sigma;<sub>zb</sub> = 0", "2 points"),
+                ("Neither", "<i>r</i> = <i>r<sub>iw</sub></i> only", "1 point"),
+                ("Y<sub>p</sub>", "Specified minimum yield strength of the grade", "L80 = 80,000 psi"),
                 ("SF<sub>triaxial</sub>", "Triaxial safety factor", "target &ge; 1.25"),
             ],
-            "Rejects a candidate failing the triaxial safety factor (<i>SF<sub>triaxial</sub></i> &lt; 1.25), which would allow plastic deformation under combined loading.",
+            "Rejects a candidate whose governing <i>SF<sub>triaxial</sub></i> &lt; 1.25 at any evaluated coordinate, which would allow plastic deformation under combined loading.",
+        )
+
+        formula_card(
+            "6.3",
+            "Ductile Rupture under Combined Loading (Clause 7)",
+            "#065F46",
+            [
+                (r"w_e = w_n k_{wall} - k_{flaw} d_{flaw}, \quad n = 0.182 - 0.000105\,Y_p \, [\text{ksi}], \quad k_n = 1 + \frac{0.5^n}{0.75 + n}", "Effective wall after tolerance and flaw deductions; strain-hardening parameters"),
+                (r"P_{brc} = k_{bs} k_n U_m \ln\!\left(\frac{D}{D - 2 w_e}\right), \quad P_{vme} = \tfrac{2}{\sqrt{3}} P_{brc}, \quad P_{tr} = P_{brc}", "Base rupture capacity and the two envelope limits"),
+                (r"F_{eff} = F_a + \tfrac{\pi}{4}\left(P_i d_n^2 - P_e D^2\right), \quad u = \frac{F_{eff}}{U_m A_n}", "Pressure-augmented effective axial load, normalised"),
+                (r"\left(\frac{P_{br} - P_e}{P_{lim}}\right)^{m} + |u|^{m} = 1, \quad m_{rup} = 1 + n \;\; \text{(rupture)}, \quad m_{neck} = 2 \;\; \text{(necking)}", "Interaction envelope; the governing branch is whichever gives less capacity"),
+            ],
+            f"Guards against {term('burst', 'burst rupture')} and gross axial necking &mdash; plastic strain "
+            f"localisation, not first yield. This is a <b>different and generally more limiting</b> check than "
+            f"the {term('smys', 'yield')}-based triaxial gate, because it is driven by ultimate tensile strength "
+            f"<i>U<sub>m</sub></i>. Since <i>F<sub>eff</sub></i> itself depends on <i>P<sub>i</sub></i>, capacity "
+            f"at fixed <i>F<sub>a</sub></i> is the fixed point <i>P<sub>i</sub></i> = <i>P<sub>br</sub></i>, "
+            f"solved by <b>Newton&ndash;Raphson</b> with a bisection fallback. The engine selects the governing "
+            f"branch as the lower of the two envelopes, which is continuous in |<i>u</i>| and crosses over at "
+            f"the standard&rsquo;s stated boundary.",
+            [
+                ("P<sub>br</sub>", "Ductile rupture capacity under combined load", "psi"),
+                ("w<sub>e</sub>", "Effective wall: tolerance <i>and</i> inspection flaw removed", "in"),
+                ("d<sub>flaw</sub>", "Inspection flaw depth", "default 0.05&nbsp;&middot;&nbsp;<i>w<sub>n</sub></i>"),
+                ("k<sub>flaw</sub>", "Flaw depth factor", "1.0"),
+                ("U<sub>m</sub>", "Minimum ultimate tensile strength", "L80 = 95,000 psi"),
+                ("n", "Strain-hardening exponent", "L80 &asymp; 0.174"),
+                ("k<sub>bs</sub>", "Bending strength factor", "0.95 Q&amp;T / 13Cr, 0.88 normalized"),
+                ("u", "Normalised effective axial load", "dimensionless"),
+                ("Active mode", "Rupture (<i>P<sub>i</sub></i>-driven burst) or necking (<i>F<sub>eff</sub></i>-driven tension)", "reported per candidate"),
+            ],
+            "Rejects a candidate whose rupture capacity gives <i>SF</i> &lt; 1.25 against shut-in CITHP. High strain-hardening alloys (duplex, 22Cr/25Cr, <i>n</i> &gt; 0.2) are rejected outright unless a measured true stress-strain fit is supplied, since the empirical <i>n</i> estimate is invalid for them.",
+        )
+
+        formula_card(
+            "6.4",
+            "External Pressure Resistance / Collapse (Clause 8)",
+            "#065F46",
+            [
+                (r"\sigma_z = \frac{F_a}{A_n} \;\; \text{(bending excluded)}, \quad Y_{pa} = \left[\sqrt{1 - 0.75\left(\tfrac{\sigma_z}{Y_p}\right)^2} - 0.5\left(\tfrac{\sigma_z}{Y_p}\right)\right] Y_p", "Uniform axial stress only, then the equivalent yield it implies"),
+                (r"\left(\tfrac{D}{t}\right)_{yp} = \frac{\sqrt{(A-2)^2 + 8\left(B + \tfrac{C}{Y_{pa}}\right)} + (A-2)}{2\left(B + \tfrac{C}{Y_{pa}}\right)}", "First regime boundary; A, B, C, F, G are all functions of Y_pa"),
+                (r"P_c = \begin{cases} 2 Y_{pa}\left[\tfrac{D/t - 1}{(D/t)^2}\right] & \text{Yield} \\[4pt] Y_{pa}\left[\tfrac{A}{D/t} - B\right] - C & \text{Plastic} \\[4pt] Y_{pa}\left[\tfrac{F}{D/t} - G\right] & \text{Transition} \\[4pt] \dfrac{46.95 \times 10^6}{(D/t)\left(D/t - 1\right)^2} & \text{Elastic} \end{cases}", "Four-regime cascade, selected by D/t against the boundaries"),
+                (r"P_{c,corr} = P_c + P_i, \quad SF_{collapse} = \frac{P_{c,corr}}{P_{ext,design}} \ge 1.10", "Internal pressure backs up the wall; margin against collapse"),
+            ],
+            f"Determines the {term('collapse', 'collapse')} pressure the candidate can withstand, accounting for "
+            f"how axial load shifts the stress state. Axial tension <b>reduces</b> collapse capacity via "
+            f"<i>Y<sub>pa</sub></i>; compression raises it. Per the standard, {term('dogleg', 'bending')} stress "
+            f"is <b>excluded</b> here &mdash; only the uniform axial load stress enters <i>Y<sub>pa</sub></i>. "
+            f"The empirical constants are dimensional, so this module always computes natively in psi. "
+            f"Validated against published API Bul&nbsp;5C2 collapse ratings to within 0.1%.",
+            [
+                ("P<sub>c,corr</sub>", "Corrected collapse limit, with <i>P<sub>i</sub></i> back-up credit", "psi"),
+                ("Y<sub>pa</sub>", "Axial-stress equivalent yield strength", "psi"),
+                ("&sigma;<sub>z</sub>", "Uniform axial stress <i>F<sub>a</sub></i>/<i>A<sub>n</sub></i> &mdash; <b>no bending</b>", "psi"),
+                ("D/t", "Diameter-to-thickness ratio", "dimensionless"),
+                ("A, B, C, F, G", "API empirical constants, all functions of <i>Y<sub>pa</sub></i>", "at 80 ksi: 3.071, 0.0667, 1955"),
+                ("Regime", "Yield &rarr; Plastic &rarr; Transition &rarr; Elastic cascade", "reported per candidate"),
+                ("SF<sub>collapse</sub>", "Collapse safety factor", "target &ge; 1.10"),
+            ],
+            "Rejects a candidate whose <i>SF<sub>collapse</sub></i> &lt; 1.10 against the APB-augmented external pressure. Calculation is terminated with an explicit error when &sigma;<sub>z</sub> &ge; <i>Y<sub>p</sub></i> (structural yielding in axial tension precedes collapse), when tension drives <i>Y<sub>pa</sub></i> below the validity floor of the API curve fits, or for cold-expanded pipe, where the Bauschinger effect invalidates these equations entirely.",
         )
 
     st.markdown('<div id="step-7"></div>', unsafe_allow_html=True)
@@ -2546,13 +2710,15 @@ elif page == "5. Engineering Calculations":
 
     display_df = res_df[[
         'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_carrying_late', 'v_erosional',
-        'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'f_axial_rating_klbs', 'vme_stress_psi', 'triaxial_sf', 'burst_sf',
+        'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'f_axial_rating_klbs', 'vme_stress_psi', 'triaxial_sf',
+        'p_rupture_psi', 'rupture_sf', 'rupture_mode', 'p_collapse_psi', 'collapse_sf', 'collapse_regime', 'burst_sf',
         'friction_factor', 'cv_solids', 'Z_Factor', 'max_service_temp_c', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
 
     display_df.columns = [
         'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Late Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
-        'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'Axial Rating (klbs)', 'von Mises Stress (psi)', 'Triaxial SF', 'Burst SF',
+        'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'Axial Rating (klbs)', 'von Mises Stress (psi)', 'Triaxial SF',
+        'Rupture Capacity (psi)', 'Rupture SF', 'Rupture Mode', 'Collapse Capacity (psi)', 'Collapse SF', 'Collapse Regime', 'Burst SF',
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
 
@@ -2566,6 +2732,7 @@ elif page == "5. Engineering Calculations":
         ('Friction_Pass', 'Friction Factor'), ('Velocity_Pass', 'Velocity Window'),
         ('Late_Life_Pass', 'Late-Life Velocity'), ('Stress_Pass', 'Triaxial Stress'),
         ('Axial_Pass', 'Axial Load'), ('Burst_Pass', 'Surface Burst'),
+        ('Rupture_Pass', 'Ductile Rupture (5C3 Cl.7)'), ('Collapse_Pass', 'Collapse (5C3 Cl.8)'),
         ('APB_Pass', 'APB Limit'), ('Temp_Pass', 'Temperature'),
         ('Material_Pass', 'NACE Sour'), ('Connection_Pass', 'Connection')
     ]
@@ -2591,7 +2758,14 @@ elif page == "5. Engineering Calculations":
                 if not r['Late_Life_Pass']:
                     reasons.append(f"Late-life velocity {r['v_late_life_fts']} ft/s below late carrying limit {r['v_carrying_late']} ft/s")
                 if not r['Stress_Pass']:
-                    reasons.append(f"Triaxial SF {r['triaxial_sf']} below target {st.session_state.inputs.get('sf_triaxial', 1.25)}")
+                    reasons.append(
+                        f"Triaxial SF {r['triaxial_sf']} below target {st.session_state.inputs.get('sf_triaxial', 1.25)} "
+                        f"(governing point: {r['vme_governing_point']}, {r['vme_n_points']} coordinate(s) evaluated)"
+                    )
+                if not r['Rupture_Pass']:
+                    reasons.append(r['Rupture_Reason'])
+                if not r['Collapse_Pass']:
+                    reasons.append(r['Collapse_Reason'])
                 if not r['Axial_Pass']:
                     reasons.append(r['Axial_Reason'])
                 if not r['Burst_Pass']:
