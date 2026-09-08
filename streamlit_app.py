@@ -2384,11 +2384,12 @@ st.sidebar.caption("Upper-Completion Design Engine")
 
 PAGE_LABELS = [
     "1. Introduction & Overview",
-    "2. Calculation Methodology",
-    "3. Well & Fluid Inputs",
-    "4. Candidate Tubing Specs",
-    "5. Engineering Calculations",
-    "6. Recommendation & Sensitivity"
+    "2. Wellbore Hydraulics & PVT"
+    "3. Calculation Methodology",
+    "4. Well & Fluid Inputs",
+    "5. Candidate Tubing Specs",
+    "6. Engineering Calculations",
+    "7. Recommendation & Sensitivity"
 ]
 
 # A ?step=N link in the Page 2 flowchart must survive the rerun it triggers: force
