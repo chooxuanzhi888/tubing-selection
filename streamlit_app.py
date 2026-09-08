@@ -479,12 +479,16 @@ UPPER_COMPLETION_SCHEMATIC_HTML = """
 <title>Accurate Upper Completion Schematic - Light Theme</title>
 <style>
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-  body { margin: 0; padding: 20px; background-color: #f8fafc; color: #0f172a; }
-  .container { display: flex; flex-direction: row; gap: 24px; max-width: 1200px; height: 780px; margin: 0 auto; }
-  
+  html, body { height: 100%; }
+  body { margin: 0; padding: 12px; background-color: #f8fafc; color: #0f172a; }
+  .container { display: flex; flex-direction: row; gap: 18px; max-width: 1500px;
+               height: 100%; min-height: 520px; margin: 0 auto; }
+
   /* Schematic Viewer Card */
   .diagram-card {
-    flex: 1.1;
+    flex: 1.15;
+    min-width: 0;
+    min-height: 0;
     background: #ffffff;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
@@ -492,10 +496,10 @@ UPPER_COMPLETION_SCHEMATIC_HTML = """
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 12px;
+    padding: 10px;
     overflow: hidden;
   }
-  svg { width: 100%; height: 100%; max-width: 420px; }
+  svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
 
   /* Interactive Hotspot Styles */
   .hotspot { cursor: pointer; }
@@ -519,12 +523,15 @@ UPPER_COMPLETION_SCHEMATIC_HTML = """
 
   /* Info Card */
   .info-card {
-    flex: 0.9;
+    flex: 0.85;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
     background: #ffffff;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    padding: 32px;
+    padding: clamp(16px, 2.2vw, 32px);
     display: flex;
     flex-direction: column;
   }
@@ -542,15 +549,21 @@ UPPER_COMPLETION_SCHEMATIC_HTML = """
     margin-bottom: 16px;
   }
   .title {
-    font-size: 1.6rem;
+    font-size: clamp(1.15rem, 1.6vw, 1.6rem);
     font-weight: 700;
     color: #0f172a;
     margin: 0 0 16px 0;
     padding-bottom: 12px;
     border-bottom: 1px solid #e2e8f0;
   }
-  .description { font-size: 0.95rem; line-height: 1.7; color: #334155; }
+  .description { font-size: clamp(0.85rem, 1.05vw, 0.95rem); line-height: 1.7; color: #334155; }
   .placeholder { color: #94a3b8; font-style: italic; }
+
+  @media (max-width: 900px) {
+    .container { flex-direction: column; height: auto; min-height: 0; }
+    .diagram-card { height: 60vh; min-height: 380px; flex: none; }
+    .info-card { flex: none; overflow-y: visible; }
+  }
 </style>
 </head>
 <body>
@@ -1753,6 +1766,10 @@ if page == "1. Introduction & Overview":
             </ul>
         </div>
         {figure_block("Figure 1.png", "1", "Upper-completion configurations")}
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
         <div id="1-2-major-design-decisions" class="p1-card p1-card-blue">
             <span class="p1-chip p1-chip-blue">Subtopic 1.2</span>
             <h3 class="p1-card-title">Major Design Considerations</h3>
@@ -1765,26 +1782,26 @@ if page == "1. Introduction & Overview":
         </div>
         """, unsafe_allow_html=True)
 
-    with col2:
-        st.markdown("""
-        <div id="1-3-key-components" class="p1-card p1-card-blue">
-            <span class="p1-chip p1-chip-blue">Subtopic 1.3</span>
-            <h3 class="p1-card-title">Key Components</h3>
-            <p class="p1-card-body">
-                Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs),
-                artificial-lift equipment, and chemical-injection systems</b>. Together they enable safe fluid
-                transport, well control, well integrity, and future intervention.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        components.html(UPPER_COMPLETION_SCHEMATIC_HTML, height=830, scrolling=False)
-        st.markdown(
-            '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
-            '<span class="p1-figure-number">Figure 2</span>'
-            'Typical upper-completion components — click a section of the schematic for details.'
-            '</figcaption></figure>',
-            unsafe_allow_html=True,
-        )
+    # Subtopic 1.3 spans the full width beneath 1.1 and 1.2
+    st.markdown("""
+    <div id="1-3-key-components" class="p1-card p1-card-blue">
+        <span class="p1-chip p1-chip-blue">Subtopic 1.3</span>
+        <h3 class="p1-card-title">Key Components</h3>
+        <p class="p1-card-body">
+            Typical components include <b>production tubing, packers, subsurface safety valves (SCSSVs),
+            artificial-lift equipment, and chemical-injection systems</b>. Together they enable safe fluid
+            transport, well control, well integrity, and future intervention.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    components.html(UPPER_COMPLETION_SCHEMATIC_HTML, height=720, scrolling=False)
+    st.markdown(
+        '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
+        '<span class="p1-figure-number">Figure 2</span>'
+        'Typical upper-completion components — click a section of the schematic for details.'
+        '</figcaption></figure>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
