@@ -3217,7 +3217,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             <b>What are solid particles, and where do they come from?</b><br/>
             In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), <b>frac proppant flowback</b>, or <b>corrosion scale</b>. 
             They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well. 
-            When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a <b>slurry mixture</b> that alters fluid density and aggressive pipe wear.
+            When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a <b>slurry mixture</b> that alters fluid density and causes aggressive pipe wear.
         </div>
         """, unsafe_allow_html=True)
 
@@ -3266,30 +3266,39 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 
         col_sb1, col_sb2 = st.columns([1, 1.2])
 
-        # Local sandbox controls
+        # Default tubing candidate parameters (3-1/2" L80-13Cr, ID = 2.992 in)
+        default_pipe_name = '3-1/2" L80-13Cr (9.2#)'
+        sb_d_i = 2.992
+        is_cra = True
+
+        # Local sandbox controls with explanatory sentences
         with col_sb1:
             st.markdown("##### ⚙️ Sandbox Input Parameters")
-            sb_sand_pptb = st.slider("Sand Concentration (PPTB - lbs/1000 bbl)", 0.0, 500.0, float(st.session_state.inputs.get('sand_rate_pptb', 25.0)), 5.0)
-            sb_sand_d_um = st.slider("Grain Diameter (d<sub>p</sub> - microns)", 10.0, 1000.0, float(st.session_state.inputs.get('sand_size_microns', 150.0)), 10.0)
-            sb_sand_sg = st.slider("Grain Density (SG<sub>s</sub>)", 1.5, 4.5, float(st.session_state.inputs.get('sand_sg', 2.65)), 0.05)
             
-            # Tubing selection
-            tubing_names = list(st.session_state.tubing_db['Name'])
-            selected_pipe_name = st.selectbox("Select Tubing Candidate for Sandbox", tubing_names, index=2 if len(tubing_names) > 2 else 0)
-            pipe_row = st.session_state.tubing_db[st.session_state.tubing_db['Name'] == selected_pipe_name].iloc[0]
-            sb_d_i = pipe_row['ID_in']
+            sb_sand_pptb = st.slider(
+                "Sand Concentration (PPTB - lbs/1000 bbl)", 
+                0.0, 500.0, 25.0, 5.0,
+                help="Higher sand concentration directly increases bulk slurry density (ρ_slurry) and severely suppresses the Salama erosional limit (v_erosional)."
+            )
+            st.caption("💡 *Higher concentration increases mixture density (ρ<sub>slurry</sub>) and lowers the upper erosion ceiling (v<sub>erosional</sub>).*")
 
-            # Dynamic calculations
+            sb_sand_d_um = st.slider(
+                "Grain Diameter (d_p - microns)", 
+                10.0, 1000.0, 150.0, 10.0,
+                help="Larger grain sizes increase downward gravitational drag, requiring a higher Rubey settling velocity (v_t) to keep solids suspended."
+            )
+            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity (v<sub>carrying</sub>).*")
+
+            sb_sand_sg = st.slider(
+                "Grain Density (SG_s)", 
+                1.5, 4.5, 2.65, 0.05,
+                help="Denser solid minerals increase both hydrostatic pressure drop (ΔP_hydrostatic) and the terminal settling velocity (v_t)."
+            )
+            st.caption("💡 *Denser minerals increase hydrostatic pressure drop (ΔP<sub>hydrostatic</sub>) and accelerate sand fallout.*")
+
+            # Dynamic calculations for default pipe
             q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
-            is_cra = "13CR" in str(pipe_row['Grade']).upper() or "CRA" in str(pipe_row['Material']).upper()
             slurry_res = calculate_slurry_physics(q_liq_ref, sb_sand_pptb, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
-
-            st.markdown("<br/>", unsafe_allow_html=True)
-            if st.button("📌 Push Sandbox Values to Global Inputs", type="primary", use_container_width=True):
-                st.session_state.inputs['sand_rate_pptb'] = sb_sand_pptb
-                st.session_state.inputs['sand_size_microns'] = sb_sand_d_um
-                st.session_state.inputs['sand_sg'] = sb_sand_sg
-                st.success("✅ Sandbox parameters pushed to global inputs! Pages 7, 9, and 10 will now use these settings.")
 
         # Subscripted live metrics
         with col_sb2:
@@ -3307,7 +3316,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             m_col6.metric("Governing Min Velocity (v_carrying)", f"{slurry_res['v_carrying']:.2f} ft/s")
 
         st.markdown("---")
-        st.markdown(f"#### 📈 Operating Envelope Compression for {selected_pipe_name} (ID: {sb_d_i}\")")
+        st.markdown(f"#### 📈 Operating Envelope Compression for {default_pipe_name} (ID: {sb_d_i}\")")
         st.caption("Dynamic Plotly chart demonstrating how increasing sand concentration squeezes the operable velocity window.")
 
         # Option B Chart Generation
@@ -3353,7 +3362,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             line=dict(color='#2563EB', dash='dot')
         ))
 
-        # Shaded region
+        # Shaded operable region
         fig_env.add_trace(go.Scatter(
             x=np.concatenate([pptb_range, pptb_range[::-1]]),
             y=np.concatenate([v_eros_list, v_carrying_list[::-1]]),
