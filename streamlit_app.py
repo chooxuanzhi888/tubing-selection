@@ -2792,14 +2792,14 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 # -----------------------------------------------------------------------------
 # PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
 # -----------------------------------------------------------------------------
-elif page == "4. Tubing Stress & Structural Load Analysis":
+elif page == "4. Tubing Stress Analysis":
     st.markdown('<div class="main-header">Step 4: Tubing Stress &amp; Structural Load Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Reserved for axial load, triaxial stress, and annular pressure build-up analysis.</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
 # -----------------------------------------------------------------------------
-elif page == "5. Metallurgical & Material Property Selection":
+elif page == "5. Material Selection":
     st.markdown('<div class="main-header">Step 5: Metallurgical &amp; Material Property Selection</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Reserved for grade, sour-service, and corrosion-resistant alloy selection.</div>', unsafe_allow_html=True)
 
