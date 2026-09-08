@@ -3226,7 +3226,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 1</span>
-                <h4 class="m2-card-title" style="color: #1E3A8A;">Heavy Fluid Column & Pressure Drop Inflation (ΔP<sub>hydrostatic</sub>)</h4>
+                <h4 class="m2-card-title" style="color: #1E3A8A;">Heavy Fluid Column & Pressure Drop Inflation ($\Delta P_{\\text{hydrostatic}}$)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose">
@@ -3238,7 +3238,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 2</span>
-                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Boundary Suppression (v<sub>erosional</sub>)</h4>
+                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Boundary Suppression ($v_{\\text{erosional}}$)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-gate">
@@ -3250,7 +3250,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 3</span>
-                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Tubing Blockage Risk (v<sub>carrying</sub>)</h4>
+                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Tubing Blockage Risk ($v_{\\text{carrying}}$)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose" style="border-left-color: #D97706;">
@@ -3264,14 +3264,27 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         st.markdown("### 🎛️ Interactive Slurry Physics Sandbox")
         st.caption("Adjust sand production parameters below to explore real-time shifts in the operating velocity window.")
 
+        # Dynamically determine candidate with largest operable velocity window
+        q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
+        best_pipe = None
+        max_window = -1.0
+
+        for _, candidate in st.session_state.tubing_db.iterrows():
+            cand_id = candidate['ID_in']
+            cand_cra = "13CR" in str(candidate['Grade']).upper() or "CRA" in str(candidate['Material']).upper()
+            cand_res = calculate_slurry_physics(q_liq_ref, 25.0, 2.65, 150.0, 52.0, 1.5, cand_id, cand_cra)
+            window_size = cand_res['v_erosional'] - cand_res['v_carrying']
+            
+            if window_size > max_window:
+                max_window = window_size
+                best_pipe = candidate
+
+        sb_d_i = best_pipe['ID_in']
+        is_cra = "13CR" in str(best_pipe['Grade']).upper() or "CRA" in str(best_pipe['Material']).upper()
+
         col_sb1, col_sb2 = st.columns([1, 1.2])
 
-        # Default tubing candidate parameters (3-1/2" L80-13Cr, ID = 2.992 in)
-        default_pipe_name = '3-1/2" L80-13Cr (9.2#)'
-        sb_d_i = 2.992
-        is_cra = True
-
-        # Local sandbox controls with explanatory sentences
+        # Local sandbox controls with explanatory captions using LaTeX
         with col_sb1:
             st.markdown("##### ⚙️ Sandbox Input Parameters")
             
@@ -3280,46 +3293,45 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 0.0, 500.0, 25.0, 5.0,
                 help="Higher sand concentration directly increases bulk slurry density (ρ_slurry) and severely suppresses the Salama erosional limit (v_erosional)."
             )
-            st.caption("💡 *Higher concentration increases mixture density (ρ<sub>slurry</sub>) and lowers the upper erosion ceiling (v<sub>erosional</sub>).*")
+            st.caption("💡 *Higher concentration increases mixture density ($\\rho_{\\text{slurry}}$) and lowers the upper erosion ceiling ($v_{\\text{erosional}}$).*")
 
             sb_sand_d_um = st.slider(
-                "Grain Diameter (d_p - microns)", 
+                "Grain Diameter ($d_p$ - microns)", 
                 10.0, 1000.0, 150.0, 10.0,
                 help="Larger grain sizes increase downward gravitational drag, requiring a higher Rubey settling velocity (v_t) to keep solids suspended."
             )
-            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity (v<sub>carrying</sub>).*")
+            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity ($v_{\\text{carrying}}$).*")
 
             sb_sand_sg = st.slider(
-                "Grain Density (SG_s)", 
+                "Grain Density ($\\text{SG}_s$)", 
                 1.5, 4.5, 2.65, 0.05,
                 help="Denser solid minerals increase both hydrostatic pressure drop (ΔP_hydrostatic) and the terminal settling velocity (v_t)."
             )
-            st.caption("💡 *Denser minerals increase hydrostatic pressure drop (ΔP<sub>hydrostatic</sub>) and accelerate sand fallout.*")
+            st.caption("💡 *Denser minerals increase hydrostatic pressure drop ($\\Delta P_{\\text{hydrostatic}}$) and accelerate sand fallout.*")
 
-            # Dynamic calculations for default pipe
-            q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
+            # Dynamic calculations for the optimal tubing candidate
             slurry_res = calculate_slurry_physics(q_liq_ref, sb_sand_pptb, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
 
-        # Subscripted live metrics
+        # Dynamic live metrics rendered with LaTeX formatting
         with col_sb2:
             st.markdown("##### 📊 Real-Time Dynamic Metrics")
             m_col1, m_col2 = st.columns(2)
-            m_col1.metric("Solids Vol. Fraction (C_v)", f"{slurry_res['c_v']*100:.4f} %")
-            m_col2.metric("Slurry Density (ρ_slurry)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
+            m_col1.metric("Solids Vol. Fraction ($C_v$)", f"{slurry_res['c_v']*100:.4f} %")
+            m_col2.metric("Slurry Density ($\\rho_{\\text{slurry}}$)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
 
             m_col3, m_col4 = st.columns(2)
-            m_col3.metric("Salama Erosional Limit (v_erosional)", f"{slurry_res['v_erosional']:.2f} ft/s")
-            m_col4.metric("Rubey Carrying Limit (1.35 v_t)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
+            m_col3.metric("Salama Erosional Limit ($v_{\\text{erosional}}$)", f"{slurry_res['v_erosional']:.2f} ft/s")
+            m_col4.metric("Rubey Carrying Limit ($1.35 v_t$)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
 
             m_col5, m_col6 = st.columns(2)
-            m_col5.metric("Turner Liquid Lift Limit (v_turner)", f"{slurry_res['v_turner']:.2f} ft/s")
-            m_col6.metric("Governing Min Velocity (v_carrying)", f"{slurry_res['v_carrying']:.2f} ft/s")
+            m_col5.metric("Turner Liquid Lift Limit ($v_{\\text{turner}}$)", f"{slurry_res['v_turner']:.2f} ft/s")
+            m_col6.metric("Governing Min Velocity ($v_{\\text{carrying}}$)", f"{slurry_res['v_carrying']:.2f} ft/s")
 
         st.markdown("---")
-        st.markdown(f"#### 📈 Operating Envelope Compression for {default_pipe_name} (ID: {sb_d_i}\")")
+        st.markdown("#### 📈 Operating Envelope Compression vs. Sand Concentration")
         st.caption("Dynamic Plotly chart demonstrating how increasing sand concentration squeezes the operable velocity window.")
 
-        # Option B Chart Generation
+        # Chart Generation across PPTB range
         pptb_range = np.linspace(0.1, 500.0, 100)
         v_eros_list = []
         v_carrying_list = []
@@ -3362,7 +3374,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             line=dict(color='#2563EB', dash='dot')
         ))
 
-        # Shaded operable region
+        # Shaded region
         fig_env.add_trace(go.Scatter(
             x=np.concatenate([pptb_range, pptb_range[::-1]]),
             y=np.concatenate([v_eros_list, v_carrying_list[::-1]]),
@@ -3374,7 +3386,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         ))
 
         fig_env.update_layout(
-            title=f"Operating Envelope Squeeze vs. Sand Concentration (Tubing ID: {sb_d_i}\")",
+            title="Operating Envelope Squeeze vs. Sand Concentration",
             xaxis_title="Sand Production Concentration (PPTB - lbs / 1000 bbl)",
             yaxis_title="Flow Velocity Limits (ft/s)",
             hovermode="x unified",
