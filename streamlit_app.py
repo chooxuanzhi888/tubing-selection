@@ -1247,6 +1247,441 @@ CASING_TUBING_SCHEMATIC_HTML = """
 """
 
 
+# Interactive tubing cross-section schematic used in place of a static Figure 4 image.
+# Clicking a dimension in the SVG (or the legend list) renders its introduction in the panel.
+TUBING_CROSS_SECTION_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Production Tubing Cross-Section Schematic</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #cbd5e1;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+
+      /* Dimension Color Coding */
+      --color-nominal: #2563eb;  /* Blue */
+      --color-id: #0d9488;       /* Teal */
+      --color-drift: #d97706;    /* Amber/Orange */
+      --color-steel: #94a3b8;    /* Steel Pipe Wall */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      width: 100%;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .schematic-card {
+      align-items: center;
+      justify-content: center;
+      background-color: #ffffff;
+    }
+
+    .schematic-container {
+      width: 100%;
+      max-width: 540px;
+      height: auto;
+    }
+
+    /* SVG Interactive Components */
+    .detail-group {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .detail-group circle,
+    .detail-group line,
+    .detail-group path,
+    .detail-group text {
+      transition: all 0.2s ease;
+    }
+
+    .detail-group:hover circle.interactive-target {
+      stroke-width: 3.5px;
+      filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.3));
+    }
+
+    .detail-group:hover text {
+      font-weight: 700;
+    }
+
+    .detail-group.active circle.interactive-target {
+      stroke-width: 4px;
+      stroke: #0f172a !important;
+      filter: drop-shadow(0 0 6px rgba(15, 23, 42, 0.25));
+    }
+
+    .detail-group.active text {
+      font-weight: 800;
+      fill: #0f172a;
+    }
+
+    /* Side Panel Styling */
+    .panel-header {
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .info-section {
+      margin-bottom: 18px;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .info-content {
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: var(--text-main);
+      background-color: var(--bg-color);
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 40px 20px;
+    }
+
+    .empty-state svg {
+      margin-bottom: 12px;
+      stroke: var(--text-muted);
+    }
+
+    /* Selection Legend Items */
+    .legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+      width: 100%;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .legend-item:hover {
+      background-color: var(--bg-color);
+    }
+
+    .legend-item.active {
+      background-color: var(--primary-light);
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+
+    .legend-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .legend-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Production Tubing Cross-Section Design</h1>
+    <p>Click on any dimension feature on the circular cross-section or list below to view its introduction.</p>
+  </header>
+
+  <div class="container">
+    <!-- SVG Circular End-on Cross Section -->
+    <div class="card schematic-card">
+      <svg class="schematic-container" viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Hatching Pattern for Steel Pipe Wall Cross-Section -->
+          <pattern id="steel-hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#cbd5e1" stroke-width="2.5" />
+          </pattern>
+
+          <!-- Arrow Heads for Dimension Lines -->
+          <marker id="arrow-nominal" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-nominal)"/>
+          </marker>
+          <marker id="arrow-id" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-id)"/>
+          </marker>
+          <marker id="arrow-drift" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-drift)"/>
+          </marker>
+        </defs>
+
+        <!-- Center Crosshair Centerlines -->
+        <g stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 4">
+          <line x1="260" y1="20" x2="260" y2="500"/>
+          <line x1="20" y1="260" x2="500" y2="260"/>
+        </g>
+
+        <!-- TUBING STEEL WALL (BASE GEOMETRY) -->
+        <path d="M 260 80 A 180 180 0 1 0 260 440 A 180 180 0 1 0 260 80 Z M 260 130 A 130 130 0 1 1 260 390 A 130 130 0 1 1 260 130 Z"
+              fill="url(#steel-hatch)" stroke="#64748b" stroke-width="1.5" fill-rule="evenodd"/>
+
+        <!-- DETAIL 1: NOMINAL SIZE (OUTER DIAMETER / OD) -->
+        <g class="detail-group" id="detail-nominal" onclick="selectDetail('nominal')">
+          <circle cx="260" cy="260" r="180" fill="none" stroke="var(--color-nominal)" stroke-width="2.5" class="interactive-target"/>
+
+          <line x1="80" y1="60" x2="440" y2="60" stroke="var(--color-nominal)" stroke-width="1.5" marker-start="url(#arrow-nominal)" marker-end="url(#arrow-nominal)"/>
+          <line x1="80" y1="60" x2="80" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="440" y1="60" x2="440" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <rect x="180" y="42" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-nominal)" stroke-width="1"/>
+          <text x="260" y="58" fill="var(--color-nominal)" font-size="12" font-weight="bold" text-anchor="middle">NOMINAL SIZE (OD)</text>
+        </g>
+
+        <!-- DETAIL 2: INTERNAL DIAMETER (ID) -->
+        <g class="detail-group" id="detail-id" onclick="selectDetail('id')">
+          <circle cx="260" cy="260" r="130" fill="none" stroke="var(--color-id)" stroke-width="2.5" stroke-dasharray="6 3" class="interactive-target"/>
+
+          <line x1="168" y1="352" x2="352" y2="168" stroke="var(--color-id)" stroke-width="1.5" marker-start="url(#arrow-id)" marker-end="url(#arrow-id)"/>
+
+          <rect x="290" y="210" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-id)" stroke-width="1"/>
+          <text x="370" y="226" fill="var(--color-id)" font-size="12" font-weight="bold" text-anchor="middle">INTERNAL DIA. (ID)</text>
+        </g>
+
+        <!-- DETAIL 3: DRIFT INTERNAL DIAMETER (DRIFT ID) -->
+        <g class="detail-group" id="detail-drift" onclick="selectDetail('drift')">
+          <circle cx="260" cy="260" r="105" fill="rgba(217, 119, 6, 0.06)" stroke="var(--color-drift)" stroke-width="2" stroke-dasharray="4 4" class="interactive-target"/>
+
+          <line x1="155" y1="260" x2="365" y2="260" stroke="var(--color-drift)" stroke-width="1.5" marker-start="url(#arrow-drift)" marker-end="url(#arrow-drift)"/>
+
+          <rect x="180" y="275" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-drift)" stroke-width="1"/>
+          <text x="260" y="291" fill="var(--color-drift)" font-size="12" font-weight="bold" text-anchor="middle">DRIFT ID CLEARANCE</text>
+        </g>
+
+        <!-- Center Point -->
+        <circle cx="260" cy="260" r="3" fill="#0f172a"/>
+      </svg>
+    </div>
+
+    <!-- Details Sidebar Panel -->
+    <div class="card">
+      <div id="info-panel" style="display: none;">
+        <div class="panel-header">
+          <span id="detail-badge" class="panel-title-badge">Tubing Parameter</span>
+          <h2 id="detail-name" class="panel-title">Name</h2>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Introduction</div>
+          <div id="detail-intro" class="info-content">Intro text goes here...</div>
+        </div>
+      </div>
+
+      <!-- Empty State View -->
+      <div id="empty-panel" class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <h3>No Parameter Selected</h3>
+        <p style="margin-top: 8px; font-size: 0.88rem;">Click on any dimension line in the cross-section diagram or select one from the list below to view details.</p>
+      </div>
+
+      <!-- Quick Selection List -->
+      <div class="legend-list">
+        <div class="info-label" style="margin-top: 10px;">Tubing Cross-Section Parameters</div>
+
+        <div class="legend-item" id="legend-nominal" onclick="selectDetail('nominal')">
+          <div class="legend-left">
+            <div class="legend-color-dot" style="background-color: var(--color-nominal);"></div>
+            <span>Nominal Size (OD)</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Outer Limit</span>
+        </div>
+
+        <div class="legend-item" id="legend-id" onclick="selectDetail('id')">
+          <div class="legend-left">
+            <div class="legend-color-dot" style="background-color: var(--color-id);"></div>
+            <span>Internal Diameter (ID)</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Bore Size</span>
+        </div>
+
+        <div class="legend-item" id="legend-drift" onclick="selectDetail('drift')">
+          <div class="legend-left">
+            <div class="legend-color-dot" style="background-color: var(--color-drift);"></div>
+            <span>Drift Internal Diameter</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Tool Clearance</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Data definitions for tubing cross-section parameters
+    const detailsData = {
+      nominal: {
+        name: "Nominal Size (Outer Diameter / OD)",
+        badgeBg: "#eff6ff",
+        badgeColor: "#2563eb",
+        intro: "The Nominal Size represents the standardized outer diameter (OD) of the production tubing pipe body as specified by API Spec 5CT standards."
+      },
+      id: {
+        name: "Internal Diameter (ID)",
+        badgeBg: "#ccfbf1",
+        badgeColor: "#0f766e",
+        intro: "The Internal Diameter (ID) is the calculated inner wall dimension of the tubing joint, determined by subtracting twice the nominal wall thickness from the outer diameter (ID = OD - 2t)."
+      },
+      drift: {
+        name: "Drift Internal Diameter (Drift ID)",
+        badgeBg: "#fef3c7",
+        badgeColor: "#d97706",
+        intro: "The Drift ID is the minimum guaranteed clear diameter through the tubing joint, verified in the field by physically passing a standard API cylindrical drift mandrel through the entire length of the pipe."
+      }
+    };
+
+    function selectDetail(id) {
+      const data = detailsData[id];
+      if (!data) return;
+
+      // Show info panel & hide empty state
+      document.getElementById('empty-panel').style.display = 'none';
+      document.getElementById('info-panel').style.display = 'block';
+
+      // Update panel content
+      const badge = document.getElementById('detail-badge');
+      badge.innerText = "Selected Feature";
+      badge.style.backgroundColor = data.badgeBg;
+      badge.style.color = data.badgeColor;
+
+      document.getElementById('detail-name').innerText = data.name;
+      document.getElementById('detail-intro').innerText = data.intro;
+
+      // Highlight active SVG element
+      document.querySelectorAll('.detail-group').forEach(el => {
+        el.classList.remove('active');
+      });
+      const activeSvgGroup = document.getElementById('detail-' + id);
+      if (activeSvgGroup) {
+        activeSvgGroup.classList.add('active');
+      }
+
+      // Highlight active legend list item
+      document.querySelectorAll('.legend-item').forEach(el => {
+        el.classList.remove('active');
+      });
+      const activeLegendItem = document.getElementById('legend-' + id);
+      if (activeLegendItem) {
+        activeLegendItem.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>
+"""
+
+
 def normalize_grade(grade):
     """Collapse a grade label to a lookup key: uppercase, no spaces or hyphens."""
     return str(grade).upper().replace(" ", "").replace("-", "").replace("_", "")
@@ -2184,12 +2619,6 @@ if page == "1. Introduction & Overview":
             <div class="p1-toc-desc">The flow path of the well</div>
             <div class="p1-toc-sub">2.1 Dimensions &amp; geometry &middot; 2.2 Specifications</div>
         </a>
-        <a class="p1-toc-card" href="#3-0-model-assumptions-limitations" style="--accent: #DC2626;">
-            <div class="p1-toc-num">Section 3.0</div>
-            <div class="p1-toc-title">Assumptions &amp; Limits</div>
-            <div class="p1-toc-desc">Model scope and operational bounds</div>
-            <div class="p1-toc-sub">3.1 Key assumptions &middot; 3.2 Engineering limits</div>
-        </a>
     </nav>
     """, unsafe_allow_html=True)
 
@@ -2293,7 +2722,7 @@ if page == "1. Introduction & Overview":
         unsafe_allow_html=True,
     )
 
-    st.markdown(f"""
+    st.markdown("""
     <div id="2-1-tubing-dimensions-geometry" class="p1-card p1-card-green">
         <span class="p1-chip p1-chip-green">Subtopic 2.1</span>
         <h3 class="p1-card-title">Tubing Dimensions &amp; Geometry</h3>
@@ -2303,8 +2732,17 @@ if page == "1. Introduction & Overview":
             resistance under downhole pressure differentials.
         </p>
     </div>
-    {figure_block("Figure 4.jpg", "4", "Tubing dimensions and wall thickness")}
     """, unsafe_allow_html=True)
+
+    components.html(TUBING_CROSS_SECTION_HTML, height=700, scrolling=False)
+    st.markdown(
+        '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
+        '<span class="p1-figure-number">Figure 4</span>'
+        'Tubing cross-section dimensions — click a dimension in the schematic '
+        'or the list for details.'
+        '</figcaption></figure>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("""
     <div id="2-2-key-tubing-specifications" class="p1-card p1-card-green">
@@ -2329,50 +2767,17 @@ if page == "1. Introduction & Overview":
 
     st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # MAIN TOPIC 3.0: MODEL ASSUMPTIONS & DESIGN LIMITATIONS
-    # -------------------------------------------------------------------------
-    st.markdown("""
-    <section id="3-0-model-assumptions-limitations" class="p1-section p1-section-red">
-        <div class="p1-section-head">
-            <div class="p1-section-num">3.0</div>
-            <h2 class="p1-section-title">Model Assumptions &amp; Design Limitations</h2>
-        </div>
-        <p class="p1-section-lead">
-            To deliver rapid, robust screening, this engine applies standardized physical models and fluid-dynamics
-            principles. Knowing where those models hold — and where they stop — is essential to interpreting the
-            recommendations correctly.
-        </p>
-    </section>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-        <div id="3-1-key-assumptions" class="p1-card p1-card-red" style="margin-bottom: 0;">
-            <span class="p1-chip p1-chip-red">Subtopic 3.1</span>
-            <h3 class="p1-card-title">Key Assumptions</h3>
-            <ul class="p1-list p1-list-red">
-                <li><span class="p1-term">Steady-state flow</span> — single-phase gas or homogenized multiphase flow under steady operating conditions.</li>
-                <li><span class="p1-term">Linear thermal gradient</span> — temperature varies linearly from wellhead to bottomhole.</li>
-                <li><span class="p1-term">Isothermal annular APB</span> — trapped-fluid expansion uses single-zone average thermal expansion (&alpha;<sub>v</sub>) and isothermal compressibility (&kappa;<sub>T</sub>).</li>
-                <li><span class="p1-term">Uniform pipe geometry</span> — the string is evaluated as one nominal size and weight from surface to TD.</li>
-            </ul>
-        </div>
-        <div id="3-2-engineering-limitations" class="p1-card p1-card-red" style="margin-bottom: 0;">
-            <span class="p1-chip p1-chip-red">Subtopic 3.2</span>
-            <h3 class="p1-card-title">Engineering Limitations</h3>
-            <ul class="p1-list p1-list-red">
-                <li><span class="p1-term">Transient effects</span> — shut-in surges, water hammer, and thermal warm-up/cool-down cycles are not modeled.</li>
-                <li><span class="p1-term">Multiphase flow regimes</span> — a homogeneous mixture model is used; slug, mist, and annular flow maps are simplified.</li>
-                <li><span class="p1-term">Corrosion kinetics</span> — NACE MR0175 screening is binary (pH<sub>2</sub>S threshold); no quantitative corrosion rate (mm/year) is computed.</li>
-                <li><span class="p1-term">Completion accessories</span> — SSSVs and mandrels are treated as equivalent hydraulic restrictions, not detailed local geometries.</li>
-            </ul>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
 # -----------------------------------------------------------------------------
 # PAGE 2: CALCULATION METHODOLOGY (REFINED & RESTORED)
 # -----------------------------------------------------------------------------
-elif page == "2. Calculation Methodology":
+elif page == "2. Wellbore Hydraulics & PVT Characterization":
+    st.markdown('<div class="main-header">Step 2: Wellbore Hydraulics and Multiphase PVT Characterization</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT and hydraulics; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# PAGE 3: CALCULATION METHODOLOGY (REFINED & RESTORED)
+# -----------------------------------------------------------------------------
+elif page == "3. Calculation Methodology":
     st.markdown('<div class="main-header">Step 2: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
 
@@ -3058,10 +3463,10 @@ elif page == "2. Calculation Methodology":
         )
 
 # ----------------------------------------------------------------------------- 
-# PAGE 3: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
+# 4: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
 # ----------------------------------------------------------------------------- 
-elif page == "3. Well & Fluid Inputs": 
-    st.markdown('<div class="main-header">Step 3: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
+elif page == "4. Well & Fluid Inputs": 
+    st.markdown('<div class="main-header">Step 4: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
     st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True) 
 
     current_inputs = st.session_state.inputs
@@ -3369,9 +3774,9 @@ elif page == "3. Well & Fluid Inputs":
             st.success("✅ Operational inputs saved! Proceed to Page 5 to view candidate screening calculations.")
 
 # -----------------------------------------------------------------------------
-# PAGE 4: CANDIDATE TUBING SPECS
+# 5: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
-elif page == "4. Candidate Tubing Specs":
+elif page == "5. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 4: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
     
@@ -3437,9 +3842,9 @@ elif page == "4. Candidate Tubing Specs":
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# PAGE 5: ENGINEERING CALCULATIONS
+# 7: ENGINEERING CALCULATIONS
 # -----------------------------------------------------------------------------
-elif page == "5. Engineering Calculations":
+elif page == "7. Engineering Calculations":
     st.markdown('<div class="main-header">Step 5: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
     
