@@ -2821,15 +2821,15 @@ elif page == "2. Wellbore Geometry & PVT":
     if "Oil" in well_mode:
         st.info(
             "💡 **Oil Well Mode Explanation:** Uses **Standing's Empirical PVT Correlations** to model "
-            "dissolved gas in oil ($R_s$), downhole oil volumetric swelling ($B_o$), live-oil density ($\rho_{o,live}$), "
-            "and combined total liquid density ($\rho_l$). As pressure drops toward the surface, gas breaks out of solution, "
+            "dissolved gas in oil (R_s), downhole oil volumetric swelling (B_o), live-oil density (ρ_o_live), "
+            "and combined total liquid density (ρ_l). As pressure drops toward the surface, gas breaks out of solution, "
             "shrinking the liquid volume and increasing live-oil density."
         )
     else:
         st.info(
             "💡 **Gas Well Mode Explanation:** Uses the **Dranchuk-Abou-Kassem (DAK) Equation of State** to calculate "
-            "gas compressibility ($Z$-factor), in-situ gas density ($\rho_g$), gas formation volume factor ($B_g$), and "
-            "condensate/water holdup density ($\rho_l$). Demonstrates how high pressure at depth heavily compresses gas, "
+            "gas compressibility (Z-factor), in-situ gas density (ρ_g), gas formation volume factor (B_g), and "
+            "condensate/water holdup density (ρ_l). Demonstrates how high pressure at depth heavily compresses gas, "
             "significantly increasing downhole gas density compared to surface conditions."
         )
 
@@ -2927,7 +2927,7 @@ elif page == "2. Wellbore Geometry & PVT":
         # Trace 2: Live Oil Density (Primary X-Axis)
         fig_primary.add_trace(go.Scatter(
             x=df_pvt['rho_o_live'], y=df_pvt['TVD_ft'],
-            mode='lines', name='Live Oil Density (ρ_o,live, lb/ft³)',
+            mode='lines', name='Live Oil Density (ρ_o_live, lb/ft³)',
             line=dict(color='#2563EB', width=2, dash='dash'),
             hovertemplate='Depth: %{y:.1f} ft<br>Live Oil Density: %{x:.2f} lb/ft³<extra></extra>'
         ))
@@ -2938,7 +2938,7 @@ elif page == "2. Wellbore Geometry & PVT":
             mode='lines', name='Oil Swelling Factor (B_o, rb/STB)',
             line=dict(color='#D97706', width=2.5, dash='dot'),
             xaxis='x2',
-            hovertemplate='Depth: %{y:.1f} ft<br>Bo: %{x:.4f} rb/STB<extra></extra>'
+            hovertemplate='Depth: %{y:.1f} ft<br>B_o: %{x:.4f} rb/STB<extra></extra>'
         ))
 
         fig_primary.update_layout(
@@ -2966,7 +2966,7 @@ elif page == "2. Wellbore Geometry & PVT":
             mode='lines', name='Gas Expansion Factor (B_g, ft³/scf)',
             line=dict(color='#7C3AED', width=2.5, dash='dash'),
             xaxis='x2',
-            hovertemplate='Depth: %{y:.1f} ft<br>Bg: %{x:.5f} ft³/scf<extra></extra>'
+            hovertemplate='Depth: %{y:.1f} ft<br>B_g: %{x:.5f} ft³/scf<extra></extra>'
         ))
 
         fig_primary.update_layout(
