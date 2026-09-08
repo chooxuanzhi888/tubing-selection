@@ -3194,445 +3194,290 @@ elif page == "2. Wellbore Geometry & PVT":
         """,
             unsafe_allow_html=True,
         )
+# =========================================================================
+# TAB 2: TOTAL SLURRY WELLBORE PRESSURE LOSS & FRICTION MECHANICS
+# =========================================================================
+with tab2:
+    st.markdown("### 📊 Total Slurry Pressure Drop (ΔP_total) & Hydraulics Sandbox")
+    
+    # Explanation of Pressure Drop in Tubing Selection
+    st.markdown("""
+    <div class="m2-purpose" style="margin-bottom: 1.2rem;">
+        <b>How does pressure drop (ΔP_total) govern tubing selection?</b><br/>
+        Selecting the optimal tubing inner diameter (ID) requires balancing fluid velocity against total pressure drop:
+        <ul>
+            <li><b>Small Tubing ID:</b> Boosts fluid velocity above critical carrying limits (v_carrying) to prevent sand settling, but drastically spikes frictional pressure loss (ΔP_fric ∝ 1/d_i^5). If ΔP_total exceeds available drawdown (ΔP_available = P_bhp - P_wh), the well stops flowing naturally.</li>
+            <li><b>Large Tubing ID:</b> Minimizes wall friction and pressure loss, preserving reservoir pressure. However, fluid velocity may drop below v_carrying, triggering sand fallout, liquid loading, and severe wellbore choking.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
-# -----------------------------------------------------------------------------
-elif page == "3. Wellbore Hydraulics & Velocity Limits":
-    st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
+    # Unified Interactive Sandbox & Control Panel
+    st.markdown("#### 🎛️ Interactive Hydraulics & Regime Sandbox")
+    st.caption("Adjust flow rates, fluid properties, slurry density, and well depths below. All dynamic metrics and sensitivity plots update in real time.")
 
-    tab1, tab2 = st.tabs([
-        "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
-        "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics"
+    col_t2_ctrl1, col_t2_ctrl2 = st.columns([1, 1])
+
+    with col_t2_ctrl1:
+        st.markdown("##### ⚙️ Production & Depth Controls")
+        t2_q_liq = st.slider("Liquid Flow Rate (Q_liq - STB/D)", 500.0, 20000.0, 5000.0, 500.0)
+        t2_rho_slurry_override = st.slider("Slurry Mixture Density (ρ_slurry - lb/ft³)", 45.0, 90.0, 55.0, 1.0)
+        t2_id = st.slider("Tubing Inner Diameter (d_i - in)", 1.500, 6.000, 2.992, 0.050)
+        t2_tvd = st.slider("True Vertical Depth (TVD - ft)", 1000.0, 25000.0, float(st.session_state.inputs.get('tvd', 10000.0)), 500.0)
+        
+    with col_t2_ctrl2:
+        st.markdown("##### 🛠️ Fluid & Trajectory Drag Controls")
+        t2_md = st.slider("Measured Depth / Trajectory (MD/VD - ft)", t2_tvd, t2_tvd * 1.5, max(float(st.session_state.inputs.get('md', 11500.0)), t2_tvd), 500.0)
+        t2_roughness = st.slider("Pipe Absolute Roughness (ε - in)", 0.0001, 0.0050, 0.0006, 0.0001, format="%.4f")
+        t2_visc = st.slider("Fluid Viscosity (μ_m - cP)", 0.5, 20.0, 1.5, 0.5)
+
+    # Core Hydraulic Calculations (Using Sandbox Slurry Density Input)
+    rho_slurry_val = t2_rho_slurry_override
+    
+    d_i_ft = t2_id / 12.0
+    area_ft2 = (np.pi / 4.0) * (d_i_ft ** 2)
+    q_m_ft3s = (t2_q_liq * 5.615) / 86400.0
+    v_m_val = q_m_ft3s / area_ft2
+    
+    mu_lbfts = t2_visc * 0.000672
+    re_slurry = (rho_slurry_val * v_m_val * d_i_ft) / mu_lbfts if mu_lbfts > 0 else 10000.0
+    rel_roughness = t2_roughness / t2_id
+
+    # Colebrook-White Friction Factor Iteration
+    if re_slurry <= 2100:
+        regime_str = "Laminar Flow"
+        f_factor = 64.0 / re_slurry if re_slurry > 0 else 0.04
+    elif re_slurry > 4000:
+        regime_str = "Turbulent Flow"
+        f_guess = 0.02
+        for _ in range(20):
+            f_next = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_slurry)) ** 2
+            if abs(f_next - f_guess) < 1e-7:
+                break
+            f_guess = f_next
+        f_factor = f_next
+    else:
+        regime_str = "Transitional Flow"
+        f_lam = 64.0 / 2100.0
+        f_turb = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / 4000.0)) ** 2
+        f_factor = f_lam + (f_turb - f_lam) * ((re_slurry - 2100.0) / 1900.0)
+
+    # Pressure Drops
+    dp_hydro_val = (rho_slurry_val * t2_tvd) / 144.0
+    dp_fric_val = (f_factor * t2_md * rho_slurry_val * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
+    dp_total_val = dp_hydro_val + dp_fric_val
+
+    st.markdown("---")
+    col_m_disp, col_regime_disp = st.columns([1.1, 1.1])
+
+    # Dynamic Hydraulics Metrics Output
+    with col_m_disp:
+        st.markdown("##### 📊 Live Dynamic Hydraulics Output")
+        rm_col1, rm_col2 = st.columns(2)
+        rm_col1.metric("Slurry Reynolds No. (Re_slurry)", f"{re_slurry:,.0f}")
+        rm_col2.metric("Flow Regime", regime_str)
+
+        rm_col3, rm_col4 = st.columns(2)
+        rm_col3.metric("Friction Factor (f)", f"{f_factor:.5f}")
+        rm_col4.metric("Flow Velocity (v_m)", f"{v_m_val:.2f} ft/s")
+
+        rm_col5, rm_col6 = st.columns(2)
+        rm_col5.metric("Hydrostatic Loss (ΔP_hydro)", f"{dp_hydro_val:.1f} psi")
+        rm_col6.metric("Frictional Loss (ΔP_fric)", f"{dp_fric_val:.1f} psi")
+
+        st.metric("Total Slurry Pressure Loss (ΔP_total)", f"{dp_total_val:.1f} psi")
+
+    # Dynamic Flow Regime Visualizer
+    with col_regime_disp:
+        st.markdown("##### 🌊 Dynamic Flow Regime Visualizer")
+        
+        re_tier = int(re_slurry // 5000)
+        
+        if re_slurry <= 2100:
+            arrow_color = "#2563EB"
+            anim_speed = "7.0s"
+            regime_badge = "Laminar Flow (Re ≤ 2,100)"
+            flow_desc = "Smooth, parallel fluid streamlines with zero inter-layer mixing."
+        elif re_slurry <= 4000:
+            arrow_color = "#D97706"
+            anim_speed = "4.4s"
+            regime_badge = "Transitional Flow (2,100 < Re ≤ 4,000)"
+            flow_desc = "Unstable flow transition with emerging eddy currents."
+        elif re_tier == 0:
+            arrow_color = "#E11D48"
+            anim_speed = "3.0s"
+            regime_badge = "Turbulent Flow (Re: 4,000 - 5,000)"
+            flow_desc = "Low-range turbulent eddies and wall shear stress."
+        elif re_tier == 1:
+            arrow_color = "#DC2626"
+            anim_speed = "2.2s"
+            regime_badge = "Turbulent Flow (Re: 5,000 - 10,000)"
+            flow_desc = "Moderate turbulence with increased kinetic dissipation."
+        elif re_tier == 2:
+            arrow_color = "#B91C1C"
+            anim_speed = "1.6s"
+            regime_badge = "Turbulent Flow (Re: 10,000 - 15,000)"
+            flow_desc = "High turbulence with steep frictional pressure loss spikes."
+        elif re_tier == 3:
+            arrow_color = "#991B1B"
+            anim_speed = "1.0s"
+            regime_badge = "Turbulent Flow (Re: 15,000 - 20,000)"
+            flow_desc = "Severe turbulent shear and heavy internal energy loss."
+        else:
+            arrow_color = "#7F1D1D"
+            anim_speed = "0.6s"
+            regime_badge = f"Fully Rough Turbulent Flow (Re > 20,000)"
+            flow_desc = "Fully developed rough turbulent flow dominated by wall friction."
+
+        animated_conduit_html = f"""
+        <style>
+        @keyframes flowArrow {{
+            0% {{ transform: translateX(-40px); opacity: 0.2; }}
+            50% {{ opacity: 1; }}
+            100% {{ transform: translateX(240px); opacity: 0.2; }}
+        }}
+        .pipe-conduit {{
+            width: 100%;
+            height: 100px;
+            background: #0F172A;
+            border-top: 4px solid #64748B;
+            border-bottom: 4px solid #64748B;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }}
+        .arrow-stream {{
+            display: flex;
+            gap: 50px;
+            animation: flowArrow {anim_speed} linear infinite;
+        }}
+        .arrow-item {{
+            color: {arrow_color};
+            font-size: 20px;
+            font-weight: bold;
+        }}
+        </style>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:0.82rem; font-weight:800; color:{arrow_color};">{regime_badge}</span>
+            </div>
+            <div class="pipe-conduit">
+                <div class="arrow-stream">
+                    <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                </div>
+                <div class="arrow-stream" style="animation-delay: -0.8s;">
+                    <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                </div>
+                <div class="arrow-stream" style="animation-delay: -1.6s;">
+                    <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                </div>
+            </div>
+            <p style="font-size:0.8rem; color:#475569; margin-top:8px; line-height:1.3;">{flow_desc}</p>
+        </div>
+        """
+        st.markdown(animated_conduit_html, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### 📈 Real-Time Sandbox Visualizations")
+
+    chart_tab1, chart_tab2 = st.tabs([
+        "📉 Total Pressure Drop vs. Depth Profile",
+        "📊 Continuous Hydrostatic vs. Frictional Loss Area Breakdown"
     ])
 
-    # =========================================================================
-    # TAB 1: SOLID PARTICLE SLURRY PHYSICS
-    # =========================================================================
-    with tab1:
-        st.markdown("### 🧪 Solid Particle Slurry Integration & Physics Mechanics")
+    # Plot 1: Total ΔP vs Depth driven directly by the sandbox's Slurry Density slider
+    with chart_tab1:
+        md_range = np.linspace(0.0, max(t2_md, 15000.0), 50)
         
-        # Introduction to Solid Particles
-        st.markdown("""
-        <div class="m2-purpose" style="margin-bottom: 1.2rem;">
-            <b>What are solid particles, and where do they come from?</b><br/>
-            In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), <b>frac proppant flowback</b>, or <b>corrosion scale</b>. 
-            They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well. 
-            When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a <b>slurry mixture</b> that alters fluid density and causes aggressive pipe wear.
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Simplified Callout Cards (Page 6 Style)
-        st.markdown("""
-        <div class="m2-card">
-            <div class="m2-card-head">
-                <span class="m2-card-num">CALLOUT 1</span>
-                <h4 class="m2-card-title" style="color: #1E3A8A;">Heavy Fluid Column & Pressure Drop Inflation (ΔP_hydrostatic)</h4>
-            </div>
-            <div class="m2-label">How solid particles affect this</div>
-            <div class="m2-purpose">
-                Sand is much heavier than oil, water, or gas. When sand particles mix into the production stream, they increase the total weight of the fluid column. 
-                This heavier column pushes down harder on the reservoir, requiring higher reservoir pressure just to lift the fluid to surface.
-            </div>
-        </div>
+        # Single dynamic line calculated directly from t2_rho_slurry_override
+        re_p = (rho_slurry_val * v_m_val * d_i_ft) / mu_lbfts
+        f_p = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_p)) ** 2 if re_p > 4000 else 64.0 / re_p
         
-        <div class="m2-card">
-            <div class="m2-card-head">
-                <span class="m2-card-num">CALLOUT 2</span>
-                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Boundary Suppression (v_erosional)</h4>
-            </div>
-            <div class="m2-label">How solid particles affect this</div>
-            <div class="m2-gate">
-                At high speeds, sand grains act like tiny sandblasters against the inside of the metal tubing. 
-                Because sand causes severe physical erosion, fluid must travel at much lower speeds to protect the pipe walls from washing out prematurely.
-            </div>
-        </div>
+        dp_curve = []
+        for md_i in md_range:
+            tvd_i = md_i * (t2_tvd / t2_md) if t2_md > 0 else md_i
+            dp_h = (rho_slurry_val * tvd_i) / 144.0
+            dp_f = (f_p * md_i * rho_slurry_val * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
+            dp_curve.append(dp_h + dp_f)
 
-        <div class="m2-card">
-            <div class="m2-card-head">
-                <span class="m2-card-num">CALLOUT 3</span>
-                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Tubing Blockage Risk (v_carrying)</h4>
-            </div>
-            <div class="m2-label">How solid particles affect this</div>
-            <div class="m2-purpose" style="border-left-color: #D97706;">
-                Because sand is dense, gravity constantly tries to pull the grains downward. 
-                If the produced fluid flows too slowly, sand grains drop out of the stream, accumulate at the bottom of the well, and form sand dunes that choke off fluid flow completely.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("---")
-        st.markdown("### 🎛️ Interactive Slurry Physics Sandbox")
-        st.caption("Adjust sand production parameters below to explore real-time shifts in the operating velocity window.")
-
-        # Determine candidate with largest operable velocity window
-        q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
-        best_pipe = None
-        max_window = -1.0
-
-        for _, candidate in st.session_state.tubing_db.iterrows():
-            cand_id = candidate['ID_in']
-            cand_cra = "13CR" in str(candidate['Grade']).upper() or "CRA" in str(candidate['Material']).upper()
-            cand_res = calculate_slurry_physics(q_liq_ref, 25.0, 2.65, 150.0, 52.0, 1.5, cand_id, cand_cra)
-            window_size = cand_res['v_erosional'] - cand_res['v_carrying']
-            
-            if window_size > max_window:
-                max_window = window_size
-                best_pipe = candidate
-
-        sb_d_i = best_pipe['ID_in']
-        is_cra = "13CR" in str(best_pipe['Grade']).upper() or "CRA" in str(best_pipe['Material']).upper()
-
-        col_sb1, col_sb2 = st.columns([1, 1.2])
-
-        with col_sb1:
-            st.markdown("##### ⚙️ Sandbox Input Parameters")
-            sb_sand_pptb = st.slider("Sand Concentration (PPTB - lbs/1000 bbl)", 0.0, 500.0, 25.0, 5.0)
-            st.caption("💡 *Higher concentration increases mixture density (ρ_slurry) and lowers the upper erosion ceiling (v_erosional).*")
-
-            sb_sand_d_um = st.slider("Grain Diameter (d_p - microns)", 10.0, 1000.0, 150.0, 10.0)
-            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity (v_carrying).*")
-
-            sb_sand_sg = st.slider("Grain Density (SG_s)", 1.5, 4.5, 2.65, 0.05)
-            st.caption("💡 *Denser minerals increase hydrostatic pressure drop (ΔP_hydrostatic) and accelerate sand fallout.*")
-
-            slurry_res = calculate_slurry_physics(q_liq_ref, sb_sand_pptb, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
-
-        with col_sb2:
-            st.markdown("##### 📊 Real-Time Dynamic Metrics")
-            m_col1, m_col2 = st.columns(2)
-            m_col1.metric("Solids Vol. Fraction (C_v)", f"{slurry_res['c_v']*100:.4f} %")
-            m_col2.metric("Slurry Density (ρ_slurry)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
-
-            m_col3, m_col4 = st.columns(2)
-            m_col3.metric("Salama Erosional Limit (v_erosional)", f"{slurry_res['v_erosional']:.2f} ft/s")
-            m_col4.metric("Rubey Carrying Limit (1.35 v_t)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
-
-            m_col5, m_col6 = st.columns(2)
-            m_col5.metric("Turner Liquid Lift Limit (v_turner)", f"{slurry_res['v_turner']:.2f} ft/s")
-            m_col6.metric("Governing Min Velocity (v_carrying)", f"{slurry_res['v_carrying']:.2f} ft/s")
-
-        st.markdown("---")
-        st.markdown("#### 📈 Operating Envelope Compression vs. Sand Concentration")
-        
-        pptb_range = np.linspace(0.1, 500.0, 100)
-        v_eros_list, v_carrying_list, v_rubey_list, v_turner_list = [], [], [], []
-
-        for p_val in pptb_range:
-            s_out = calculate_slurry_physics(q_liq_ref, p_val, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
-            v_eros_list.append(s_out['v_erosional'])
-            v_carrying_list.append(s_out['v_carrying'])
-            v_rubey_list.append(1.35 * s_out['v_t_rubey'])
-            v_turner_list.append(s_out['v_turner'])
-
-        fig_env = go.Figure()
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_eros_list, mode='lines', name='Salama Sand Erosion Limit (v_erosional)', line=dict(color='#DC2626', width=3)))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_carrying_list, mode='lines', name='Governing Carrying Limit (v_carrying)', line=dict(color='#059669', width=3)))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_rubey_list, mode='lines', name='Rubey Solid Settling (1.35 v_t)', line=dict(color='#D97706', dash='dash')))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_turner_list, mode='lines', name='Turner Droplet Lift Limit (v_turner)', line=dict(color='#2563EB', dash='dot')))
-        fig_env.add_trace(go.Scatter(
-            x=np.concatenate([pptb_range, pptb_range[::-1]]),
-            y=np.concatenate([v_eros_list, v_carrying_list[::-1]]),
-            fill='toself', fillcolor='rgba(59, 130, 246, 0.12)', line=dict(color='rgba(255,255,255,0)'),
-            hoverinfo="skip", name='Operable Velocity Window'
+        fig_dp_md = go.Figure()
+        fig_dp_md.add_trace(go.Scatter(
+            x=dp_curve, y=md_range, mode='lines',
+            name=f"Slurry Density: {rho_slurry_val:.1f} lb/ft³",
+            line=dict(color='#1E3A8A', width=3)
         ))
 
-        fig_env.update_layout(
-            title="Operating Envelope Squeeze vs. Sand Concentration",
-            xaxis_title="Sand Production Concentration (PPTB - lbs / 1000 bbl)",
-            yaxis_title="Flow Velocity Limits (ft/s)",
-            hovermode="x unified", margin=dict(t=50, b=40, l=40, r=40),
+        fig_dp_md.add_hline(y=t2_md, line_dash="dash", line_color="#0F172A", annotation_text=f"Current MD ({t2_md:.0f} ft)", annotation_position="bottom right")
+
+        fig_dp_md.update_layout(
+            title=f"Total Pressure Drop (ΔP_total) vs. Depth Profile (ρ_slurry: {rho_slurry_val:.1f} lb/ft³, ID: {t2_id:.3f}\")",
+            xaxis_title="Total Pressure Drop (psi)",
+            yaxis_title="Measured Depth / TVD (ft)",
+            yaxis=dict(autorange="reversed"),
+            hovermode="y unified", margin=dict(t=50, b=40, l=40, r=40),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
-        st.plotly_chart(fig_env, use_container_width=True)
+        st.plotly_chart(fig_dp_md, use_container_width=True)
 
-    # =========================================================================
-    # TAB 2: TOTAL SLURRY WELLBORE PRESSURE LOSS & FRICTION MECHANICS
-    # =========================================================================
-    with tab2:
-        st.markdown("### 📊 Total Slurry Pressure Drop (ΔP_total) & Hydraulics Sandbox")
-        
-        # Explanation of Pressure Drop in Tubing Selection
-        st.markdown("""
-        <div class="m2-purpose" style="margin-bottom: 1.2rem;">
-            <b>How does pressure drop (ΔP_total) govern tubing selection?</b><br/>
-            Selecting the optimal tubing inner diameter (ID) requires balancing fluid velocity against total pressure drop:
-            <ul>
-                <li><b>Small Tubing ID:</b> Boosts fluid velocity above critical carrying limits (v_carrying) to prevent sand settling, but drastically spikes frictional pressure loss (ΔP_fric ∝ 1/d_i^5). If ΔP_total exceeds available drawdown (ΔP_available = P_bhp - P_wh), the well stops flowing naturally.</li>
-                <li><b>Large Tubing ID:</b> Minimizes wall friction and pressure loss, preserving reservoir pressure. However, fluid velocity may drop below v_carrying, triggering sand fallout, liquid loading, and severe wellbore choking.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    # Plot 2: Continuous Stacked Area Plot across Tubing IDs
+    with chart_tab2:
+        id_continuous_range = np.linspace(1.5, 6.0, 100)
+        dp_hydro_cont = []
+        dp_fric_cont = []
 
-        # Unified Interactive Sandbox & Control Panel
-        st.markdown("#### 🎛️ Interactive Hydraulics & Regime Sandbox")
-        st.caption("Adjust flow rates, fluid properties, slurry density, and well depths below. All dynamic metrics and sensitivity plots update in real time.")
-
-        col_t2_ctrl1, col_t2_ctrl2 = st.columns([1, 1])
-
-        with col_t2_ctrl1:
-            st.markdown("##### ⚙️ Production & Depth Controls")
-            t2_q_liq = st.slider("Liquid Flow Rate (Q_liq - STB/D)", 500.0, 20000.0, 5000.0, 500.0)
-            t2_rho_slurry_override = st.slider("Slurry Mixture Density (ρ_slurry - lb/ft³)", 45.0, 90.0, 55.0, 1.0)
-            t2_id = st.slider("Tubing Inner Diameter (d_i - in)", 1.500, 6.000, 2.992, 0.050)
-            t2_tvd = st.slider("True Vertical Depth (TVD - ft)", 1000.0, 25000.0, float(st.session_state.inputs.get('tvd', 10000.0)), 500.0)
+        for id_val in id_continuous_range:
+            d_ft = id_val / 12.0
+            a_ft2 = (np.pi / 4.0) * (d_ft ** 2)
+            v_m_c = q_m_ft3s / a_ft2
             
-        with col_t2_ctrl2:
-            st.markdown("##### 🛠️ Fluid & Trajectory Drag Controls")
-            t2_md = st.slider("Measured Depth / Trajectory (MD/VD - ft)", t2_tvd, t2_tvd * 1.5, max(float(st.session_state.inputs.get('md', 11500.0)), t2_tvd), 500.0)
-            t2_roughness = st.slider("Pipe Absolute Roughness (ε - in)", 0.0001, 0.0050, 0.0006, 0.0001, format="%.4f")
-            t2_visc = st.slider("Fluid Viscosity (μ_m - cP)", 0.5, 20.0, 1.5, 0.5)
-
-        # Core Hydraulic Calculations (Using Sandbox Slurry Density Input)
-        rho_slurry_val = t2_rho_slurry_override
-        
-        d_i_ft = t2_id / 12.0
-        area_ft2 = (np.pi / 4.0) * (d_i_ft ** 2)
-        q_m_ft3s = (t2_q_liq * 5.615) / 86400.0
-        v_m_val = q_m_ft3s / area_ft2
-        
-        mu_lbfts = t2_visc * 0.000672
-        re_slurry = (rho_slurry_val * v_m_val * d_i_ft) / mu_lbfts if mu_lbfts > 0 else 10000.0
-        rel_roughness = t2_roughness / t2_id
-
-        # Colebrook-White Friction Factor Iteration
-        if re_slurry <= 2100:
-            regime_str = "Laminar Flow"
-            f_factor = 64.0 / re_slurry if re_slurry > 0 else 0.04
-        elif re_slurry > 4000:
-            regime_str = "Turbulent Flow"
-            f_guess = 0.02
-            for _ in range(20):
-                f_next = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_slurry)) ** 2
-                if abs(f_next - f_guess) < 1e-7:
-                    break
-                f_guess = f_next
-            f_factor = f_next
-        else:
-            regime_str = "Transitional Flow"
-            f_lam = 64.0 / 2100.0
-            f_turb = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / 4000.0)) ** 2
-            f_factor = f_lam + (f_turb - f_lam) * ((re_slurry - 2100.0) / 1900.0)
-
-        # Pressure Drops
-        dp_hydro_val = (rho_slurry_val * t2_tvd) / 144.0
-        dp_fric_val = (f_factor * t2_md * rho_slurry_val * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
-        dp_total_val = dp_hydro_val + dp_fric_val
-
-        st.markdown("---")
-        col_m_disp, col_regime_disp = st.columns([1.1, 1.1])
-
-        # Dynamic Hydraulics Metrics Output
-        with col_m_disp:
-            st.markdown("##### 📊 Live Dynamic Hydraulics Output")
-            rm_col1, rm_col2 = st.columns(2)
-            rm_col1.metric("Slurry Reynolds No. (Re_slurry)", f"{re_slurry:,.0f}")
-            rm_col2.metric("Flow Regime", regime_str)
-
-            rm_col3, rm_col4 = st.columns(2)
-            rm_col3.metric("Friction Factor (f)", f"{f_factor:.5f}")
-            rm_col4.metric("Flow Velocity (v_m)", f"{v_m_val:.2f} ft/s")
-
-            rm_col5, rm_col6 = st.columns(2)
-            rm_col5.metric("Hydrostatic Loss (ΔP_hydro)", f"{dp_hydro_val:.1f} psi")
-            rm_col6.metric("Frictional Loss (ΔP_fric)", f"{dp_fric_val:.1f} psi")
-
-            st.metric("Total Slurry Pressure Loss (ΔP_total)", f"{dp_total_val:.1f} psi")
-
-        # Dynamic Flow Regime Visualizer (50% Slower Speeds)
-        with col_regime_disp:
-            st.markdown("##### 🌊 Dynamic Flow Regime Visualizer")
+            re_c = (rho_slurry_val * v_m_c * d_ft) / mu_lbfts
+            rel_r_c = t2_roughness / id_val
             
-            re_tier = int(re_slurry // 5000)
+            if re_c <= 2100:
+                f_c = 64.0 / re_c
+            else:
+                f_c = 1.0 / (-1.8 * np.log10((rel_r_c / 3.7) ** 1.11 + 6.9 / re_c)) ** 2
+                
+            dp_h_c = (rho_slurry_val * t2_tvd) / 144.0
+            dp_f_c = (f_c * t2_md * rho_slurry_val * (v_m_c ** 2)) / (2.0 * 32.174 * d_ft * 144.0)
             
-            # Speed durations doubled to slow animation down by 50%
-            if re_slurry <= 2100:
-                arrow_color = "#2563EB"  # Cool Blue
-                anim_speed = "7.0s"
-                regime_badge = "Laminar Flow (Re ≤ 2,100)"
-                flow_desc = "Smooth, parallel fluid streamlines with zero inter-layer mixing."
-            elif re_slurry <= 4000:
-                arrow_color = "#D97706"  # Warm Amber
-                anim_speed = "4.4s"
-                regime_badge = "Transitional Flow (2,100 < Re ≤ 4,000)"
-                flow_desc = "Unstable flow transition with emerging eddy currents."
-            elif re_tier == 0:  # 4000 - 5000
-                arrow_color = "#E11D48"  # Crimson
-                anim_speed = "3.0s"
-                regime_badge = "Turbulent Flow (Re: 4,000 - 5,000)"
-                flow_desc = "Low-range turbulent eddies and wall shear stress."
-            elif re_tier == 1:  # 5000 - 10000
-                arrow_color = "#DC2626"  # Deep Red
-                anim_speed = "2.2s"
-                regime_badge = "Turbulent Flow (Re: 5,000 - 10,000)"
-                flow_desc = "Moderate turbulence with increased kinetic dissipation."
-            elif re_tier == 2:  # 10000 - 15000
-                arrow_color = "#B91C1C"  # Intense Red
-                anim_speed = "1.6s"
-                regime_badge = "Turbulent Flow (Re: 10,000 - 15,000)"
-                flow_desc = "High turbulence with steep frictional pressure loss spikes."
-            elif re_tier == 3:  # 15000 - 20000
-                arrow_color = "#991B1B"  # Dark Crimson
-                anim_speed = "1.0s"
-                regime_badge = "Turbulent Flow (Re: 15,000 - 20,000)"
-                flow_desc = "Severe turbulent shear and heavy internal energy loss."
-            else:  # > 20000
-                arrow_color = "#7F1D1D"  # Extreme Purple-Red
-                anim_speed = "0.6s"
-                regime_badge = f"Fully Rough Turbulent Flow (Re > 20,000)"
-                flow_desc = "Fully developed rough turbulent flow dominated by wall friction."
+            dp_hydro_cont.append(dp_h_c)
+            dp_fric_cont.append(dp_f_c)
 
-            animated_conduit_html = f"""
-            <style>
-            @keyframes flowArrow {{
-                0% {{ transform: translateX(-40px); opacity: 0.2; }}
-                50% {{ opacity: 1; }}
-                100% {{ transform: translateX(240px); opacity: 0.2; }}
-            }}
-            .pipe-conduit {{
-                width: 100%;
-                height: 100px;
-                background: #0F172A;
-                border-top: 4px solid #64748B;
-                border-bottom: 4px solid #64748B;
-                border-radius: 8px;
-                position: relative;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-around;
-                padding: 10px 0;
-                box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-            }}
-            .arrow-stream {{
-                display: flex;
-                gap: 50px;
-                animation: flowArrow {anim_speed} linear infinite;
-            }}
-            .arrow-item {{
-                color: {arrow_color};
-                font-size: 20px;
-                font-weight: bold;
-            }}
-            </style>
-            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.82rem; font-weight:800; color:{arrow_color};">{regime_badge}</span>
-                </div>
-                <div class="pipe-conduit">
-                    <div class="arrow-stream">
-                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
-                    </div>
-                    <div class="arrow-stream" style="animation-delay: -0.8s;">
-                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
-                    </div>
-                    <div class="arrow-stream" style="animation-delay: -1.6s;">
-                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
-                    </div>
-                </div>
-                <p style="font-size:0.8rem; color:#475569; margin-top:8px; line-height:1.3;">{flow_desc}</p>
-            </div>
-            """
-            st.markdown(animated_conduit_html, unsafe_allow_html=True)
+        fig_area = go.Figure()
 
-        st.markdown("---")
-        st.markdown("### 📈 Real-Time Sandbox Visualizations")
+        # Hydrostatic Loss Layer
+        fig_area.add_trace(go.Scatter(
+            x=id_continuous_range, y=dp_hydro_cont,
+            mode='lines', name='Hydrostatic Loss (ΔP_hydro)',
+            stackgroup='one',
+            line=dict(color='#1E3A8A', width=2),
+            fillcolor='rgba(30, 58, 138, 0.65)'
+        ))
 
-        chart_tab1, chart_tab2 = st.tabs([
-            "📉 Total Pressure Drop vs. Depth Profile across Slurry Densities",
-            "📊 Continuous Hydrostatic vs. Frictional Loss Area Breakdown"
-        ])
+        # Frictional Loss Layer
+        fig_area.add_trace(go.Scatter(
+            x=id_continuous_range, y=dp_fric_cont,
+            mode='lines', name='Frictional Loss (ΔP_fric)',
+            stackgroup='one',
+            line=dict(color='#DC2626', width=2),
+            fillcolor='rgba(220, 38, 38, 0.65)'
+        ))
 
-        # Plot 1: Total ΔP vs Depth across Slurry Density Values (Replaces Sand Rate)
-        with chart_tab1:
-            md_range = np.linspace(0.0, max(t2_md, 15000.0), 50)
-            rho_slurry_series = [45.0, 52.0, 60.0, 72.0, 85.0]
-            
-            fig_dp_md = go.Figure()
-
-            for rho_s_val in rho_slurry_series:
-                re_p = (rho_s_val * v_m_val * d_i_ft) / mu_lbfts
-                f_p = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_p)) ** 2 if re_p > 4000 else 64.0 / re_p
-                
-                dp_curve = []
-                for md_i in md_range:
-                    tvd_i = md_i * (t2_tvd / t2_md) if t2_md > 0 else md_i
-                    dp_h = (rho_s_val * tvd_i) / 144.0
-                    dp_f = (f_p * md_i * rho_s_val * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
-                    dp_curve.append(dp_h + dp_f)
-
-                fig_dp_md.add_trace(go.Scatter(
-                    x=dp_curve, y=md_range, mode='lines',
-                    name=f"Slurry Density: {rho_s_val:.1f} lb/ft³"
-                ))
-
-            fig_dp_md.add_hline(y=t2_md, line_dash="dash", line_color="#0F172A", annotation_text=f"Current MD ({t2_md:.0f} ft)", annotation_position="bottom right")
-
-            fig_dp_md.update_layout(
-                title=f"Total Pressure Drop (ΔP_total) vs. Depth Profile (ID: {t2_id:.3f}\", Q_liq: {t2_q_liq:.0f} STB/D)",
-                xaxis_title="Total Pressure Drop (psi)",
-                yaxis_title="Measured Depth / TVD (ft)",
-                yaxis=dict(autorange="reversed"),  # Surface at top, depth increasing downwards
-                hovermode="y unified", margin=dict(t=50, b=40, l=40, r=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_dp_md, use_container_width=True)
-
-        # Plot 2: Continuous Stacked Area Plot across Tubing IDs
-        with chart_tab2:
-            id_continuous_range = np.linspace(1.5, 6.0, 100)
-            dp_hydro_cont = []
-            dp_fric_cont = []
-
-            for id_val in id_continuous_range:
-                d_ft = id_val / 12.0
-                a_ft2 = (np.pi / 4.0) * (d_ft ** 2)
-                v_m_c = q_m_ft3s / a_ft2
-                
-                re_c = (rho_slurry_val * v_m_c * d_ft) / mu_lbfts
-                rel_r_c = t2_roughness / id_val
-                
-                if re_c <= 2100:
-                    f_c = 64.0 / re_c
-                else:
-                    f_c = 1.0 / (-1.8 * np.log10((rel_r_c / 3.7) ** 1.11 + 6.9 / re_c)) ** 2
-                    
-                dp_h_c = (rho_slurry_val * t2_tvd) / 144.0
-                dp_f_c = (f_c * t2_md * rho_slurry_val * (v_m_c ** 2)) / (2.0 * 32.174 * d_ft * 144.0)
-                
-                dp_hydro_cont.append(dp_h_c)
-                dp_fric_cont.append(dp_f_c)
-
-            fig_area = go.Figure()
-
-            # Hydrostatic Loss (Bottom Layer)
-            fig_area.add_trace(go.Scatter(
-                x=id_continuous_range, y=dp_hydro_cont,
-                mode='lines', name='Hydrostatic Loss (ΔP_hydro)',
-                stackgroup='one',
-                line=dict(color='#1E3A8A', width=2),
-                fillcolor='rgba(30, 58, 138, 0.65)'
-            ))
-
-            # Frictional Loss (Stacked Top Layer)
-            fig_area.add_trace(go.Scatter(
-                x=id_continuous_range, y=dp_fric_cont,
-                mode='lines', name='Frictional Loss (ΔP_fric)',
-                stackgroup='one',
-                line=dict(color='#DC2626', width=2),
-                fillcolor='rgba(220, 38, 38, 0.65)'
-            ))
-
-            fig_area.update_layout(
-                title=f"Continuous Pressure Loss Breakdown vs. Tubing Inner Diameter (ρ_slurry: {rho_slurry_val:.1f} lb/ft³, TVD: {t2_tvd:.0f} ft)",
-                xaxis_title="Tubing Inner Diameter (d_i - in)",
-                yaxis_title="Pressure Drop (psi)",
-                hovermode="x unified",
-                margin=dict(t=50, b=40, l=40, r=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_area, use_container_width=True)
+        fig_area.update_layout(
+            title=f"Continuous Pressure Loss Breakdown vs. Tubing Inner Diameter (ρ_slurry: {rho_slurry_val:.1f} lb/ft³, TVD: {t2_tvd:.0f} ft)",
+            xaxis_title="Tubing Inner Diameter (d_i - in)",
+            yaxis_title="Pressure Drop (psi)",
+            hovermode="x unified",
+            margin=dict(t=50, b=40, l=40, r=40),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_area, use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
