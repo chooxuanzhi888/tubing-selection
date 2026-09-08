@@ -3202,9 +3202,10 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
     st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
         "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
         "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics",
+        "⚡ Tab 3: Erosional Velocity Limits (Salama vs. API 14E)"
     ])
 
     # =========================================================================
@@ -3228,7 +3229,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 1</span>
-                <h4 class="m2-card-title" style="color: #1E3A8A;">Heavy Fluid Column & Pressure Drop Inflation ($\Delta P_{\\text{hydrostatic}}$)</h4>
+                <h4 class="m2-card-title" style="color: #1E3A8A;">Heavy Fluid Column & Pressure Drop Inflation (ΔP_hydrostatic)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose">
@@ -3240,7 +3241,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 2</span>
-                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Boundary Suppression ($v_{\\text{erosional}}$)</h4>
+                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Boundary Suppression (v_erosional)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-gate">
@@ -3252,7 +3253,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 3</span>
-                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Tubing Blockage Risk ($v_{\\text{carrying}}$)</h4>
+                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Tubing Blockage Risk (v_carrying)</h4>
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose" style="border-left-color: #D97706;">
@@ -3289,29 +3290,29 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         with col_sb1:
             st.markdown("##### ⚙️ Sandbox Input Parameters")
             sb_sand_pptb = st.slider("Sand Concentration (PPTB - lbs/1000 bbl)", 0.0, 500.0, 25.0, 5.0)
-            st.caption("💡 *Higher concentration increases mixture density ($\\rho_{\\text{slurry}}$) and lowers the upper erosion ceiling ($v_{\\text{erosional}}$).*")
+            st.caption("💡 *Higher concentration increases mixture density (ρ_slurry) and lowers the upper erosion ceiling (v_erosional).*")
 
-            sb_sand_d_um = st.slider("Grain Diameter ($d_p$ - microns)", 10.0, 1000.0, 150.0, 10.0)
-            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity ($v_{\\text{carrying}}$).*")
+            sb_sand_d_um = st.slider("Grain Diameter (d_p - microns)", 10.0, 1000.0, 150.0, 10.0)
+            st.caption("💡 *Larger particles settle faster due to gravity, raising the required minimum carrying velocity (v_carrying).*")
 
-            sb_sand_sg = st.slider("Grain Density ($\\text{SG}_s$)", 1.5, 4.5, 2.65, 0.05)
-            st.caption("💡 *Denser minerals increase hydrostatic pressure drop ($\\Delta P_{\\text{hydrostatic}}$) and accelerate sand fallout.*")
+            sb_sand_sg = st.slider("Grain Density (SG_s)", 1.5, 4.5, 2.65, 0.05)
+            st.caption("💡 *Denser minerals increase hydrostatic pressure drop (ΔP_hydrostatic) and accelerate sand fallout.*")
 
             slurry_res = calculate_slurry_physics(q_liq_ref, sb_sand_pptb, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
 
         with col_sb2:
             st.markdown("##### 📊 Real-Time Dynamic Metrics")
             m_col1, m_col2 = st.columns(2)
-            m_col1.metric("Solids Vol. Fraction ($C_v$)", f"{slurry_res['c_v']*100:.4f} %")
-            m_col2.metric("Slurry Density ($\\rho_{\\text{slurry}}$)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
+            m_col1.metric("Solids Vol. Fraction (C_v)", f"{slurry_res['c_v']*100:.4f} %")
+            m_col2.metric("Slurry Density (ρ_slurry)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
 
             m_col3, m_col4 = st.columns(2)
-            m_col3.metric("Salama Erosional Limit ($v_{\\text{erosional}}$)", f"{slurry_res['v_erosional']:.2f} ft/s")
-            m_col4.metric("Rubey Carrying Limit ($1.35 v_t$)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
+            m_col3.metric("Salama Erosional Limit (v_erosional)", f"{slurry_res['v_erosional']:.2f} ft/s")
+            m_col4.metric("Rubey Carrying Limit (1.35 v_t)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
 
             m_col5, m_col6 = st.columns(2)
-            m_col5.metric("Turner Liquid Lift Limit ($v_{\\text{turner}}$)", f"{slurry_res['v_turner']:.2f} ft/s")
-            m_col6.metric("Governing Min Velocity ($v_{\\text{carrying}}$)", f"{slurry_res['v_carrying']:.2f} ft/s")
+            m_col5.metric("Turner Liquid Lift Limit (v_turner)", f"{slurry_res['v_turner']:.2f} ft/s")
+            m_col6.metric("Governing Min Velocity (v_carrying)", f"{slurry_res['v_carrying']:.2f} ft/s")
 
         st.markdown("---")
         st.markdown("#### 📈 Operating Envelope Compression vs. Sand Concentration")
@@ -3327,10 +3328,10 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             v_turner_list.append(s_out['v_turner'])
 
         fig_env = go.Figure()
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_eros_list, mode='lines', name='Salama Sand Erosion Limit ($v_{\\text{erosional}}$)', line=dict(color='#DC2626', width=3)))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_carrying_list, mode='lines', name='Governing Carrying Limit ($v_{\\text{carrying}}$)', line=dict(color='#059669', width=3)))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_rubey_list, mode='lines', name='Rubey Solid Settling ($1.35 v_t$)', line=dict(color='#D97706', dash='dash')))
-        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_turner_list, mode='lines', name='Turner Droplet Lift Limit ($v_{\\text{turner}}$)', line=dict(color='#2563EB', dash='dot')))
+        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_eros_list, mode='lines', name='Salama Sand Erosion Limit (v_erosional)', line=dict(color='#DC2626', width=3)))
+        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_carrying_list, mode='lines', name='Governing Carrying Limit (v_carrying)', line=dict(color='#059669', width=3)))
+        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_rubey_list, mode='lines', name='Rubey Solid Settling (1.35 v_t)', line=dict(color='#D97706', dash='dash')))
+        fig_env.add_trace(go.Scatter(x=pptb_range, y=v_turner_list, mode='lines', name='Turner Droplet Lift Limit (v_turner)', line=dict(color='#2563EB', dash='dot')))
         fig_env.add_trace(go.Scatter(
             x=np.concatenate([pptb_range, pptb_range[::-1]]),
             y=np.concatenate([v_eros_list, v_carrying_list[::-1]]),
@@ -3351,16 +3352,16 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
     # TAB 2: TOTAL SLURRY WELLBORE PRESSURE LOSS & FRICTION MECHANICS
     # =========================================================================
     with tab2:
-        st.markdown("### 📊 Total Slurry Pressure Drop ($\Delta P_{\\text{total}}$) & Hydraulics")
+        st.markdown("### 📊 Total Slurry Pressure Drop (ΔP_total) & Hydraulics")
         
         # Pressure Drop Impact on Tubing Selection Explanation
         st.markdown("""
         <div class="m2-purpose" style="margin-bottom: 1.2rem;">
-            <b>How does pressure drop ($\Delta P_{\\text{total}}$) govern tubing selection?</b><br/>
-            Selecting the optimal tubing inner diameter ($\text{ID}$) requires balancing fluid velocity against total pressure drop:
+            <b>How does pressure drop (ΔP_total) govern tubing selection?</b><br/>
+            Selecting the optimal tubing inner diameter (ID) requires balancing fluid velocity against total pressure drop:
             <ul>
-                <li><b>Small Tubing ID:</b> Boosts fluid velocity above critical carrying limits ($v_{\\text{carrying}}$) to prevent sand settling, but drastically spikes frictional pressure loss ($\Delta P_{\\text{fric}} \propto 1/d_i^5$). If $\Delta P_{\\text{total}}$ exceeds available drawdown ($\Delta P_{\\text{available}} = P_{\\text{bhp}} - P_{\\text{wh}}$), the well stops flowing naturally.</li>
-                <li><b>Large Tubing ID:</b> Minimizes wall friction and pressure loss, preserving reservoir pressure. However, fluid velocity may drop below $v_{\\text{carrying}}$, triggering sand fallout, liquid loading, and wellbore severe choking.</li>
+                <li><b>Small Tubing ID:</b> Boosts fluid velocity above critical carrying limits (v_carrying) to prevent sand settling, but drastically spikes frictional pressure loss (ΔP_fric ∝ 1/d_i^5). If ΔP_total exceeds available drawdown (ΔP_available = P_bhp - P_wh), the well stops flowing naturally.</li>
+                <li><b>Large Tubing ID:</b> Minimizes wall friction and pressure loss, preserving reservoir pressure. However, fluid velocity may drop below v_carrying, triggering sand fallout, liquid loading, and severe wellbore choking.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -3372,12 +3373,12 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 <span class="m2-card-num">COMPOUND EFFECT</span>
                 <h4 class="m2-card-title" style="color: #1E3A8A;">The Compound Slurry Impact on Pressure Loss</h4>
             </div>
-            <div class="m2-label">How sand concentration ($\text{PPTB}$) compounds total pressure loss</div>
+            <div class="m2-label">How sand concentration (PPTB) compounds total pressure loss</div>
             <div class="m2-purpose">
-                Suspended sand increases bulk slurry density ($\rho_{\\text{slurry}}$). This creates a double pressure penalty:
+                Suspended sand increases bulk slurry density (ρ_slurry). This creates a double pressure penalty:
                 <ol>
-                    <li><b>Hydrostatic Penalty ($\Delta P_{\\text{hydro}}$):</b> A heavier slurry column directly increases hydrostatic pressure head ($\Delta P_{\\text{hydro}} = \rho_{\\text{slurry}} \cdot \text{TVD} / 144$).</li>
-                    <li><b>Frictional Penalty ($\Delta P_{\\text{fric}}$):</b> Higher density increases slurry momentum, raising the slurry Reynolds number ($\text{Re}_{\\text{slurry}}$) and compounding wall friction shear stress during turbulent transport.</li>
+                    <li><b>Hydrostatic Penalty (ΔP_hydro):</b> A heavier slurry column directly increases hydrostatic pressure head (ΔP_hydro = ρ_slurry · TVD / 144).</li>
+                    <li><b>Frictional Penalty (ΔP_fric):</b> Higher density increases slurry momentum, raising the slurry Reynolds number (Re_slurry) and compounding wall friction shear stress during turbulent transport.</li>
                 </ol>
             </div>
         </div>
@@ -3392,11 +3393,11 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         # Isolated Sandbox Sliders
         with col_t2_1:
             st.markdown("##### ⚙️ Flow & Friction Controls")
-            t2_q_liq = st.slider("Liquid Flow Rate ($Q_{\\text{liq}}$ - STB/D)", 500.0, 20000.0, 5000.0, 500.0)
-            t2_pptb = st.slider("Sand Concentration ($\text{PPTB}$)", 0.0, 500.0, 50.0, 10.0)
-            t2_id = st.slider("Tubing Inner Diameter ($d_i$ - in)", 1.500, 6.000, 2.992, 0.050)
-            t2_roughness = st.slider("Pipe Absolute Roughness ($\epsilon$ - in)", 0.0001, 0.0050, 0.0006, 0.0001, format="%.4f")
-            t2_visc = st.slider("Fluid Viscosity ($\mu_m$ - cP)", 0.5, 20.0, 1.5, 0.5)
+            t2_q_liq = st.slider("Liquid Flow Rate (Q_liq - STB/D)", 500.0, 20000.0, 5000.0, 500.0)
+            t2_pptb = st.slider("Sand Concentration (PPTB)", 0.0, 500.0, 50.0, 10.0)
+            t2_id = st.slider("Tubing Inner Diameter (d_i - in)", 1.500, 6.000, 2.992, 0.050)
+            t2_roughness = st.slider("Pipe Absolute Roughness (ε - in)", 0.0001, 0.0050, 0.0006, 0.0001, format="%.4f")
+            t2_visc = st.slider("Fluid Viscosity (μ_m - cP)", 0.5, 20.0, 1.5, 0.5)
 
             # Calculation using local sandbox inputs
             t2_tvd = float(st.session_state.inputs.get('tvd', 10000.0))
@@ -3423,7 +3424,6 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 f_factor = 64.0 / re_slurry if re_slurry > 0 else 0.04
             elif re_slurry > 4000:
                 regime_str = "Turbulent Flow"
-                # Iterative Colebrook-White
                 f_guess = 0.02
                 for _ in range(20):
                     f_next = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_slurry)) ** 2
@@ -3446,25 +3446,25 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         with col_t2_2:
             st.markdown("##### 📊 Real-Time Hydraulics & Friction Metrics")
             rm_col1, rm_col2 = st.columns(2)
-            rm_col1.metric("Slurry Reynolds No. ($\\text{Re}_{\\text{slurry}}$)", f"{re_slurry:,.0f}")
+            rm_col1.metric("Slurry Reynolds No. (Re_slurry)", f"{re_slurry:,.0f}")
             rm_col2.metric("Flow Regime", regime_str)
 
             rm_col3, rm_col4 = st.columns(2)
-            rm_col3.metric("Friction Factor ($f$)", f"{f_factor:.5f}")
-            rm_col4.metric("Flow Velocity ($v_m$)", f"{v_m_val:.2f} ft/s")
+            rm_col3.metric("Friction Factor (f)", f"{f_factor:.5f}")
+            rm_col4.metric("Flow Velocity (v_m)", f"{v_m_val:.2f} ft/s")
 
             rm_col5, rm_col6 = st.columns(2)
-            rm_col5.metric("Hydrostatic Drop ($\\Delta P_{\\text{hydro}}$)", f"{dp_hydro_val:.1f} psi")
-            rm_col6.metric("Frictional Loss ($\\Delta P_{\\text{fric}}$)", f"{dp_fric_val:.1f} psi")
+            rm_col5.metric("Hydrostatic Drop (ΔP_hydro)", f"{dp_hydro_val:.1f} psi")
+            rm_col6.metric("Frictional Loss (ΔP_fric)", f"{dp_fric_val:.1f} psi")
 
-            st.metric("Total Slurry Pressure Loss ($\\Delta P_{\\text{total}}$)", f"{dp_total_val:.1f} psi")
+            st.metric("Total Slurry Pressure Loss (ΔP_total)", f"{dp_total_val:.1f} psi")
 
         st.markdown("---")
         st.markdown("### 📈 Interactive Sensitivity & Pressure Loss Visualizations")
 
         chart_tab1, chart_tab2 = st.tabs([
             "📉 Total Pressure Drop vs. Depth Across Sand Loading",
-            "📊 Hydrostatic vs. Frictional Loss Breakdown"
+            "📊 Continuous Hydrostatic vs. Frictional Loss Area Breakdown"
         ])
 
         # Plot 1: Total ΔP vs MD across Sand Loading Rates (PPTB)
@@ -3478,13 +3478,12 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 slurry_p = calculate_slurry_physics(t2_q_liq, p_rate, 2.65, 150.0, 52.0, t2_id, False)
                 rho_s_p = slurry_p['rho_slurry']
                 
-                # Recalculate friction
                 re_p = (rho_s_p * v_m_val * d_i_ft) / mu_lbfts
                 f_p = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_p)) ** 2 if re_p > 4000 else 64.0 / re_p
                 
                 dp_curve = []
                 for md_i in md_range:
-                    tvd_i = md_i * (t2_tvd / t2_md)  # proportional TVD
+                    tvd_i = md_i * (t2_tvd / t2_md)
                     dp_h = (rho_s_p * tvd_i) / 144.0
                     dp_f = (f_p * md_i * rho_s_p * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
                     dp_curve.append(dp_h + dp_f)
@@ -3495,7 +3494,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 ))
 
             fig_dp_md.update_layout(
-                title="Total Slurry Pressure Drop ($\\Delta P_{\\text{total}}$) vs. Measured Depth",
+                title="Total Slurry Pressure Drop (ΔP_total) vs. Measured Depth",
                 xaxis_title="Measured Depth (MD - ft)",
                 yaxis_title="Total Pressure Drop (psi)",
                 hovermode="x unified", margin=dict(t=50, b=40, l=40, r=40),
@@ -3503,28 +3502,21 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             )
             st.plotly_chart(fig_dp_md, use_container_width=True)
 
-        # Plot 2: Pressure Breakdown Chart across Specified Tubing IDs
+        # Plot 2: Continuous Shaded Stacked Area Plot across Tubing IDs (1.5" to 6.0")
         with chart_tab2:
-            st.caption("Specify tubing inner diameters to evaluate hydrostatic vs. frictional loss breakdown:")
+            st.caption("Continuous stacked area chart showing dynamic transition from friction-dominated (small ID) to hydrostatic-dominated (large ID) pressure loss:")
             
-            id_input_str = st.text_input("Enter Tubing Inner Diameters (inches, comma-separated):", "1.995, 2.441, 2.992, 3.958, 4.892")
-            
-            try:
-                custom_ids = [float(x.strip()) for x in id_input_str.split(",") if x.strip()]
-            except ValueError:
-                custom_ids = [1.995, 2.441, 2.992, 3.958]
+            id_continuous_range = np.linspace(1.5, 6.0, 100)
+            dp_hydro_cont = []
+            dp_fric_cont = []
 
-            id_labels = []
-            dp_hydro_list = []
-            dp_fric_list = []
-
-            for custom_id in custom_ids:
-                d_ft = custom_id / 12.0
+            for id_val in id_continuous_range:
+                d_ft = id_val / 12.0
                 a_ft2 = (np.pi / 4.0) * (d_ft ** 2)
                 v_m_c = q_m_ft3s / a_ft2
                 
                 re_c = (rho_slurry_val * v_m_c * d_ft) / mu_lbfts
-                rel_r_c = t2_roughness / custom_id
+                rel_r_c = t2_roughness / id_val
                 
                 if re_c <= 2100:
                     f_c = 64.0 / re_c
@@ -3534,31 +3526,44 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 dp_h_c = (rho_slurry_val * t2_tvd) / 144.0
                 dp_f_c = (f_c * t2_md * rho_slurry_val * (v_m_c ** 2)) / (2.0 * 32.174 * d_ft * 144.0)
                 
-                id_labels.append(f"{custom_id:.3f}\" ID")
-                dp_hydro_list.append(dp_h_c)
-                dp_fric_list.append(dp_f_c)
+                dp_hydro_cont.append(dp_h_c)
+                dp_fric_cont.append(dp_f_c)
 
-            fig_breakdown = go.Figure()
-            fig_breakdown.add_trace(go.Bar(
-                x=id_labels, y=dp_hydro_list,
-                name='Hydrostatic Loss ($\\Delta P_{\\text{hydro}}$)',
-                marker_color='#1E3A8A'
-            ))
-            fig_breakdown.add_trace(go.Bar(
-                x=id_labels, y=dp_fric_list,
-                name='Frictional Loss ($\\Delta P_{\\text{fric}}$)',
-                marker_color='#DC2626'
+            fig_area = go.Figure()
+
+            # Hydrostatic Loss (Bottom Layer)
+            fig_area.add_trace(go.Scatter(
+                x=id_continuous_range, y=dp_hydro_cont,
+                mode='lines', name='Hydrostatic Loss (ΔP_hydro)',
+                stackgroup='one',
+                line=dict(color='#1E3A8A', width=2),
+                fillcolor='rgba(30, 58, 138, 0.65)'
             ))
 
-            fig_breakdown.update_layout(
-                barmode='stack',
-                title="Hydrostatic vs. Frictional Pressure Loss Split across Tubing Sizes",
-                xaxis_title="Tubing Inner Diameter (in)",
+            # Frictional Loss (Stacked Top Layer)
+            fig_area.add_trace(go.Scatter(
+                x=id_continuous_range, y=dp_fric_cont,
+                mode='lines', name='Frictional Loss (ΔP_fric)',
+                stackgroup='one',
+                line=dict(color='#DC2626', width=2),
+                fillcolor='rgba(220, 38, 38, 0.65)'
+            ))
+
+            fig_area.update_layout(
+                title="Continuous Pressure Loss Breakdown vs. Tubing Inner Diameter (ID)",
+                xaxis_title="Tubing Inner Diameter (d_i - in)",
                 yaxis_title="Pressure Drop (psi)",
+                hovermode="x unified",
                 margin=dict(t=50, b=40, l=40, r=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
-            st.plotly_chart(fig_breakdown, use_container_width=True)
+            st.plotly_chart(fig_area, use_container_width=True)
+
+    # =========================================================================
+    # TAB 3: EROSIONAL VELOCITY LIMITS
+    # =========================================================================
+    with tab3:
+        st.info("Erosional velocity comparison (Salama vs API 14E C-Factor) integrated into main velocity window.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
