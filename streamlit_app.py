@@ -2784,11 +2784,11 @@ elif page == "2. Wellbore Geometry & PVT":
 
     tab_pvt, tab_geo = st.tabs([
         "📊 Tab 1: Interactive PVT & Depth Profiles",
-        "📐 Tab 2: Wellbore Trajectory & Geometry"
+        "📐 Tab 2: Gas Thermodynamics & Mixture Density"
     ])
 
     # -------------------------------------------------------------------------
-    # TAB 1: INTERACTIVE PVT & DEPTH PROFILES
+    # TAB 1: INTERACTIVE PVT & DEPTH PROFILES (EXISTING OIL/GAS MODE)
     # -------------------------------------------------------------------------
     with tab_pvt:
         inputs = st.session_state.inputs
@@ -2834,13 +2834,13 @@ elif page == "2. Wellbore Geometry & PVT":
         else:
             st.info(
                 "💡 **Gas Well Mode Explanation:** Uses the **Dranchuk-Abou-Kassem (DAK) Equation of State** to calculate "
-                "gas compressibility (Z-factor), in-situ gas density (rho_g), gas formation volume factor (B_g), and "
+                "gas compressibility (Z_Factor), in-situ gas density (rho_g), gas formation volume factor (B_g), and "
                 "condensate/water holdup density (rho_l). Demonstrates how high pressure at depth heavily compresses gas, "
                 "significantly increasing downhole gas density compared to surface conditions."
             )
 
         # -------------------------------------------------------------------------
-        # DEPTH PROFILE COMPUTATIONS
+        # DEPTH PROFILE COMPUTATIONS (TAB 1)
         # -------------------------------------------------------------------------
         tvd_array = np.linspace(0, max_tvd, n_points)
         gamma_o = 141.5 / (131.5 + api_in)
@@ -2851,7 +2851,6 @@ elif page == "2. Wellbore Geometry & PVT":
         p_psia_list, t_deg_r_list = [], []
 
         for depth in tvd_array:
-            # Linear pressure and geothermal temperature gradients
             p_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (depth / max_tvd)
             p_psia = p_gauge + 14.7
             t_deg_f = t_wh_in + (t_bht_in - t_wh_in) * (depth / max_tvd)
@@ -2861,14 +2860,9 @@ elif page == "2. Wellbore Geometry & PVT":
             t_deg_r_list.append(t_deg_r)
 
             if "Oil" in well_mode:
-                # Standing's Solution Gas-Oil Ratio (Rs)
                 rs = gas_sg_in * (((p_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_deg_f))) ** 1.2048
                 rs = min(rs, gor_in)
-                
-                # Standing's Oil Formation Volume Factor (Bo)
                 bo = 0.9759 + 0.000120 * ((rs * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_deg_f) ** 1.2)
-                
-                # Live Oil & Total Liquid Density
                 rho_o_live = (62.4 * gamma_o + 0.0136 * rs * gas_sg_in) / bo
                 wc_frac = wc_in / 100.0
                 rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
@@ -2881,12 +2875,10 @@ elif page == "2. Wellbore Geometry & PVT":
                 rho_g_list.append(0.0)
 
             else:
-                # DAK Gas Z-factor & In-situ Gas Density
                 z_factor = compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg_in)
                 rho_g = (2.7 * gas_sg_in * p_psia) / (z_factor * t_deg_r)
-                bg = 0.02829 * z_factor * t_deg_r / p_psia  # cu ft / scf
+                bg = 0.02829 * z_factor * t_deg_r / p_psia
 
-                # Mixed liquid (condensate + water) density
                 total_liq_bbl = cgr_in + wgr_in
                 if total_liq_bbl > 0:
                     wc_frac = wgr_in / total_liq_bbl
@@ -2902,7 +2894,6 @@ elif page == "2. Wellbore Geometry & PVT":
                 rs_list.append(0.0)
                 rho_o_live_list.append(0.0)
 
-        # Build Dataframe for Plotting
         df_pvt = pd.DataFrame({
             'TVD_ft': tvd_array,
             'P_psia': p_psia_list,
@@ -2914,31 +2905,23 @@ elif page == "2. Wellbore Geometry & PVT":
             'rho_g': rho_g_list
         })
 
-        # -------------------------------------------------------------------------
-        # CHART D: PRIMARY INTERACTIVE PLOTLY VISUAL
-        # -------------------------------------------------------------------------
         st.markdown("### 📊 Live Liquid Density & Volumetric Expansion vs. True Vertical Depth")
 
         fig_primary = go.Figure()
 
         if "Oil" in well_mode:
-            # Trace 1: Total Liquid Density (Primary X-Axis)
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['rho_l'], y=df_pvt['TVD_ft'],
                 mode='lines+markers', name='Total Liquid Density (rho_l, lb/ft³)',
                 line=dict(color='#1E3A8A', width=3),
                 hovertemplate='Depth: %{y:.1f} ft<br>Liquid Density: %{x:.2f} lb/ft³<extra></extra>'
             ))
-            
-            # Trace 2: Live Oil Density (Primary X-Axis)
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['rho_o_live'], y=df_pvt['TVD_ft'],
                 mode='lines', name='Live Oil Density (rho_o_live, lb/ft³)',
                 line=dict(color='#2563EB', width=2, dash='dash'),
                 hovertemplate='Depth: %{y:.1f} ft<br>Live Oil Density: %{x:.2f} lb/ft³<extra></extra>'
             ))
-
-            # Trace 3: Oil Swelling Factor Bo (Secondary X-Axis)
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['Bo_rb_stb'], y=df_pvt['TVD_ft'],
                 mode='lines', name='Oil Swelling Factor (B_o, rb/STB)',
@@ -2946,7 +2929,6 @@ elif page == "2. Wellbore Geometry & PVT":
                 xaxis='x2',
                 hovertemplate='Depth: %{y:.1f} ft<br>B_o: %{x:.4f} rb/STB<extra></extra>'
             ))
-
             fig_primary.update_layout(
                 xaxis=dict(title='Density (lb/ft³)', title_font=dict(color='#1E3A8A')),
                 xaxis2=dict(
@@ -2954,19 +2936,15 @@ elif page == "2. Wellbore Geometry & PVT":
                     title_font=dict(color='#D97706'),
                     overlaying='x', side='top'
                 ),
-                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed') # Y-Axis Inverted
+                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
             )
-
         else:
-            # Trace 1: In-Situ Gas Density (Primary X-Axis)
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['rho_g'], y=df_pvt['TVD_ft'],
                 mode='lines+markers', name='In-Situ Gas Density (rho_g, lb/ft³)',
                 line=dict(color='#059669', width=3),
                 hovertemplate='Depth: %{y:.1f} ft<br>Gas Density: %{x:.2f} lb/ft³<extra></extra>'
             ))
-
-            # Trace 2: Gas Formation Volume Factor Bg (Secondary X-Axis)
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['Bg_cuft_scf'], y=df_pvt['TVD_ft'],
                 mode='lines', name='Gas Expansion Factor (B_g, ft³/scf)',
@@ -2974,7 +2952,6 @@ elif page == "2. Wellbore Geometry & PVT":
                 xaxis='x2',
                 hovertemplate='Depth: %{y:.1f} ft<br>B_g: %{x:.5f} ft³/scf<extra></extra>'
             ))
-
             fig_primary.update_layout(
                 xaxis=dict(title='Gas Density (lb/ft³)', title_font=dict(color='#059669')),
                 xaxis2=dict(
@@ -2982,7 +2959,7 @@ elif page == "2. Wellbore Geometry & PVT":
                     title_font=dict(color='#7C3AED'),
                     overlaying='x', side='top'
                 ),
-                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed') # Y-Axis Inverted
+                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
             )
 
         fig_primary.update_layout(
@@ -2991,18 +2968,12 @@ elif page == "2. Wellbore Geometry & PVT":
             legend=dict(orientation="h", yanchor="bottom", y=-0.18, xanchor="center", x=0.5),
             hovermode="y unified"
         )
-
         st.plotly_chart(fig_primary, use_container_width=True)
 
-        # -------------------------------------------------------------------------
-        # SPOT INSPECTION AT A SPECIFIC DEPTH
-        # -------------------------------------------------------------------------
         st.markdown("---")
         st.markdown("### 🔍 Depth Spot-Inspection Panel")
-        
         inspect_tvd = st.slider("Select Depth to Inspect (ft)", min_value=0.0, max_value=max_tvd, value=max_tvd / 2.0, step=100.0)
         
-        # Interpolate properties at inspection depth
         p_ins_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (inspect_tvd / max_tvd)
         p_ins_psia = p_ins_gauge + 14.7
         t_ins_f = t_wh_in + (t_bht_in - t_wh_in) * (inspect_tvd / max_tvd)
@@ -3031,10 +3002,174 @@ elif page == "2. Wellbore Geometry & PVT":
             col_k5.metric("In-Situ Gas Density (rho_g)", f"{rho_g_ins:.2f} lb/ft³")
 
     # -------------------------------------------------------------------------
-    # TAB 2: WELLBORE TRAJECTORY & GEOMETRY (LEFT BLANK FOR FUTURE EXPANSION)
+    # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
     # -------------------------------------------------------------------------
     with tab_geo:
-        st.info("📐 Tab 2 is reserved for future 3D directional wellbore trajectory and casing profile inputs.")
+        st.markdown("### 🧪 Gas PVT, Compressibility (Z_Factor) & Mixture Density (rho_m)")
+        
+        # Explanatory Box Focusing on Mode Differences
+        st.markdown("""
+        <div style="background-color: #F8FAFC; border-left: 4px solid #0284C7; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem;">
+            <b style="color: #0369A1; font-size: 1.0rem;">🔥 Fundamental Differences: Oil PVT vs. Gas Well Thermodynamics</b>
+            <ul style="margin-top: 0.4rem; margin-bottom: 0rem; font-size: 0.88rem; color: #334155; line-height: 1.5;">
+                <li><b>Compressibility Mechanics:</b> Gas density (rho_g) changes dramatically with depth because gas is highly compressible ($Z$-factor drops downhole under severe reservoir pressure). Oil density (rho_o) is governed primarily by dissolved gas (R_s) and liquid volume swelling (B_o).</li>
+                <li><b>Mixture Homogeneity:</b> In gas wells, the stream is gas-dominated ($Q_g$). Adding even small amounts of condensate (CGR) or water (WGR) increases liquid holdup (lambda_l), causing significant shifts in the bulk mixture density (rho_m).</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        inputs = st.session_state.inputs
+
+        with st.expander("⚙️ Gas Well PVT Parameters & Production Controls", expanded=True):
+            col_g1, col_g2, col_g3 = st.columns(3)
+
+            with col_g1:
+                tvd_gas = st.slider("Target TVD - Depth (ft)", min_value=2000.0, max_value=25000.0, value=float(inputs.get('tvd', 10000.0)), step=500.0, key="gas_tvd")
+                q_gas_mmscfd = st.number_input("Surface Gas Rate - Q_g (MMscf/D)", min_value=0.1, max_value=200.0, value=float(inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
+                gas_sg_g = st.number_input("Gas Specific Gravity - gamma_g (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01, key="gas_sg_g")
+
+            with col_g2:
+                p_wh_g = st.number_input("Wellhead Pressure - P_wh (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0, key="p_wh_g")
+                p_bhp_g = st.number_input("Bottomhole Pressure - P_bhp (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0, key="p_bhp_g")
+                cgr_g = st.number_input("Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(inputs.get('cgr_stb_mmscf', 25.0)), step=5.0, key="cgr_g")
+
+            with col_g3:
+                t_wh_g = st.number_input("Wellhead Temp - T_wh (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0, key="t_wh_g")
+                t_bht_g = st.number_input("Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0, key="t_bht_g")
+                wgr_g = st.number_input("Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(inputs.get('wgr_bbl_mmscf', 5.0)), step=1.0, key="wgr_g")
+
+        # -------------------------------------------------------------------------
+        # GAS THERMODYNAMICS & MIXTURE DENSITY COMPUTATIONS
+        # -------------------------------------------------------------------------
+        # Pseudo-Critical Anchors via Standing's Correlations
+        p_pc = 756.8 - 131.07 * gas_sg_g - 3.6 * (gas_sg_g ** 2)
+        t_pc = 169.2 + 349.5 * gas_sg_g - 74.0 * (gas_sg_g ** 2)
+
+        st.caption(f"**Standing's Pseudo-Critical Anchors:** P_pc = **{p_pc:.1f} psia** | T_pc = **{t_pc:.1f} °R**")
+
+        tvd_array_g = np.linspace(0, tvd_gas, 60)
+        api_g = float(inputs.get('api_gravity', 35.0))
+        gamma_o_g = 141.5 / (131.5 + api_g)
+        water_sg_g = float(inputs.get('water_sg', 1.05))
+        rho_w_g = water_sg_g * 62.4
+
+        # Volumetric rates
+        q_g_scf_d = q_gas_mmscfd * 1e6
+        q_cond_stbd = q_gas_mmscfd * cgr_g
+        q_wat_stbd = q_gas_mmscfd * wgr_g
+        q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
+
+        # Liquid Phase Density
+        total_liq_bbl = q_cond_stbd + q_wat_stbd
+        if total_liq_bbl > 0:
+            wc_frac_g = q_wat_stbd / total_liq_bbl
+            rho_cond_g = 62.4 * gamma_o_g
+            rho_l_g = (1.0 - wc_frac_g) * rho_cond_g + wc_frac_g * rho_w_g
+        else:
+            rho_l_g = 62.4 * gamma_o_g
+
+        z_list_g, rho_g_list_g, q_g_ft3s_list, lambda_l_list, rho_m_list = [], [], [], [], []
+
+        for depth in tvd_array_g:
+            p_gauge = p_wh_g + (p_bhp_g - p_wh_g) * (depth / tvd_gas)
+            p_psia = p_gauge + 14.7
+            t_deg_f = t_wh_g + (t_bht_g - t_wh_g) * (depth / tvd_gas)
+            t_deg_r = t_deg_f + 459.67
+
+            # Dranchuk-Abou-Kassem EOS Z-factor
+            z_val = compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg_g)
+            rho_g_val = (2.7 * gas_sg_g * p_psia) / (z_val * t_deg_r)
+            
+            # Downhole volumetric gas rate
+            q_g_ft3s = (q_g_scf_d * 14.7 * t_deg_r * z_val) / (p_psia * 520.0 * 86400.0)
+            
+            # Liquid holdup & mixture density
+            q_m_ft3s = q_l_ft3s + q_g_ft3s
+            lambda_l_val = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 0.0
+            rho_m_val = lambda_l_val * rho_l_g + (1.0 - lambda_l_val) * rho_g_val
+
+            z_list_g.append(z_val)
+            rho_g_list_g.append(rho_g_val)
+            q_g_ft3s_list.append(q_g_ft3s)
+            lambda_l_list.append(lambda_l_val)
+            rho_m_list.append(rho_m_val)
+
+        df_gas_pvt = pd.DataFrame({
+            'TVD_ft': tvd_array_g,
+            'Z_Factor': z_list_g,
+            'rho_g': rho_g_list_g,
+            'q_g_ft3s': q_g_ft3s_list,
+            'lambda_l': lambda_l_list,
+            'rho_m': rho_m_list
+        })
+
+        # -------------------------------------------------------------------------
+        # STACKED PLOTLY CHARTS
+        # -------------------------------------------------------------------------
+        
+        # Chart A: In-Situ Gas Density (rho_g) & Z_Factor vs TVD
+        fig_gas_a = go.Figure()
+        fig_gas_a.add_trace(go.Scatter(
+            x=df_gas_pvt['rho_g'], y=df_gas_pvt['TVD_ft'],
+            mode='lines+markers', name='In-Situ Gas Density (rho_g, lb/ft³)',
+            line=dict(color='#059669', width=3),
+            hovertemplate='Depth: %{y:.1f} ft<br>rho_g: %{x:.2f} lb/ft³<extra></extra>'
+        ))
+        fig_gas_a.add_trace(go.Scatter(
+            x=df_gas_pvt['Z_Factor'], y=df_gas_pvt['TVD_ft'],
+            mode='lines', name='Compressibility (Z_Factor)',
+            line=dict(color='#D97706', width=2.5, dash='dash'),
+            xaxis='x2',
+            hovertemplate='Depth: %{y:.1f} ft<br>Z_Factor: %{x:.3f}<extra></extra>'
+        ))
+        fig_gas_a.update_layout(
+            title='Chart A: In-Situ Gas Density (rho_g) & Compressibility (Z_Factor) vs. Depth',
+            xaxis=dict(title='In-Situ Gas Density rho_g (lb/ft³)', title_font=dict(color='#059669')),
+            xaxis2=dict(
+                title='Gas Compressibility Z_Factor',
+                title_font=dict(color='#D97706'),
+                overlaying='x', side='top'
+            ),
+            yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed'),
+            height=480,
+            margin=dict(l=60, r=60, t=80, b=40),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
+            hovermode="y unified"
+        )
+        st.plotly_chart(fig_gas_a, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Chart B: Downhole Volumetric Gas Rate (q_g) & Mixture Density (rho_m) vs TVD
+        fig_gas_b = go.Figure()
+        fig_gas_b.add_trace(go.Scatter(
+            x=df_gas_pvt['rho_m'], y=df_gas_pvt['TVD_ft'],
+            mode='lines+markers', name='Multiphase Mixture Density (rho_m, lb/ft³)',
+            line=dict(color='#1E3A8A', width=3),
+            hovertemplate='Depth: %{y:.1f} ft<br>rho_m: %{x:.2f} lb/ft³<extra></extra>'
+        ))
+        fig_gas_b.add_trace(go.Scatter(
+            x=df_gas_pvt['q_g_ft3s'], y=df_gas_pvt['TVD_ft'],
+            mode='lines', name='Downhole Volumetric Gas Rate (q_g, ft³/s)',
+            line=dict(color='#7C3AED', width=2.5, dash='dash'),
+            xaxis='x2',
+            hovertemplate='Depth: %{y:.1f} ft<br>q_g: %{x:.3f} ft³/s<extra></extra>'
+        ))
+        fig_gas_b.update_layout(
+            title='Chart B: Downhole Gas Rate (q_g) & Homogeneous Mixture Density (rho_m) vs. Depth',
+            xaxis=dict(title='Multiphase Mixture Density rho_m (lb/ft³)', title_font=dict(color='#1E3A8A')),
+            xaxis2=dict(
+                title='Downhole Gas Volumetric Rate q_g (ft³/s)',
+                title_font=dict(color='#7C3AED'),
+                overlaying='x', side='top'
+            ),
+            yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed'),
+            height=480,
+            margin=dict(l=60, r=60, t=80, b=40),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
+            hovermode="y unified"
+        )
+        st.plotly_chart(fig_gas_b, use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
