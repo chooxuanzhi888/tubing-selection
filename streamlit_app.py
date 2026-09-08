@@ -3153,9 +3153,182 @@ elif page == "2. Wellbore Geometry & PVT":
 # -----------------------------------------------------------------------------
 # PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
 # -----------------------------------------------------------------------------
-elif page == "3. Wellbore Hydraulics & Velocity Limits":
+if page == "3. Wellbore Hydraulics & Velocity Limits":
     st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Reserved for erosional, loading, and settling velocity envelope analysis.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Comprehensive velocity window screening, solid particle slurry physics, and dynamic operating envelope analysis.</div>', unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs([
+        "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
+        "💧 Tab 2: Liquid Loading & Droplet Lift (Turner Model)",
+        "⚡ Tab 3: Erosional Velocity Limits (Salama vs. API 14E)"
+    ])
+
+    with tab1:
+        st.markdown("### 🧪 Solid Particle Slurry Integration & Physics Mechanics")
+        st.write("Evaluating the thermodynamic and hydrodynamic effects of entrained formation sand on wellbore pressure gradients, pipe wall erosion limits, and minimum carrying velocities.")
+
+        # Page 6 Style Educational Callout Cards
+        st.markdown("""
+        <div class="m2-card">
+            <div class="m2-card-head">
+                <span class="m2-card-num">CALLOUT 1</span>
+                <h4 class="m2-card-title" style="color: #1E3A8A;">Hydrostatic Pressure Drop Inflation (ΔP_hydrostatic)</h4>
+            </div>
+            <div class="m2-label">Why this correction is necessary</div>
+            <div class="m2-purpose">
+                Suspended solid sand particles increase the total slurry mixture density (<b>ρ_slurry</b>) above clean liquid-gas values. 
+                Because hydrostatic pressure head scales directly with fluid column weight, higher <b>C_v</b> inflates the bottomhole drawdown requirement, reducing available flow margin.
+            </div>
+        </div>
+        
+        <div class="m2-card">
+            <div class="m2-card-head">
+                <span class="m2-card-num">CALLOUT 2</span>
+                <h4 class="m2-card-title" style="color: #991B1B;">Erosion Velocity Limit Suppression (v_erosional)</h4>
+            </div>
+            <div class="m2-label">Why this correction is necessary</div>
+            <div class="m2-gate">
+                Solid particles possess high momentum and kinetic impact energy. Impingement on internal tubing walls strips the protective iron carbonate or chromium oxide passive film, lowering the maximum permissible velocity limit compared to clean fluid flow (API 14E).
+            </div>
+        </div>
+
+        <div class="m2-card">
+            <div class="m2-card-head">
+                <span class="m2-card-num">CALLOUT 3</span>
+                <h4 class="m2-card-title" style="color: #D97706;">Sand Fallout & Dune Accumulation Risk (v_carrying)</h4>
+            </div>
+            <div class="m2-label">Why this correction is necessary</div>
+            <div class="m2-purpose" style="border-left-color: #D97706;">
+                When mixture velocity falls below Rubey's terminal settling velocity (<b>1.35 v_t</b>), solid sand grains drop out of suspension. In horizontal/deviated sections, sand forms stationary dunes that induce severe localized friction loss and eventual tubing blockage.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📐 Mathematical Slurry Models")
+        st.latex(r"C_v = \frac{V_{\text{sand}}}{V_{\text{liquid}} + V_{\text{sand}}} = \frac{\frac{W_s}{\rho_s}}{\left(\frac{Q_{\text{liq}} \cdot 5.615}{86400}\right) + \frac{W_s}{\rho_s}}")
+        st.latex(r"\rho_{\text{slurry}} = (1 - C_v) \rho_m + C_v \rho_s")
+        st.latex(r"v_{\text{erosional}} = \frac{C_{\text{salama}}}{\sqrt{\rho_{\text{slurry}}}} \cdot \sqrt{\frac{d_i}{W_s}}")
+        st.latex(r"v_t = \sqrt{\frac{2}{3} g d_p \left(\frac{\rho_s - \rho_{\text{slurry}}}{\rho_{\text{slurry}}}\right) + \frac{36 \nu^2}{d_p^2}} - \frac{6 \nu}{d_p}")
+
+        st.markdown("---")
+        st.markdown("### 🎛️ Interactive Slurry Physics Sandbox")
+        st.caption("Adjust sand production parameters below to explore real-time shifts in the operating velocity window.")
+
+        col_sb1, col_sb2 = st.columns([1, 1.2])
+
+        # Local sandbox sliders
+        with col_sb1:
+            st.markdown("##### ⚙️ Sandbox Input Parameters")
+            sb_sand_pptb = st.slider("Sand Concentration (PPTB - lbs/1000 bbl)", 0.0, 500.0, float(st.session_state.inputs.get('sand_rate_pptb', 25.0)), 5.0)
+            sb_sand_d_um = st.slider("Grain Diameter (d_p - microns)", 10.0, 1000.0, float(st.session_state.inputs.get('sand_size_microns', 150.0)), 10.0)
+            sb_sand_sg = st.slider("Grain Density (SG_s)", 1.5, 4.5, float(st.session_state.inputs.get('sand_sg', 2.65)), 0.05)
+            
+            # Select tubing candidate for local sandbox visualization
+            tubing_names = list(st.session_state.tubing_db['Name'])
+            selected_pipe_name = st.selectbox("Select Tubing Candidate for Sandbox", tubing_names, index=2 if len(tubing_names) > 2 else 0)
+            pipe_row = st.session_state.tubing_db[st.session_state.tubing_db['Name'] == selected_pipe_name].iloc[0]
+            sb_d_i = pipe_row['ID_in']
+
+            # Calculate sandbox slurry metrics
+            q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
+            is_cra = "13CR" in str(pipe_row['Grade']).upper() or "CRA" in str(pipe_row['Material']).upper()
+            slurry_res = calculate_slurry_physics(q_liq_ref, sb_sand_pptb, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
+
+            st.markdown("<br/>", unsafe_allow_html=True)
+            if st.button("📌 Push Sandbox Values to Global Inputs", type="primary", use_container_width=True):
+                st.session_state.inputs['sand_rate_pptb'] = sb_sand_pptb
+                st.session_state.inputs['sand_size_microns'] = sb_sand_d_um
+                st.session_state.inputs['sand_sg'] = sb_sand_sg
+                st.success("✅ Sandbox parameters pushed to global inputs! Pages 7, 9, and 10 will now use these settings.")
+
+        with col_sb2:
+            st.markdown("##### 📊 Real-Time Dynamic Metrics")
+            m_col1, m_col2 = st.columns(2)
+            m_col1.metric("Solids Vol. Fraction (Cv)", f"{slurry_res['c_v']*100:.4f} %")
+            m_col2.metric("Slurry Density (ρ_slurry)", f"{slurry_res['rho_slurry']:.2f} lb/ft³")
+
+            m_col3, m_col4 = st.columns(2)
+            m_col3.metric("Salama Erosional Limit", f"{slurry_res['v_erosional']:.2f} ft/s")
+            m_col4.metric("Rubey Carrying Limit (1.35vt)", f"{1.35 * slurry_res['v_t_rubey']:.2f} ft/s")
+
+            m_col5, m_col6 = st.columns(2)
+            m_col5.metric("Turner Liquid Lift Limit", f"{slurry_res['v_turner']:.2f} ft/s")
+            m_col6.metric("Governing Min Velocity", f"{slurry_res['v_carrying']:.2f} ft/s")
+
+        st.markdown("---")
+        st.markdown(f"#### 📈 Operating Envelope Squeeze vs. Sand Concentration (Tubing: {selected_pipe_name})")
+        st.caption("Option B: Dynamic plot demonstrating how increasing sand concentration compresses the operable velocity window.")
+
+        # Generate Option B chart: Operating Limits vs Sand Concentration (PPTB)
+        pptb_range = np.linspace(0.1, 500.0, 100)
+        v_eros_list = []
+        v_carrying_list = []
+        v_rubey_list = []
+        v_turner_list = []
+
+        for p_val in pptb_range:
+            s_out = calculate_slurry_physics(q_liq_ref, p_val, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
+            v_eros_list.append(s_out['v_erosional'])
+            v_carrying_list.append(s_out['v_carrying'])
+            v_rubey_list.append(1.35 * s_out['v_t_rubey'])
+            v_turner_list.append(s_out['v_turner'])
+
+        fig_env = go.Figure()
+
+        # Salama Max Limit
+        fig_env.add_trace(go.Scatter(
+            x=pptb_range, y=v_eros_list,
+            mode='lines', name='Salama Sand Erosion Limit (Upper Ceiling)',
+            line=dict(color='#DC2626', width=3)
+        ))
+
+        # Governing Carrying Min Limit
+        fig_env.add_trace(go.Scatter(
+            x=pptb_range, y=v_carrying_list,
+            mode='lines', name='Governing Carrying Limit (Lower Floor)',
+            line=dict(color='#059669', width=3)
+        ))
+
+        # Sub-components
+        fig_env.add_trace(go.Scatter(
+            x=pptb_range, y=v_rubey_list,
+            mode='lines', name='Rubey Solid Settling (1.35 vt)',
+            line=dict(color='#D97706', dash='dash')
+        ))
+
+        fig_env.add_trace(go.Scatter(
+            x=pptb_range, y=v_turner_list,
+            mode='lines', name='Turner Droplet Lift Limit',
+            line=dict(color='#2563EB', dash='dot')
+        ))
+
+        # Shaded operable region
+        fig_env.add_trace(go.Scatter(
+            x=np.concatenate([pptb_range, pptb_range[::-1]]),
+            y=np.concatenate([v_eros_list, v_carrying_list[::-1]]),
+            fill='toself',
+            fillcolor='rgba(59, 130, 246, 0.12)',
+            line=dict(color='rgba(255,255,255,0)'),
+            hoverinfo="skip",
+            name='Operable Velocity Window'
+        ))
+
+        fig_env.update_layout(
+            title=f"Operating Envelope Compression for {selected_pipe_name} (ID: {sb_d_i}\")",
+            xaxis_title="Sand Production Rate (PPTB - lbs / 1000 bbl)",
+            yaxis_title="Flow Velocity Boundary (ft/s)",
+            hovermode="x unified",
+            margin=dict(t=50, b=40, l=40, r=40),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+
+        st.plotly_chart(fig_env, use_container_width=True)
+
+    with tab2:
+        st.info("Liquid loading analysis (Turner droplet lift models) integrated into main velocity window.")
+
+    with tab3:
+        st.info("Erosional velocity comparison (Salama vs API 14E C-Factor) integrated into main velocity window.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
