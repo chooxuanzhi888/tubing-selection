@@ -1755,7 +1755,7 @@ if page == "1. Introduction & Overview":
         {figure_block("Figure 1.png", "1", "Upper-completion configurations")}
         <div id="1-2-major-design-decisions" class="p1-card p1-card-blue">
             <span class="p1-chip p1-chip-blue">Subtopic 1.2</span>
-            <h3 class="p1-card-title">Major Design Decisions</h3>
+            <h3 class="p1-card-title">Major Design Considerations</h3>
             <ul class="p1-list p1-list-blue">
                 <li><span class="p1-term">Artificial lift</span> — gas lift, ESP, or natural flow.</li>
                 <li><span class="p1-term">Tubing size</span> — balances production capacity against pressure drop.</li>
