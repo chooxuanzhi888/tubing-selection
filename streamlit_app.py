@@ -233,6 +233,51 @@ ANNULAR_FLUID_PROPS = {
     "Heavy Zinc/Calcium Brine (α_v = 3.5e-4 /°C, κ_T = 2.5e-6 /psi)": {"alpha_v": 3.5e-4, "kappa_t": 2.5e-6}
 }
 
+# -----------------------------------------------------------------------------
+# HELPER FORMULA FUNCTIONS FOR SLURRY PHYSICS
+# -----------------------------------------------------------------------------
+def calculate_slurry_physics(q_liq_stbd, sand_pptb, sand_sg, sand_d_um, rho_m, mu_m_cp, d_i_in, is_cra=False):
+    rho_s = sand_sg * 62.4
+    w_s_lb_day = (sand_pptb / 1000.0) * q_liq_stbd
+    w_s_lb_s = w_s_lb_day / 86400.0
+    v_sand_ft3s = w_s_lb_s / rho_s if rho_s > 0 else 0.0
+    v_liq_ft3s = (q_liq_stbd * 5.615) / 86400.0
+    
+    c_v = v_sand_ft3s / (v_liq_ft3s + v_sand_ft3s) if (v_liq_ft3s + v_sand_ft3s) > 0 else 0.0
+    rho_slurry = (1.0 - c_v) * rho_m + c_v * rho_s
+    
+    if w_s_lb_day > 0.1:
+        c_salama = 450.0 if is_cra else 200.0
+        v_erosional = (c_salama / np.sqrt(rho_slurry)) * np.sqrt(d_i_in / w_s_lb_day)
+    else:
+        v_erosional = 120.0 / np.sqrt(rho_m)
+        
+    mu_m_lbfts = mu_m_cp * 0.000672
+    d_p_ft = (sand_d_um * 1e-6) * 3.28084
+    g_const = 32.174
+    delta_rho = max(rho_s - rho_slurry, 0.1)
+    nu_kinematic = (mu_m_lbfts / rho_slurry) if rho_slurry > 0 else 1e-5
+    
+    term1 = (2.0 / 3.0) * g_const * d_p_ft * (delta_rho / rho_slurry)
+    term2 = (36.0 * (nu_kinematic ** 2)) / (d_p_ft ** 2) if d_p_ft > 0 else 0.0
+    v_t_rubey = np.sqrt(term1 + term2) - (6.0 * nu_kinematic / d_p_ft) if d_p_ft > 0 else 0.0
+    v_t_rubey = max(v_t_rubey, 0.0)
+    
+    sigma_dynes = 20.0
+    rho_g = 1.5
+    v_turner = (1.3 * (sigma_dynes ** 0.25) * ((62.4 - rho_g) ** 0.25)) / (rho_g ** 0.5)
+    v_carrying = max(v_turner, 1.35 * v_t_rubey)
+    
+    return {
+        "c_v": c_v,
+        "rho_slurry": rho_slurry,
+        "v_erosional": v_erosional,
+        "v_t_rubey": v_t_rubey,
+        "v_turner": v_turner,
+        "v_carrying": v_carrying,
+        "w_s_lb_day": w_s_lb_day
+    }
+
 # Indicative maximum continuous service temperature per steel grade [°C]. These are
 # screening values for grade-vs-BHT compatibility only; a project-specific design
 # must use the mill's published derating curves.
