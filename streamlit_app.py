@@ -3130,22 +3130,25 @@ elif page == "2. Wellbore Geometry & PVT":
         )
         st.plotly_chart(fig_gas_b, use_container_width=True)
 
-        # -------------------------------------------------------------------------
+ # -------------------------------------------------------------------------
         # PHYSICAL INTERPRETATION & THERMODYNAMIC ANALYSIS CARD
         # -------------------------------------------------------------------------
-        st.markdown(""""
+        st.markdown(
+            """
         <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
             <h4 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;">💡 Engineering Interpretation: Gas Expansion vs. Mixture Density Decay</h4>
             <p style="font-size: 0.89rem; color: #1E293B; line-height: 1.6; margin-bottom: 0.5rem;">
-                As produced gas travels upward from bottomhole ($P_{\text{bhp}}$) to wellhead ($P_{\text{wh}}$), the overburden pressure drops significantly. According to the Real Gas Law ($P \cdot V = n \cdot Z \cdot R \cdot T$):
+                As produced gas travels upward from bottomhole (<i>P</i><sub>bhp</sub>) to wellhead (<i>P</i><sub>wh</sub>), the overburden pressure drops significantly. According to the Real Gas Law (<i>P</i> · <i>V</i> = <i>n</i> · <i>Z</i> · <i>R</i> · <i>T</i>):
             </p>
             <ul style="font-size: 0.87rem; color: #334155; line-height: 1.55; margin-bottom: 0;">
-                <li><b>Volumetric Gas Expansion ($q_g \uparrow$):</b> Lower pressure shallow in the wellbore allows gas molecules to decompress and expand. The volumetric flow rate ($q_g$) increases drastically as the fluid approaches the surface, driving higher actual fluid velocities.</li>
-                <li><b>Density Reduction ($\rho_g \downarrow$ & $\rho_m \downarrow$):</b> Because the same mass of gas now occupies a significantly larger volume ($q_g$), in-situ gas density ($\rho_g$) drops sharply toward the surface.</li>
-                <li><b>Liquid Holdup Influence ($\lambda_l$):</b> Lower mixture density ($\rho_m$) near the surface reduces hydrostatic head pressure losses. However, if condensate ($\text{CGR}$) or water ($\text{WGR}$) is present, the dense liquid phase exerts a stronger weighting on $\rho_m = \lambda_l \cdot \rho_l + (1 - \lambda_l) \cdot \rho_g$, keeping $\rho_m$ higher than pure gas density.</li>
+                <li><b>Volumetric Gas Expansion (<i>q</i><sub>g</sub> ↑):</b> Lower pressure shallow in the wellbore allows gas molecules to decompress and expand. The volumetric flow rate (<i>q</i><sub>g</sub>) increases drastically as the fluid approaches the surface, driving higher actual fluid velocities.</li>
+                <li><b>Density Reduction (ρ<sub>g</sub> ↓ & ρ<sub>m</sub> ↓):</b> Because the same mass of gas now occupies a significantly larger volume (<i>q</i><sub>g</sub>), in-situ gas density (ρ<sub>g</sub>) drops sharply toward the surface.</li>
+                <li><b>Liquid Holdup Influence (λ<sub>l</sub>):</b> Lower mixture density (ρ<sub>m</sub>) near the surface reduces hydrostatic head pressure losses. However, if condensate (CGR) or water (WGR) is present, the dense liquid phase exerts a stronger weighting on ρ<sub>m</sub> = λ<sub>l</sub> · ρ<sub>l</sub> + (1 - λ<sub>l</sub>) · ρ<sub>g</sub>, keeping ρ<sub>m</sub> higher than pure gas density.</li>
             </ul>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
 # -----------------------------------------------------------------------------
 # PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
