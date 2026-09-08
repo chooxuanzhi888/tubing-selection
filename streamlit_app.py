@@ -3133,7 +3133,7 @@ elif page == "2. Wellbore Geometry & PVT":
         # -------------------------------------------------------------------------
         # PHYSICAL INTERPRETATION & THERMODYNAMIC ANALYSIS CARD
         # -------------------------------------------------------------------------
-        st.markdown(""
+        st.markdown(""""
         <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
             <h4 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;">💡 Engineering Interpretation: Gas Expansion vs. Mixture Density Decay</h4>
             <p style="font-size: 0.89rem; color: #1E293B; line-height: 1.6; margin-bottom: 0.5rem;">
