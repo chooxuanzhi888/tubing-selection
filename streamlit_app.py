@@ -94,7 +94,7 @@ st.markdown("""
         margin-top: 0.5rem;
     }
 
-    /* ---- Page 3 methodology layout ------------------------------------- */
+    /* ---- Page 6 methodology layout ------------------------------------- */
     /* Full-width formula card: heading, then formula, then labelled blocks. */
     .m2-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
                padding: 1.15rem 1.35rem 1.25rem; margin: 0 0 1.4rem;
@@ -245,7 +245,7 @@ MAX_SERVICE_TEMP_C = {
 }
 DEFAULT_MAX_SERVICE_TEMP_C = 150.0
 
-# Engine screening thresholds shared with the Page 3 methodology documentation.
+# Engine screening thresholds shared with the Page 6 methodology documentation.
 Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
 CV_SOLIDS_MAX = 0.15
 FRICTION_FACTOR_MAX = 0.15
@@ -257,7 +257,7 @@ COLLAPSE_SF_TARGET = 1.10   # Clause 8 external pressure resistance
 # -----------------------------------------------------------------------------
 # PAGE 3 METHODOLOGY: GLOSSARY & CARD BUILDERS
 # -----------------------------------------------------------------------------
-# Plain-English explanations for the jargon on Page 3. Rendered as click-to-open
+# Plain-English explanations for the jargon on Page 6. Rendered as click-to-open
 # pop-ups so a reader who does not know a term can get it without leaving the page.
 GLOSSARY = {
     "z-factor": ("Z-factor (gas compressibility)",
@@ -1742,7 +1742,7 @@ def static_cithp_psi(p_bhp, tvd, gas_sg, z_factor, t_avg_r):
     converted to absolute for the exponential and returned as gauge, matching the
     convention used everywhere else in the app.
 
-    Shared by the engine and the Page 4 default so the surface burst check and the
+    Shared by the engine and the Page 7 default so the surface burst check and the
     value shown in the input form always come from the same model.
     """
     p_bhp_psia = p_bhp + 14.7
@@ -2365,8 +2365,8 @@ def run_engineering_calculations(inputs, candidate_df):
 def active_candidate_df():
     """Return the candidate set the screening pages should evaluate.
 
-    Honours the Page 5 OD/grade filters when they have been set; falls back to the
-    full database otherwise (e.g. when the user goes straight to Page 6).
+    Honours the Page 8 OD/grade filters when they have been set; falls back to the
+    full database otherwise (e.g. when the user goes straight to Page 9).
     """
     db = st.session_state.tubing_db
     selection = st.session_state.get('candidate_filter')
@@ -2384,20 +2384,23 @@ st.sidebar.caption("Upper-Completion Design Engine")
 
 PAGE_LABELS = [
     "1. Introduction & Overview",
-    "2. Wellbore Hydraulics & PVT",
-    "3. Calculation Methodology",
-    "4. Well & Fluid Inputs",
-    "5. Candidate Tubing Specs",
-    "6. Engineering Calculations",
-    "7. Recommendation & Sensitivity",
+    "2. Wellbore Geometry & PVT",
+    "3. Wellbore Hydraulics & Velocity Limits",
+    "4. Tubing Stress & Structural Load Analysis",
+    "5. Metallurgical & Material Property Selection",
+    "6. Calculation Methodology",
+    "7. Well & Fluid Inputs",
+    "8. Candidate Tubing Specs",
+    "9. Engineering Calculations",
+    "10. Recommendation & Sensitivity",
 ]
 
 # Referenced by name rather than position so inserting a page cannot silently
 # redirect the flowchart deep links to the wrong step.
-METHODOLOGY_PAGE = "3. Calculation Methodology"
+METHODOLOGY_PAGE = "6. Calculation Methodology"
 
-# A ?step=N link in the Page 3 flowchart must survive the rerun it triggers: force
-# the sidebar back onto Page 3 so the reader lands on the step they clicked.
+# A ?step=N link in the Page 6 flowchart must survive the rerun it triggers: force
+# the sidebar back onto Page 6 so the reader lands on the step they clicked.
 _requested_step = st.query_params.get("step")
 if _requested_step and st.session_state.get("nav_page") != METHODOLOGY_PAGE:
     st.session_state["nav_page"] = METHODOLOGY_PAGE
@@ -2775,15 +2778,36 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 # PAGE 2: WELLBORE HYDRAULICS & PVT
 # -----------------------------------------------------------------------------
-elif page == "2. Wellbore Hydraulics & PVT":
-    st.markdown('<div class="main-header">Step 2: Wellbore Hydraulics and Multiphase PVT Characterization</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT and hydraulics; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
+elif page == "2. Wellbore Geometry & PVT":
+    st.markdown('<div class="main-header">Step 2: Wellbore Geometry and Multiphase PVT Characterization</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Establishes the physical wellbore trajectory dimensions and fluid phase behavior required for dynamic well modeling.</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# PAGE 3: CALCULATION METHODOLOGY (REFINED & RESTORED)
+# PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
+# -----------------------------------------------------------------------------
+elif page == "3. Wellbore Hydraulics & Velocity Limits":
+    st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Reserved for erosional, loading, and settling velocity envelope analysis.</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
+# -----------------------------------------------------------------------------
+elif page == "4. Tubing Stress & Structural Load Analysis":
+    st.markdown('<div class="main-header">Step 4: Tubing Stress &amp; Structural Load Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Reserved for axial load, triaxial stress, and annular pressure build-up analysis.</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
+# -----------------------------------------------------------------------------
+elif page == "5. Metallurgical & Material Property Selection":
+    st.markdown('<div class="main-header">Step 5: Metallurgical &amp; Material Property Selection</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Reserved for grade, sour-service, and corrosion-resistant alloy selection.</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# PAGE 6: CALCULATION METHODOLOGY (REFINED & RESTORED)
 # -----------------------------------------------------------------------------
 elif page == METHODOLOGY_PAGE:
-    st.markdown('<div class="main-header">Step 3: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Step 6: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
 
     # Which step to auto-expand, driven by the ?step=N links in the flowchart below.
@@ -3468,10 +3492,10 @@ elif page == METHODOLOGY_PAGE:
         )
 
 # ----------------------------------------------------------------------------- 
-# 4: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
-# ----------------------------------------------------------------------------- 
-elif page == "4. Well & Fluid Inputs":
-    st.markdown('<div class="main-header">Step 4: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True) 
+# 7: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
+# -----------------------------------------------------------------------------
+elif page == "7. Well & Fluid Inputs":
+    st.markdown('<div class="main-header">Step 7: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True) 
 
     current_inputs = st.session_state.inputs
@@ -3776,13 +3800,13 @@ elif page == "4. Well & Fluid Inputs":
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
     with col_btn2: 
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
-            st.success("✅ Operational inputs saved! Proceed to Page 6 to view candidate screening calculations.")
+            st.success("✅ Operational inputs saved! Proceed to Page 9 to view candidate screening calculations.")
 
 # -----------------------------------------------------------------------------
-# 5: CANDIDATE TUBING SPECS
+# 8: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
-elif page == "5. Candidate Tubing Specs":
-    st.markdown('<div class="main-header">Step 5: Candidate Tubing Database</div>', unsafe_allow_html=True)
+elif page == "8. Candidate Tubing Specs":
+    st.markdown('<div class="main-header">Step 8: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
     
     st.subheader("🔍 Database Filter Controls")
@@ -3805,13 +3829,13 @@ elif page == "5. Candidate Tubing Specs":
         (st.session_state.tubing_db['Grade'].isin(selected_grades))
     ]
 
-    # The filtered set is what Pages 5 and 6 screen, so persist it.
+    # The filtered set is what Pages 9 and 10 screen, so persist it.
     st.session_state.candidate_filter = {"od": list(selected_sizes), "grade": list(selected_grades)}
 
     if filtered_db.empty:
-        st.warning("No candidates match the current filters. Pages 6 and 7 need at least one candidate to screen.")
+        st.warning("No candidates match the current filters. Pages 9 and 10 need at least one candidate to screen.")
     else:
-        st.caption(f"**{len(filtered_db)}** of {len(st.session_state.tubing_db)} candidates selected — Pages 6 and 7 screen exactly this filtered set.")
+        st.caption(f"**{len(filtered_db)}** of {len(st.session_state.tubing_db)} candidates selected — Pages 9 and 10 screen exactly this filtered set.")
 
     st.dataframe(filtered_db, use_container_width=True, height=450)
     
@@ -3847,15 +3871,15 @@ elif page == "5. Candidate Tubing Specs":
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# 6: ENGINEERING CALCULATIONS
+# 9: ENGINEERING CALCULATIONS
 # -----------------------------------------------------------------------------
-elif page == "6. Engineering Calculations":
-    st.markdown('<div class="main-header">Step 6: Engineering Calculation Engine</div>', unsafe_allow_html=True)
+elif page == "9. Engineering Calculations":
+    st.markdown('<div class="main-header">Step 9: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
     
     candidates = active_candidate_df()
     if candidates.empty:
-        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 5.")
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
 
     try:
@@ -3864,7 +3888,7 @@ elif page == "6. Engineering Calculations":
         st.error(f"Input validation failed: {error}")
         st.stop()
 
-    st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 5 filter selection.")
+    st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 8 filter selection.")
 
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
 
@@ -3991,15 +4015,15 @@ elif page == "6. Engineering Calculations":
             )
 
 # -----------------------------------------------------------------------------
-# PAGE 7: RECOMMENDATION & SENSITIVITY
+# PAGE 10: RECOMMENDATION & SENSITIVITY
 # -----------------------------------------------------------------------------
-elif page == "7. Recommendation & Sensitivity":
-    st.markdown('<div class="main-header">Step 7: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
+elif page == "10. Recommendation & Sensitivity":
+    st.markdown('<div class="main-header">Step 10: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
     
     candidates = active_candidate_df()
     if candidates.empty:
-        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 5.")
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
 
     try:
@@ -4048,7 +4072,7 @@ elif page == "7. Recommendation & Sensitivity":
             * **Connection Validation:** {preferred['Connection_Reason']}
             """)
         else:
-            st.write("Review the calculation matrix on Page 6 to identify specific failure flags (velocity, hydraulics, APB, CITHP burst, temperature, or NACE sour service).")
+            st.write("Review the calculation matrix on Page 9 to identify specific failure flags (velocity, hydraulics, APB, CITHP burst, temperature, or NACE sour service).")
 
     # -------------------------------------------------------------------------
     # GEMINI AI EXECUTIVE SUMMARY ENGINE
