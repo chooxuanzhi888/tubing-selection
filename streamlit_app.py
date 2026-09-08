@@ -3202,10 +3202,9 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
     st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2 = st.tabs([
         "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
-        "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics",
-        "⚡ Tab 3: Erosional Velocity Limits (Salama vs. API 14E)"
+        "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics"
     ])
 
     # =========================================================================
@@ -3401,11 +3400,9 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         # Colebrook-White Friction Factor Iteration
         if re_slurry <= 2100:
             regime_str = "Laminar Flow"
-            regime_color = "#2563EB"  # Blue
             f_factor = 64.0 / re_slurry if re_slurry > 0 else 0.04
         elif re_slurry > 4000:
             regime_str = "Turbulent Flow"
-            regime_color = "#DC2626"  # Red
             f_guess = 0.02
             for _ in range(20):
                 f_next = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_slurry)) ** 2
@@ -3415,7 +3412,6 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             f_factor = f_next
         else:
             regime_str = "Transitional Flow"
-            regime_color = "#D97706"  # Amber
             f_lam = 64.0 / 2100.0
             f_turb = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / 4000.0)) ** 2
             f_factor = f_lam + (f_turb - f_lam) * ((re_slurry - 2100.0) / 1900.0)
@@ -3426,7 +3422,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         dp_total_val = dp_hydro_val + dp_fric_val
 
         st.markdown("---")
-        col_m_disp, col_regime_disp = st.columns([1.2, 1])
+        col_m_disp, col_regime_disp = st.columns([1.1, 1.1])
 
         # Metrics Output
         with col_m_disp:
@@ -3445,45 +3441,114 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 
             st.metric("Total Slurry Pressure Loss (ΔP_total)", f"{dp_total_val:.1f} psi")
 
-        # Interactive Flow Regime Visualizer
+        # Dynamic Flow Regime Visualizer with Moving Arrows every 5000 Re
         with col_regime_disp:
-            st.markdown("##### 🌊 Visual Flow Regime Illustration")
+            st.markdown("##### 🌊 Dynamic Flow Regime Visualizer")
+            
+            # Re Tier calculation (Step changes every 5000 Re)
+            re_tier = int(re_slurry // 5000)
             
             if re_slurry <= 2100:
-                visual_desc = "Smooth, parallel fluid streamlines with zero cross-mixing. Friction is governed purely by fluid viscosity."
-                bg_style = "background: linear-gradient(90deg, #EFF6FF 0%, #DBEAFE 100%); border: 2px solid #2563EB;"
-                line_html = "<div style='height:3px; background:#2563EB; margin:12px 0; border-radius:2px;'></div>" * 4
-            elif re_slurry > 4000:
-                visual_desc = "Highly chaotic, swirling eddy currents. Rapid momentum transfer causes steep frictional pressure drop spikes."
-                bg_style = "background: linear-gradient(90deg, #FEF2F2 0%, #FEE2E2 100%); border: 2px solid #DC2626;"
-                line_html = "<div style='height:4px; background:#DC2626; margin:8px 0; border-radius:50%; width:80%; transform:rotate(2deg);'></div>" * 4
-            else:
-                visual_desc = "Unstable transition zone. Fluid fluctuates between smooth laminar layers and turbulent bursts."
-                bg_style = "background: linear-gradient(90deg, #FFFBEB 0%, #FEF3C7 100%); border: 2px solid #D97706;"
-                line_html = "<div style='height:3px; background:#D97706; margin:10px 0; border-radius:3px; width:90%;'></div>" * 4
+                arrow_color = "#2563EB"  # Cool Blue
+                anim_speed = "3.5s"
+                regime_badge = "Laminar Flow (Re ≤ 2,100)"
+                flow_desc = "Smooth, parallel fluid streamlines with zero inter-layer mixing."
+            elif re_slurry <= 4000:
+                arrow_color = "#D97706"  # Warm Amber
+                anim_speed = "2.2s"
+                regime_badge = "Transitional Flow (2,100 < Re ≤ 4,000)"
+                flow_desc = "Unstable flow transition with emerging eddy currents."
+            elif re_tier == 0:  # 4000 - 5000
+                arrow_color = "#E11D48"  # Crimson
+                anim_speed = "1.5s"
+                regime_badge = "Turbulent Flow (Re: 4,000 - 5,000)"
+                flow_desc = "Low-range turbulent eddies and wall shear stress."
+            elif re_tier == 1:  # 5000 - 10000
+                arrow_color = "#DC2626"  # Deep Red
+                anim_speed = "1.1s"
+                regime_badge = "Turbulent Flow (Re: 5,000 - 10,000)"
+                flow_desc = "Moderate turbulence with increased kinetic dissipation."
+            elif re_tier == 2:  # 10000 - 15000
+                arrow_color = "#B91C1C"  # Intense Red
+                anim_speed = "0.8s"
+                regime_badge = "Turbulent Flow (Re: 10,000 - 15,000)"
+                flow_desc = "High turbulence with steep frictional pressure loss spikes."
+            elif re_tier == 3:  # 15000 - 20000
+                arrow_color = "#991B1B"  # Dark Crimson
+                anim_speed = "0.5s"
+                regime_badge = "Turbulent Flow (Re: 15,000 - 20,000)"
+                flow_desc = "Severe turbulent shear and heavy internal energy loss."
+            else:  # > 20000
+                arrow_color = "#7F1D1D"  # Extreme Purple-Red
+                anim_speed = "0.3s"
+                regime_badge = f"Fully Rough Turbulent Flow (Re > 20,000)"
+                flow_desc = "Fully developed rough turbulent flow dominated by wall friction."
 
-            regime_box = f"""
-            <div style="{bg_style} border-radius:10px; padding:15px; text-align:center;">
-                <span style="font-size:0.8rem; font-weight:800; color:{regime_color}; text-transform:uppercase;">{regime_str} (Re = {re_slurry:,.0f})</span>
-                <div style="padding:10px 0;">
-                    {line_html}
+            # CSS animated conduit container with moving arrows
+            animated_conduit_html = f"""
+            <style>
+            @keyframes flowArrow {{
+                0% {{ transform: translateX(-40px); opacity: 0.2; }}
+                50% {{ opacity: 1; }}
+                100% {{ transform: translateX(240px); opacity: 0.2; }}
+            }}
+            .pipe-conduit {{
+                width: 100%;
+                height: 100px;
+                background: #0F172A;
+                border-top: 4px solid #64748B;
+                border-bottom: 4px solid #64748B;
+                border-radius: 8px;
+                position: relative;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-around;
+                padding: 10px 0;
+                box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            }}
+            .arrow-stream {{
+                display: flex;
+                gap: 50px;
+                animation: flowArrow {anim_speed} linear infinite;
+            }}
+            .arrow-item {{
+                color: {arrow_color};
+                font-size: 20px;
+                font-weight: bold;
+            }}
+            </style>
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px;">
+                <div style="display:flex; justify-size:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.82rem; font-weight:800; color:{arrow_color};">{regime_badge}</span>
                 </div>
-                <p style="font-size:0.82rem; color:#334155; margin:0; line-height:1.4;">{visual_desc}</p>
+                <div class="pipe-conduit">
+                    <div class="arrow-stream">
+                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                    </div>
+                    <div class="arrow-stream" style="animation-delay: -0.4s;">
+                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                    </div>
+                    <div class="arrow-stream" style="animation-delay: -0.8s;">
+                        <span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span><span class="arrow-item">➔</span>
+                    </div>
+                </div>
+                <p style="font-size:0.8rem; color:#475569; margin-top:8px; line-height:1.3;">{flow_desc}</p>
             </div>
             """
-            st.markdown(regime_box, unsafe_allow_html=True)
+            st.markdown(animated_conduit_html, unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("### 📈 Real-Time Sandbox Visualizations")
 
         chart_tab1, chart_tab2 = st.tabs([
-            "📉 Total Pressure Drop vs. Depth Across Sand Loading",
+            "📉 Total Pressure Drop vs. Depth Profile (Vertical Y-Axis)",
             "📊 Continuous Hydrostatic vs. Frictional Loss Area Breakdown"
         ])
 
-        # Dynamic Plot 1: Total ΔP vs MD (using current sandbox TVD & MD sliders)
+        # Dynamic Plot 1: Total ΔP vs Depth (Depth on Y-Axis, Inverted)
         with chart_tab1:
-            md_range = np.linspace(1000.0, max(t2_md, 15000.0), 50)
+            md_range = np.linspace(0.0, max(t2_md, 15000.0), 50)
             pptb_series = [0.0, 25.0, 100.0, 250.0, 500.0]
             
             fig_dp_md = go.Figure()
@@ -3497,28 +3562,30 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 
                 dp_curve = []
                 for md_i in md_range:
-                    tvd_i = md_i * (t2_tvd / t2_md)
+                    tvd_i = md_i * (t2_tvd / t2_md) if t2_md > 0 else md_i
                     dp_h = (rho_s_p * tvd_i) / 144.0
                     dp_f = (f_p * md_i * rho_s_p * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
                     dp_curve.append(dp_h + dp_f)
 
+                # Depth on Y-axis
                 fig_dp_md.add_trace(go.Scatter(
-                    x=md_range, y=dp_curve, mode='lines',
+                    x=dp_curve, y=md_range, mode='lines',
                     name=f"Sand Rate: {p_rate} PPTB"
                 ))
 
-            fig_dp_md.add_vline(x=t2_md, line_dash="dash", line_color="#0F172A", annotation_text=f"Current MD ({t2_md:.0f} ft)", annotation_position="top left")
+            fig_dp_md.add_hline(y=t2_md, line_dash="dash", line_color="#0F172A", annotation_text=f"Current MD ({t2_md:.0f} ft)", annotation_position="bottom right")
 
             fig_dp_md.update_layout(
-                title=f"Total Pressure Drop (ΔP_total) vs. Depth (Q_liq: {t2_q_liq:.0f} STB/D, ID: {t2_id:.3f}\")",
-                xaxis_title="Measured Depth (MD - ft)",
-                yaxis_title="Total Pressure Drop (psi)",
-                hovermode="x unified", margin=dict(t=50, b=40, l=40, r=40),
+                title=f"Total Pressure Drop (ΔP_total) vs. Measured Depth Profile (ID: {t2_id:.3f}\")",
+                xaxis_title="Total Pressure Drop (psi)",
+                yaxis_title="Measured Depth / TVD (ft)",
+                yaxis=dict(autorange="reversed"),  # Surface at top, increasing depth downwards
+                hovermode="y unified", margin=dict(t=50, b=40, l=40, r=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_dp_md, use_container_width=True)
 
-        # Dynamic Plot 2: Continuous Stacked Area Plot across Tubing IDs (using current sandbox depth & rate)
+        # Dynamic Plot 2: Continuous Stacked Area Plot across Tubing IDs (Clean, no ID reference line)
         with chart_tab2:
             id_continuous_range = np.linspace(1.5, 6.0, 100)
             dp_hydro_cont = []
@@ -3563,10 +3630,8 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 fillcolor='rgba(220, 38, 38, 0.65)'
             ))
 
-            fig_area.add_vline(x=t2_id, line_dash="dash", line_color="#0F172A", annotation_text=f"Selected ID ({t2_id:.3f}\")", annotation_position="top right")
-
             fig_area.update_layout(
-                title=f"Hydrostatic vs. Frictional Pressure Loss Breakdown (TVD: {t2_tvd:.0f} ft, MD: {t2_md:.0f} ft)",
+                title=f"Continuous Pressure Loss Breakdown vs. Tubing Inner Diameter (TVD: {t2_tvd:.0f} ft, MD: {t2_md:.0f} ft)",
                 xaxis_title="Tubing Inner Diameter (d_i - in)",
                 yaxis_title="Pressure Drop (psi)",
                 hovermode="x unified",
@@ -3574,12 +3639,6 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_area, use_container_width=True)
-
-    # =========================================================================
-    # TAB 3: EROSIONAL VELOCITY LIMITS
-    # =========================================================================
-    with tab3:
-        st.info("Erosional velocity comparison (Salama vs API 14E C-Factor) integrated into main velocity window.")
 
 # -----------------------------------------------------------------------------
 # PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
