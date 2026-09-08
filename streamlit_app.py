@@ -3130,7 +3130,7 @@ elif page == "2. Wellbore Geometry & PVT":
         )
         st.plotly_chart(fig_gas_b, use_container_width=True)
 
- # -------------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         # PHYSICAL INTERPRETATION & THERMODYNAMIC ANALYSIS CARD
         # -------------------------------------------------------------------------
         st.markdown(
