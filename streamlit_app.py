@@ -3639,6 +3639,200 @@ elif page == "4. Tubing Stress Analysis":
     st.markdown('<div class="main-header">Step 4: Tubing Stress &amp; Structural Load Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Reserved for axial load, triaxial stress, and annular pressure build-up analysis.</div>', unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # 1. INTRODUCTION & EDUCATIONAL OVERVIEW
+    # -------------------------------------------------------------------------
+    st.markdown("""
+    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #1E3A8A; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+        <h4 style="color: #1E3A8A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 700;">📘 Engineering Context & Stress Analysis Principles</h4>
+        <p style="font-size: 0.9rem; color: #334155; line-height: 1.6; margin-bottom: 0.5rem;">
+            When a tubing string is locked into a production packer, changes in temperature, internal pressure, and fluid motion induce severe mechanical loads along the pipe body. 
+            This module evaluates <b>Lubinski's 5 Net Axial Forces</b> (Gravity, Restrained Thermal Expansion, Packer Piston End-Load, Radial Ballooning, and Fluid Drag) 
+            alongside <b>Trapped Annular Pressure Build-up (APB)</b>.
+        </p>
+        <p style="font-size: 0.9rem; color: #334155; line-height: 1.6; margin: 0;">
+            <b>Failure Envelope Gates:</b> String integrity fails if total axial force exceeds the pipe body yield strength ($|F_{\text{axial}}| > \text{SMYS} \cdot A_{\text{steel}}$) 
+            or if the trapped APB rise exceeds the Maximum Allowable Annular Surface Pressure ($\Delta P_{\text{APB}} > \text{MAASP}_{\text{collapse}}$).
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------------
+    # 2. CONTROLS & INPUT SECTION
+    # -------------------------------------------------------------------------
+    col_input, col_viz = st.columns([1.05, 1.35], gap="medium")
+
+    with col_input:
+        st.markdown("### 🛠️ 1. Tubing Specification Controls")
+        
+        # Candidate selection or custom override
+        db_candidates = st.session_state.tubing_db['Name'].tolist() if 'tubing_db' in st.session_state else []
+        options = ["Custom Input"] + db_candidates
+        selected_cand = st.selectbox("Select Candidate / Input Mode:", options, index=1 if len(options) > 1 else 0)
+
+        # Retrieve default values from DB if selected
+        if selected_cand != "Custom Input" and 'tubing_db' in st.session_state:
+            row = st.session_state.tubing_db[st.session_state.tubing_db['Name'] == selected_cand].iloc[0]
+            default_od = float(row['OD_in'])
+            default_id = float(row['ID_in'])
+            default_wt = float(row['Weight_lbft'])
+            default_yield = float(row['Yield_psi'])
+            default_burst = float(row['Burst_psi'])
+        else:
+            default_od = 3.500
+            default_id = 2.992
+            default_wt = 9.20
+            default_yield = 80000.0
+            default_burst = 10160.0
+
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            od_in = st.number_input("Outer Diameter - OD (in)", min_value=1.0, max_value=12.0, value=default_od, step=0.125, format="%.3f")
+            id_in = st.number_input("Inner Diameter - ID (in)", min_value=0.5, max_value=11.0, value=default_id, step=0.125, format="%.3f")
+            weight_lbft = st.number_input("Nominal Weight (lb/ft)", min_value=1.0, max_value=100.0, value=default_wt, step=0.1, format="%.2f")
+        with col_t2:
+            yield_psi = st.number_input("Yield Strength - SMYS (psi)", min_value=30000.0, max_value=180000.0, value=default_yield, step=5000.0, format="%.0f")
+            collapse_rating_psi = st.number_input("Tubing Collapse Rating (psi)", min_value=1000.0, max_value=25000.0, value=default_burst * 0.85, step=500.0, format="%.0f")
+            sf_collapse = st.number_input("Collapse Safety Factor", min_value=0.8, max_value=2.0, value=1.0, step=0.05, format="%.2f")
+
+        st.markdown("---")
+        st.markdown("### ⚡ 2. Dynamic Operational Inputs (Sliders)")
+
+        # Retrieve default values from session state if available
+        inputs = st.session_state.get('inputs', {})
+        tvd_val = float(inputs.get('tvd', 10000.0))
+        p_bhp_val = float(inputs.get('p_bhp', 4500.0))
+
+        f_overpull = st.slider("Applied Overpull / Tension Force (lbs)", min_value=0, max_value=200000, value=15000, step=5000)
+        delta_t_annular_f = st.slider("Annular Thermal Rise ΔT (°F)", min_value=0.0, max_value=250.0, value=75.0, step=5.0)
+        p_bhp_slider = st.slider("Bottomhole Pressure P_bhp (psi)", min_value=500.0, max_value=15000.0, value=p_bhp_val, step=250.0)
+        packer_depth_ft = st.slider("Packer Setting TVD Depth (ft)", min_value=1000.0, max_value=25000.0, value=tvd_val, step=500.0)
+        annular_mw_ppg = st.slider("Annular Fluid Density (ppg)", min_value=8.33, max_value=18.0, value=9.5, step=0.1)
+
+    # -------------------------------------------------------------------------
+    # 3. MATHEMATICAL COMPUTATIONS
+    # -------------------------------------------------------------------------
+    # Cross-sectional areas
+    area_steel_in2 = (np.pi / 4.0) * (od_in**2 - id_in**2)
+    area_id_ft2 = (np.pi / 4.0) * ((id_in / 12.0)**2)
+    area_od_ft2 = (np.pi / 4.0) * ((od_in / 12.0)**2)
+    pipe_tensile_rating_lbs = yield_psi * area_steel_in2
+
+    # Annular Fluid Properties (Water-based brine baseline)
+    alpha_v = 2.1e-4  # 1/°C
+    kappa_t = 3.0e-6  # 1/psi
+    delta_t_c = delta_t_annular_f * (5.0 / 9.0)
+    dp_apb_psi = (alpha_v / kappa_t) * delta_t_c
+
+    # MAASP Calculation
+    annular_gradient_psi_ft = 0.052 * annular_mw_ppg
+    maasp_psi = (collapse_rating_psi / sf_collapse) - (packer_depth_ft * annular_gradient_psi_ft)
+    maasp_psi = max(maasp_psi, 0.0)
+
+    # Lubinski Force Balance
+    rho_slurry_lbft3 = annular_mw_ppg * 7.48052
+    f_gravity_lbs = weight_lbft * packer_depth_ft * (1.0 - (rho_slurry_lbft3 / 490.0))
+    f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular_f
+    
+    p_annular_total = (packer_depth_ft * annular_gradient_psi_ft) + dp_apb_psi
+    f_piston_lbs = (p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * (area_od_ft2 - area_id_ft2) * 144.0)
+    f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * area_od_ft2 * 144.0))
+    f_drag_lbs = 2500.0  # Dynamic flow drag baseline estimate
+    
+    f_axial_net_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs + f_overpull
+
+    # Safety Envelope Evaluations
+    apb_failed = dp_apb_psi > maasp_psi
+    axial_failed = abs(f_axial_net_lbs) > pipe_tensile_rating_lbs
+    string_failed = apb_failed or axial_failed
+
+    # -------------------------------------------------------------------------
+    # 4. VISUALIZATION & ALERT DISPLAY
+    # -------------------------------------------------------------------------
+    with col_viz:
+        st.markdown("### 📊 3. Structural Integrity Visualizer")
+
+        # Alert Banner
+        if string_failed:
+            failure_reasons = []
+            if apb_failed:
+                failure_reasons.append(f"APB Rise ({dp_apb_psi:.1f} psi) > MAASP ({maasp_psi:.1f} psi) [COLLAPSE RISK]")
+            if axial_failed:
+                failure_reasons.append(f"Axial Load ({f_axial_net_lbs/1000:.1f} klbs) > Tensile Rating ({pipe_tensile_rating_lbs/1000:.1f} klbs) [YIELD/BROKEN]")
+            
+            st.error(f"🔴 **STRING FAILURE / BUCKLED / PIPE BROKEN**  \n" + "  \n".join(failure_reasons))
+        else:
+            st.success(f"🟢 **STRING OK / STABLE OPERATING ENVELOPE**  \nNet Axial Load & APB Rise are well within safe operating limits.")
+
+        # Plotly Interactive 2D Schematic Diagram
+        fig = go.Figure()
+
+        main_color = "#DC2626" if string_failed else "#2563EB"
+        fill_color = "rgba(220, 38, 38, 0.15)" if string_failed else "rgba(37, 99, 235, 0.15)"
+        line_style = "dash" if string_failed else "solid"
+
+        # Outer Casing Wall
+        fig.add_trace(go.Scatter(x=[-5, -5, -4.5, -4.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='#94A3B8', line=dict(color='#475569'), name='Outer Casing Wall', hoverinfo='skip'))
+        fig.add_trace(go.Scatter(x=[5, 5, 4.5, 4.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='#94A3B8', line=dict(color='#475569'), name='Outer Casing Wall', showlegend=False, hoverinfo='skip'))
+
+        # Trapped Annulus Zone (APB Pressure)
+        fig.add_trace(go.Scatter(x=[-4.5, -4.5, -2, -2], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='rgba(234, 179, 8, 0.25)', line=dict(width=0), name='Trapped APB Zone'))
+        fig.add_trace(go.Scatter(x=[4.5, 4.5, 2, 2], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='rgba(234, 179, 8, 0.25)', line=dict(width=0), showlegend=False))
+
+        # Tubing String Geometry
+        fig.add_trace(go.Scatter(x=[-2, -2, -1.5, -1.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor=fill_color, line=dict(color=main_color, width=2.5, dash=line_style), name='Tubing Wall'))
+        fig.add_trace(go.Scatter(x=[2, 2, 1.5, 1.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor=fill_color, line=dict(color=main_color, width=2.5, dash=line_style), showlegend=False))
+
+        # Production Packer Element
+        fig.add_trace(go.Scatter(x=[-4.5, -1.5, -1.5, -4.5], y=[-packer_depth_ft*0.95, -packer_depth_ft*0.95, -packer_depth_ft, -packer_depth_ft], fill='toself', fillcolor='#1E293B', line=dict(color='#0F172A'), name='Production Packer'))
+        fig.add_trace(go.Scatter(x=[4.5, 1.5, 1.5, 4.5], y=[-packer_depth_ft*0.95, -packer_depth_ft*0.95, -packer_depth_ft, -packer_depth_ft], fill='toself', fillcolor='#1E293B', line=dict(color='#0F172A'), showlegend=False))
+
+        # Annotations & Status Overlay
+        status_text = "❌ FAILED / BUCKLED" if string_failed else "✅ STRING SAFE"
+        fig.add_annotation(x=0, y=-packer_depth_ft * 0.5, text=f"<b>{status_text}</b><br>F_axial = {f_axial_net_lbs/1000:.1f} klbs<br>APB = {dp_apb_psi:.1f} psi", showarrow=False, font=dict(size=14, color=main_color), bgcolor="white", bordercolor=main_color, borderwidth=2, opacity=0.9)
+
+        fig.update_layout(
+            title="Dynamic Tubing & Wellbore Stress Profile",
+            xaxis=dict(range=[-7, 7], visible=False),
+            yaxis=dict(title="True Vertical Depth - TVD (ft)", range=[-packer_depth_ft * 1.08, 200]),
+            height=500,
+            margin=dict(l=40, r=20, t=40, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # 5. METRIC CARDS & DETAILED MATHEMATICAL BREAKDOWN
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.markdown("### 📈 Metric Summary & Force Vector Breakdown")
+
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Net Axial Load", f"{f_axial_net_lbs/1000:.1f} klbs", help="Sum of all 5 Lubinski forces + Overpull")
+    m2.metric("Pipe Yield Rating", f"{pipe_tensile_rating_lbs/1000:.1f} klbs", help="SMYS * Steel Area")
+    m3.metric("APB Pressure Rise", f"{dp_apb_psi:.1f} psi", help="Thermal expansion of annular brine")
+    m4.metric("Tubing MAASP", f"{maasp_psi:.1f} psi", help="Collapse Rating / SF - Hydrostatic Head")
+    m5.metric("Structural Status", "FAIL" if string_failed else "PASS", delta="-CRITICAL" if string_failed else "SAFE", delta_color="inverse" if string_failed else "normal")
+
+    with st.expander("🧮 View Complete Mathematical Load Balance Breakdown (LaTeX)"):
+        st.latex(r"F_{\text{axial}} = F_{\text{gravity}} + F_{\text{thermal}} + F_{\text{piston}} + F_{\text{ballooning}} + F_{\text{drag}} + F_{\text{overpull}}")
+        st.markdown(f"""
+        * **Buoyed Gravity Force ($F_{\text{gravity}}$):** `{f_gravity_lbs:.1f} lbs`
+        * **Restrained Thermal Growth Force ($F_{\text{thermal}}$):** `{f_thermal_lbs:.1f} lbs`
+        * **Packer Piston End-Load Force ($F_{\text{piston}}$):** `{f_piston_lbs:.1f} lbs`
+        * **Radial Ballooning Shortening Force ($F_{\text{ballooning}}$):** `{f_ballooning_lbs:.1f} lbs`
+        * **Fluid Drag Force ($F_{\text{drag}}$):** `{f_drag_lbs:.1f} lbs`
+        * **Applied Surface Tension / Overpull ($F_{\text{overpull}}$):** `{f_overpull:.1f} lbs`
+        """)
+        st.latex(r"\text{MAASP} = \frac{P_{\text{collapse}}}{\text{SF}} - (\text{Depth}_{\text{packer}} \cdot g_{\text{annular}})")
+        st.markdown(f"""
+        * **Tubing Collapse Rating ($P_{\text{collapse}}$):** `{collapse_rating_psi:.0f} psi`
+        * **Annular Hydrostatic Head:** `{packer_depth_ft * annular_gradient_psi_ft:.1f} psi` (Gradient: `{annular_gradient_psi_ft:.3f} psi/ft`)
+        * **Calculated Tubing Collapse MAASP:** `{maasp_psi:.1f} psi`
+        """)
+
+
 # -----------------------------------------------------------------------------
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
 # -----------------------------------------------------------------------------
