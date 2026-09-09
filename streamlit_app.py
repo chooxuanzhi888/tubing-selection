@@ -4128,29 +4128,80 @@ elif page == "4. Tubing Stress Analysis":
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION (SOUR & PREMIUM LAB)
 # -----------------------------------------------------------------------------
 elif page == "5. Material Selection":
-    st.markdown('<div class="main-header">Step 5: Educational Lab — Sour Service & Premium Connection Logic</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Interactive engineering sandbox demonstrating NACE MR0175 material rejection limits and thread seal integrity dynamics under severe downhole environments.</div>', unsafe_allow_html=True)
+    # Custom Styling for Page 5 Aesthetic Enhancements
+    st.markdown("""
+        <style>
+        .lab-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+        }
+        .status-card-sour {
+            background-color: #FEF2F2;
+            border-left: 5px solid #EF4444;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+        }
+        .status-card-sweet {
+            background-color: #ECFDF5;
+            border-left: 5px solid #10B981;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+        }
+        .status-card-premium {
+            background-color: #FFFBEB;
+            border-left: 5px solid #F59E0B;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+        }
+        .status-card-api {
+            background-color: #EFF6FF;
+            border-left: 5px solid #3B82F6;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+        }
+        .tag-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-right: 5px;
+        }
+        /* Fix for truncated symbols and long table headers */
+        .full-text-table table {
+            width: 100% !important;
+        }
+        .full-text-table th {
+            white-space: nowrap !important;
+            background-color: #F8FAFC !important;
+            color: #1E293B !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="main-header">Step 5: Interactive Metallurgy & Thread Integrity Lab</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Simulate real-time H₂S partial pressure sour risks and premium connection operational triggers.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 1. INTRODUCTORY FOUNDATIONS: CORROSIVE, SOUR & CONNECTION MECHANICS
+    # 1. STREAMLINED & CONCISE CONCEPT INTRO
     # -------------------------------------------------------------------------
-    with st.expander("📚 Engineering Primer: Corrosive/Sour Environments & Connection Mechanics", expanded=True):
-        col_intro1, col_intro2 = st.columns(2)
-        
-        with col_intro1:
-            st.markdown("##### 🧪 Corrosive & Sour Service Mechanics")
+    with st.expander("💡 Quick Primer: Sour Service & Connection Physics", expanded=True):
+        col_i1, col_i2 = st.columns(2)
+        with col_i1:
             st.markdown("""
-            * **Sulfide Stress Cracking (SSC):** Hydrogen sulfide ($\text{H}_2\text{S}$) in the presence of water generates atomic hydrogen. In high-strength carbon steels (yield strength $> 80 \text{ ksi}$ or hardness $> 22 \text{ HRC}$), atomic hydrogen diffuses into the crystal lattice, causing catastrophic brittle fracture at stresses well below Specified Minimum Yield Strength (SMYS).
-            * **NACE MR0175 / ISO 15156 Threshold:** Active sour service is defined when $p_{\text{H}_2\text{S}} \ge 0.05 \text{ psia}$. Standard carbon steel grades like **J55, N80, P110, and Q125** are strictly rejected.
-            * **Compliant Metallurgy:** Requires controlled-hardness carbon steels (**L80-1**, $26 \text{ HRC Max}$) or Corrosion-Resistant Alloys (**13Cr, 22Cr, 25Cr**) for severe $CO_2/H_2S$ fluid streams.
+            **🧪 Sour Service (H₂S Risk)**
+            * **Sulfide Stress Cracking (SSC):** Invisible H₂S gas breaks down in water, forcing atomic hydrogen into steel. This causes high-strength pipe to shatter without warning.
+            * **NACE MR0175 Standard:** If $p_{\text{H}_2\text{S}} \ge 0.05 \text{ psia}$, standard steels (**J55, N80, P110, Q125**) are **rejected**. Softened/controlled steel (**L80-1**) or Alloys (**13Cr, 22Cr, 25Cr**) are required.
             """)
-            
-        with col_intro2:
-            st.markdown("##### 🔩 API EUE vs. Premium Connection Mechanics")
+        with col_i2:
             st.markdown("""
-            * **API Standard Threads (EUE/NUE):** Rely on thread-compound ("pipe dope") to fill helical root-to-crest voids. Under high gas rates, high shut-in pressure (CITHP), or pressure cycles, thread dope washes out, opening micro-annular gas leak paths.
-            * **Galling in CRAs:** Chrome alloys (13Cr, 22Cr) form a tough oxide surface layer that readily cold-welds and galls under standard API thread interference during makeup.
-            * **Premium Connections:** Incorporate a **radial metal-to-metal seal** and a pin-to-box **torque shoulder**. The torque shoulder acts as a physical positive stop that resists axial compression, bending, and pressure cycles while maintaining absolute gas-tight sealing.
+            **🔩 Connection Integrity (API vs. Premium)**
+            * **Standard API Threads (EUE):** Rely on thread grease ("dope") to plug gaps. High pressure, gas streams, or heavy bending wash dope out, causing micro-leaks.
+            * **Premium Connections:** Feature a engineered **metal-to-metal radial seal** and a solid **torque shoulder** that prevents leaks and stops thread galling on chrome alloys.
             """)
 
     st.markdown("---")
@@ -4180,9 +4231,7 @@ elif page == "5. Material Selection":
     # -------------------------------------------------------------------------
     # 3. REAL-WORLD ENGINEERING SCENARIO PRESETS
     # -------------------------------------------------------------------------
-    st.markdown("### 🎯 Real-World Engineering Scenario Presets")
-    st.caption("Click a preset button below to load pre-configured well environments into the interactive lab sandbox.")
-    
+    st.markdown("### 🎯 Quick Scenario Presets")
     col_p1, col_p2, col_p3 = st.columns(3)
     
     if col_p1.button("🔥 High-Pressure Deep Gas Well", use_container_width=True):
@@ -4221,42 +4270,39 @@ elif page == "5. Material Selection":
         st.session_state.lab_axial = 210.0
         st.rerun()
 
-    st.markdown("---")
+    st.markdown("<br/>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 4. INTERACTIVE "WHAT-IF" SENSITIVITY LAB CONTROLS
+    # 4. SENSITIVITY CONTROLS & LIVE DIAGNOSTICS (REAL-TIME UPDATE)
     # -------------------------------------------------------------------------
-    st.markdown("### 🎛️ Dynamic Sensitivity Controls")
+    st.markdown("### 🎛️ Dynamic Sensitivity Controls & Live Status")
     
-    ctrl_col1, ctrl_col2, ctrl_col3 = st.columns(3)
-    
-    with ctrl_col1:
+    ctrl_col, diag_col = st.columns([1.1, 1.0], gap="medium")
+
+    with ctrl_col:
+        st.markdown("**Drag sliders to test real-time operational thresholds:**")
         st.session_state.lab_p_bhp = st.slider("Bottomhole Pressure - Pbhp (psi)", 1000.0, 20000.0, float(st.session_state.lab_p_bhp), 100.0)
         st.session_state.lab_h2s_ppm = st.slider("H₂S Concentration (PPM)", 0.0, 10000.0, float(st.session_state.lab_h2s_ppm), 50.0)
         st.session_state.lab_cithp = st.slider("Closed-In Tubing Head Pressure - CITHP (psi)", 0.0, 15000.0, float(st.session_state.lab_cithp), 100.0)
-
-    with ctrl_col2:
         st.session_state.lab_apb = st.slider("Annular Pressure Rise - APB (psi)", 0.0, 5000.0, float(st.session_state.lab_apb), 50.0)
         st.session_state.lab_tvd = st.slider("True Vertical Depth - TVD (ft)", 1000.0, 25000.0, float(st.session_state.lab_tvd), 500.0)
-        st.session_state.lab_axial = st.slider("Net Axial Load (klbs)", 0.0, 400.0, float(st.session_state.lab_axial), 10.0)
+        st.session_state.lab_axial = st.slider("Net Axial Tension Load (klbs)", 0.0, 400.0, float(st.session_state.lab_axial), 10.0)
+        st.session_state.lab_gor = st.slider("Producing Gas-Oil Ratio - GOR (scf/STB)", 0.0, 15000.0, float(st.session_state.lab_gor), 100.0)
+        
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.session_state.lab_is_gas = st.checkbox("Gas Well Fluid Stream", value=bool(st.session_state.lab_is_gas))
+        with col_c2:
+            st.session_state.lab_mat = st.selectbox(
+                "Tubing Metallurgy Class",
+                ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"],
+                index=["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"].index(st.session_state.lab_mat) if st.session_state.lab_mat in ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"] else 1
+            )
 
-    with ctrl_col3:
-        st.session_state.lab_gor = st.slider("Producing GOR (scf/STB)", 0.0, 15000.0, float(st.session_state.lab_gor), 100.0)
-        st.session_state.lab_is_gas = st.checkbox("Gas Well Fluid Stream", value=bool(st.session_state.lab_is_gas))
-        st.session_state.lab_mat = st.selectbox(
-            "Tubing Material Class",
-            ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"],
-            index=["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"].index(st.session_state.lab_mat) if st.session_state.lab_mat in ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"] else 1
-        )
-
-    # -------------------------------------------------------------------------
-    # 5. CORE COMPUTATIONAL ENGINE FOR PAGE 5
-    # -------------------------------------------------------------------------
-    # Sour Service Partial Pressure Calculation
+    # Dynamic Calculations for Real-Time Diagnostics
     p_h2s_psia = st.session_state.lab_p_bhp * (st.session_state.lab_h2s_ppm / 1e6)
     is_sour = p_h2s_psia >= 0.05
 
-    # Premium Connection Triggers Assessment
     trig_gas = st.session_state.lab_is_gas or st.session_state.lab_gor > 2000.0
     trig_cithp = st.session_state.lab_cithp > 3000.0
     trig_apb = st.session_state.lab_apb > 1500.0
@@ -4266,126 +4312,113 @@ elif page == "5. Material Selection":
     active_triggers_count = sum([trig_gas, trig_cithp, trig_apb, trig_cra, trig_load])
     needs_premium = active_triggers_count > 0
 
-    st.markdown("---")
-
-    # -------------------------------------------------------------------------
-    # 6. LIVE DIAGNOSTIC STATUS CARDS
-    # -------------------------------------------------------------------------
-    st.markdown("### 💡 Live Diagnostic Status Cards")
-    
-    card_col1, card_col2 = st.columns(2)
-
-    with card_col1:
+    with diag_col:
+        st.markdown("**Live Diagnostic Lightbulb Indicators:**")
+        
+        # Sour Service Diagnostic Lightbulb
         if is_sour:
-            st.error(f"🔴 **ACTIVE SOUR SERVICE DETECTED**\n\n$p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f} \\text{{ psia}} \\ge 0.05 \\text{{ psia}}$\n\n**Action:** High-strength non-NACE carbon steels (J55, N80, P110, Q125) are **REJECTED** due to Sulfide Stress Cracking (SSC). NACE MR0175 grades (L80-1, $\\le 26\\text{{ HRC}}$) or CRAs are mandated.")
-        else:
-            st.success(f"🟢 **SWEET SERVICE ENVIRONMENT**\n\n$p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f} \\text{{ psia}} < 0.05 \\text{{ psia}}$\n\n**Action:** Standard carbon steel metallurgy is permitted (provided $CO_2$ corrosion rates are acceptable).")
-
-    with card_col2:
-        if needs_premium:
-            st.warning(f"🟠 **PREMIUM CONNECTION MANDATED ({active_triggers_count}/5 Triggers Active)**\n\n**Action:** Standard API EUE threads are **REJECTED** due to high risk of micro-annular gas leakage, thread dope washout, or thread galling. Metal-to-metal torque shoulder connections are required.")
-        else:
-            st.success("🟢 **STANDARD API CONNECTION PERMITTED (0/5 Triggers Active)**\n\n**Action:** Standard API EUE/NUE connections meet operational envelopes for non-gas, low-pressure liquid service.")
-
-    # -------------------------------------------------------------------------
-    # 7. METALLURGICAL REJECTION MATRIX & THREAD INTEGRITY LAB
-    # -------------------------------------------------------------------------
-    st.markdown("<br/>", unsafe_allow_html=True)
-    tab_mat_matrix, tab_thread_lab = st.tabs(["📊 Live Grade Rejection Matrix", "🔩 Connection Seal Integrity Visualizer"])
-
-    with tab_mat_matrix:
-        st.markdown("#### Metallurgical Grade Suitability Evaluator")
-        
-        grades_data = [
-            {"Grade": "J55", "Yield Strength (psi)": "55,000", "Hardness Limit": "N/A", "NACE MR0175": "No", "Status": "REJECTED (SSC Risk)" if is_sour else "PASSED"},
-            {"Grade": "N80", "Yield Strength (psi)": "80,000", "Hardness Limit": "N/A", "NACE MR0175": "No", "Status": "REJECTED (SSC Risk)" if is_sour else "PASSED"},
-            {"Grade": "L80-1", "Yield Strength (psi)": "80,000", "Hardness Limit": "26 HRC Max", "NACE MR0175": "Yes", "Status": "PASSED (NACE Compliant)"},
-            {"Grade": "P110", "Yield Strength (psi)": "110,000", "Hardness Limit": "N/A", "NACE MR0175": "No", "Status": "REJECTED (SSC Risk)" if is_sour else "PASSED"},
-            {"Grade": "Q125", "Yield Strength (psi)": "125,000", "Hardness Limit": "N/A", "NACE MR0175": "No", "Status": "REJECTED (SSC Risk)" if is_sour else "PASSED"},
-            {"Grade": "L80-13Cr", "Yield Strength (psi)": "80,000", "Hardness Limit": "27 HRC Max", "NACE MR0175": "Yes (CRA)", "Status": "PASSED (CRA Corrosion Resistant)"},
-            {"Grade": "22Cr-110", "Yield Strength (psi)": "110,000", "Hardness Limit": "36 HRC Max", "NACE MR0175": "Yes (Duplex)", "Status": "PASSED (Duplex High-Strength CRA)"}
-        ]
-        
-        df_grades = pd.DataFrame(grades_data)
-        st.table(df_grades)
-
-    with tab_thread_lab:
-        col_t1, col_t2 = st.columns(2)
-        
-        with col_t1:
-            st.markdown("""
-            <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-left: 5px solid #EF4444; padding: 1rem; border-radius: 8px;">
-                <h4 style="color: #991B1B; margin-top:0;">❌ Standard API EUE Connection</h4>
-                <p style="font-size: 0.9rem; color: #7F1D1D;">
-                    <b>Sealing Mechanism:</b> Helical thread interference filled with thread compound (pipe dope).<br/>
-                    <b>Failure Modes:</b>
-                    <ul>
-                        <li><b>Gas Leakage:</b> High gas pressure bypasses dope along the helical thread root.</li>
-                        <li><b>Dope Washout:</b> APB pressure cycles flush thread compound into the wellbore.</li>
-                        <li><b>Galling:</b> Severe thread deformation when makeup is attempted on CRA alloys.</li>
-                    </ul>
-                </p>
-            </div>
+            st.markdown(f"""
+                <div class="status-card-sour">
+                    <h4 style="color:#991B1B; margin:0; font-size:1.1rem;">🔴 SOUR SERVICE ACTIVE (NACE MR0175)</h4>
+                    <p style="margin-top:5px; font-size:0.9rem; color:#7F1D1D;">
+                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.1rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (≥ 0.05 psia Limit)<br/>
+                        <b>Status:</b> Standard steels (J55, N80, P110, Q125) are <b>REJECTED</b> due to Sulfide Stress Cracking (SSC). 
+                        Must use <b>L80-1 (26 HRC Max)</b> or <b>CRAs</b>.
+                    </p>
+                </div>
             """, unsafe_allow_html=True)
-            
-        with col_t2:
-            st.markdown("""
-            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-left: 5px solid #059669; padding: 1rem; border-radius: 8px;">
-                <h4 style="color: #065F46; margin-top:0;">✅ Premium Metal-to-Metal Connection</h4>
-                <p style="font-size: 0.9rem; color: #064E3B;">
-                    <b>Sealing Mechanism:</b> Engineered radial metal-to-metal seal + pin/box torque shoulder.<br/>
-                    <b>Engineering Advantages:</b>
-                    <ul>
-                        <li><b>100% Gas Tightness:</b> Metal seal resists high-pressure gas micro-leaks.</li>
-                        <li><b>Torque Shoulder:</b> Absorbs high axial tensile loads, bending, and compression without over-torquing threads.</li>
-                        <li><b>Galling Resistance:</b> Special thread profile design optimized for chrome alloys.</li>
-                    </ul>
-                </p>
-            </div>
+        else:
+            st.markdown(f"""
+                <div class="status-card-sweet">
+                    <h4 style="color:#065F46; margin:0; font-size:1.1rem;">🟢 SWEET SERVICE ENVIRONMENT</h4>
+                    <p style="margin-top:5px; font-size:0.9rem; color:#064E3B;">
+                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.1rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (< 0.05 psia Limit)<br/>
+                        <b>Status:</b> Standard high-strength carbon steels are permitted.
+                    </p>
+                </div>
             """, unsafe_allow_html=True)
 
         st.markdown("<br/>", unsafe_allow_html=True)
-        st.markdown("##### 🔍 Active Premium Connection Risk Trigger Checklist")
-        
-        trig_col1, trig_col2, trig_col3 = st.columns(3)
-        trig_col1.checkbox("1. Gas Stream / GOR > 2000", value=trig_gas, disabled=True)
-        trig_col1.checkbox("2. CITHP > 3000 psi", value=trig_cithp, disabled=True)
-        trig_col2.checkbox("3. APB Rise > 1500 psi", value=trig_apb, disabled=True)
-        trig_col2.checkbox("4. CRA Metallurgy", value=trig_cra, disabled=True)
-        trig_col3.checkbox("5. Depth > 10,000ft / Load > 150klbs", value=trig_load, disabled=True)
 
-    # -------------------------------------------------------------------------
-    # 8. STEP-BY-STEP MATHEMATICAL UNFOLDING CARDS
-    # -------------------------------------------------------------------------
-    st.markdown("<br/>", unsafe_allow_html=True)
-    st.markdown("### 📐 Step-by-Step Mathematical Unfolding Cards")
-
-    with st.expander("🧮 Card 1: H₂S Partial Pressure Substituted Mathematical Derivation", expanded=True):
-        st.markdown("##### Core Formulation:")
-        st.latex(r"p_{\text{H}_2\text{S}} = P_{\text{bhp}} \times \left( \frac{\text{H}_2\text{S [PPM]}}{1,000,000} \right)")
-        
-        st.markdown("##### Numerical Substitution with Live Slider Inputs:")
-        st.latex(f"p_{{\\text{{H}}_2\\text{{S}}}} = {st.session_state.lab_p_bhp:.1f} \\text{{ psi}} \\times \\left( \\frac{{{st.session_state.lab_h2s_ppm:.1f}}}{{1,000,000}} \\right)")
-        
-        st.markdown(f"##### Calculated Output: **$p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f} \\text{{ psia}}$**")
-        
-        if is_sour:
-            st.latex(f"{p_h2s_psia:.4f} \\text{{ psia}} \\ge 0.0500 \\text{{ psia}} \\quad \\Rightarrow \\quad \\text{{SOUR SERVICE ACTIVE (NACE MR0175 Mandate)}}")
+        # Connection Diagnostic Lightbulb
+        if needs_premium:
+            st.markdown(f"""
+                <div class="status-card-premium">
+                    <h4 style="color:#92400E; margin:0; font-size:1.1rem;">🟠 PREMIUM CONNECTION MANDATED ({active_triggers_count}/5 Triggers)</h4>
+                    <p style="margin-top:5px; font-size:0.88rem; color:#78350F;">
+                        <b>Status:</b> Standard API EUE threads are <b>REJECTED</b> due to leak/galling risk.<br/>
+                        <b>Active Operational Triggers:</b>
+                        <ul style="margin-bottom:0; padding-left:20px;">
+                            {"<li>Gas Stream / GOR > 2000 scf/STB</li>" if trig_gas else ""}
+                            {"<li>High Shut-In CITHP > 3000 psi</li>" if trig_cithp else ""}
+                            {"<li>Annular Pressure Build-up (APB) > 1500 psi</li>" if trig_apb else ""}
+                            {"<li>Corrosion Resistant Alloy (CRA Metallurgy)</li>" if trig_cra else ""}
+                            {"<li>TVD > 10,000 ft or Net Axial Tension > 150 klbs</li>" if trig_load else ""}
+                        </ul>
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
         else:
-            st.latex(f"{p_h2s_psia:.4f} \\text{{ psia}} < 0.0500 \\text{{ psia}} \\quad \\Rightarrow \\quad \\text{{SWEET SERVICE (Standard Steel Permitted)}}")
+            st.markdown("""
+                <div class="status-card-api">
+                    <h4 style="color:#1E40AF; margin:0; font-size:1.1rem;">🟢 STANDARD API EUE PERMITTED</h4>
+                    <p style="margin-top:5px; font-size:0.9rem; color:#1E3A8A;">
+                        <b>Status:</b> No active premium connection triggers. API EUE/NUE threaded connections are suitable for this non-gas liquid service.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
 
-    with st.expander("🧮 Card 2: Premium Connection Trigger Logical Evaluation Matrix", expanded=False):
-        st.markdown("##### Logical Decision Rule:")
-        st.latex(r"\text{Premium Required} = \text{Trigger}_1 \lor \text{Trigger}_2 \lor \text{Trigger}_3 \lor \text{Trigger}_4 \lor \text{Trigger}_5")
-        
-        st.markdown("##### Substituted Value Evaluations:")
-        st.write(f"- **Trigger 1 (Gas/GOR):** `Well Type = Gas` OR `GOR ({st.session_state.lab_gor} scf/STB) > 2000` $\\rightarrow$ **{trig_gas}**")
-        st.write(f"- **Trigger 2 (CITHP):** `CITHP ({st.session_state.lab_cithp} psi) > 3000 psi` $\\rightarrow$ **{trig_cithp}**")
-        st.write(f"- **Trigger 3 (APB):** `APB ({st.session_state.lab_apb} psi) > 1500 psi` $\\rightarrow$ **{trig_apb}**")
-        st.write(f"- **Trigger 4 (Metallurgy):** `Material ({st.session_state.lab_mat}) in CRA Class` $\\rightarrow$ **{trig_cra}**")
-        st.write(f"- **Trigger 5 (Depth/Load):** `TVD ({st.session_state.lab_tvd} ft) > 10,000 ft` OR `Axial ({st.session_state.lab_axial} klbs) > 150 klbs` $\\rightarrow$ **{trig_load}**")
+    st.markdown("---")
 
-        st.markdown(f"##### Evaluated Logic: **{active_triggers_count} Active Trigger(s)** $\\rightarrow$ Connection Choice: **{'PREMIUM METAL-TO-METAL' if needs_premium else 'STANDARD API EUE'}**")
+    # -------------------------------------------------------------------------
+    # 5. METALLURGICAL REJECTION MATRIX (SYMBOLS FIXED & FULL TEXT)
+    # -------------------------------------------------------------------------
+    st.markdown("### 📊 Dynamic Metallurgical Grade Evaluation Matrix")
+    st.caption("Live evaluation of candidate tubing grades based on active pH₂S partial pressure and NACE hardness limits.")
+
+    grades_data = [
+        {"Grade Name": "J55", "Yield Strength (psi)": "55,000", "Hardness Spec": "No Cap", "NACE Compliant": "No", "Sour Service Screening Status": "REJECTED (Sulfide Stress Cracking Risk)" if is_sour else "PASSED (Sweet Service Only)"},
+        {"Grade Name": "N80", "Yield Strength (psi)": "80,000", "Hardness Spec": "No Cap", "NACE Compliant": "No", "Sour Service Screening Status": "REJECTED (Sulfide Stress Cracking Risk)" if is_sour else "PASSED (Sweet Service Only)"},
+        {"Grade Name": "L80-1", "Yield Strength (psi)": "80,000", "Hardness Spec": "26 HRC Maximum", "NACE Compliant": "Yes", "Sour Service Screening Status": "PASSED (NACE MR0175 Compliant Steel)"},
+        {"Grade Name": "P110", "Yield Strength (psi)": "110,000", "Hardness Spec": "No Cap", "NACE Compliant": "No", "Sour Service Screening Status": "REJECTED (Sulfide Stress Cracking Risk)" if is_sour else "PASSED (Sweet Service Only)"},
+        {"Grade Name": "Q125", "Yield Strength (psi)": "125,000", "Hardness Spec": "No Cap", "NACE Compliant": "No", "Sour Service Screening Status": "REJECTED (Sulfide Stress Cracking Risk)" if is_sour else "PASSED (Sweet Service Only)"},
+        {"Grade Name": "L80-13Cr", "Yield Strength (psi)": "80,000", "Hardness Spec": "27 HRC Maximum", "NACE Compliant": "Yes (CRA)", "Sour Service Screening Status": "PASSED (Corrosion Resistant Alloy)"},
+        {"Grade Name": "22Cr-110", "Yield Strength (psi)": "110,000", "Hardness Spec": "36 HRC Maximum", "NACE Compliant": "Yes (Duplex)", "Sour Service Screening Status": "PASSED (Duplex High-Strength CRA)"}
+    ]
+
+    df_grades = pd.DataFrame(grades_data)
+    
+    # Custom HTML Table Container to prevent header truncation or 'ext...' symbols
+    st.markdown('<div class="full-text-table">', unsafe_allow_html=True)
+    st.table(df_grades)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------------
+    # 6. THREAD INTEGRITY COMPARISON DISPLAY
+    # -------------------------------------------------------------------------
+    st.markdown("### 🔩 Connection Seal Integrity Comparison")
+    
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown("""
+        <div class="lab-card" style="border-top: 4px solid #EF4444;">
+            <h4 style="color:#991B1B; margin-top:0;">API EUE Threaded Connection</h4>
+            <p style="font-size:0.88rem; color:#334155;">
+                <b>Sealing Mechanism:</b> Helical thread clearance filled with thread compound ("pipe dope").<br/>
+                <b>Vulnerability:</b> Pressure cycles or gas streams wash out the thread dope, opening micro-annular leak paths. Chrome alloys readily gall under API thread interference.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_t2:
+        st.markdown("""
+        <div class="lab-card" style="border-top: 4px solid #10B981;">
+            <h4 style="color:#065F46; margin-top:0;">Premium Metal-to-Metal Connection</h4>
+            <p style="font-size:0.88rem; color:#334155;">
+                <b>Sealing Mechanism:</b> Engineered 100% metal-to-metal radial seal + pin/box torque shoulder.<br/>
+                <b>Advantage:</b> Torque shoulder acts as a positive mechanical stop that resists high axial loads and pressure cycles while maintaining a 100% gas-tight seal.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 6: CALCULATION METHODOLOGY (REFINED & RESTORED)
