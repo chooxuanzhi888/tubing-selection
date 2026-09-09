@@ -4025,97 +4025,55 @@ elif page == "4. Tubing Stress Analysis":
         m_t4.metric("Triaxial Status", "PASS" if triaxial_sf_t2 >= 1.25 else "YIELD FAILURE", delta="-CRITICAL" if triaxial_sf_t2 < 1.25 else "SAFE", delta_color="inverse" if triaxial_sf_t2 < 1.25 else "normal")
 
 # =========================================================================
-    # TAB 3: ENVIRONMENTAL INTEGRITY, SHUT-IN BURST & CONNECTION LOGIC
+    # TAB 3: SHUT-IN SURFACE CITHP BURST ANALYSIS
     # =========================================================================
     with tab3:
-        st.markdown("### 🛡️ Environmental Integrity, Shut-In Burst & Premium Connection Logic")
-        st.caption("Interactive analysis lab evaluating static shut-in surface pressures (CITHP), NACE MR0175 sour cracking limits (pH2S), and 5-condition Premium Connection triggers.")
+        st.markdown("### 🛡️ Static Shut-In Wellhead Pressure (CITHP) Analysis")
+        st.caption("Interactive evaluation of static shut-in tubing head pressure via gas-column barometric equilibrium and surface burst safety margins.")
 
         # ---------------------------------------------------------------------
-        # 1. CORE METHODOLOGY CARDS
+        # 1. CORE METHODOLOGY CARD
         # ---------------------------------------------------------------------
-        col_m3_1, col_m3_2, col_m3_3 = st.columns(3)
-        with col_m3_1:
-            st.markdown("""
-            <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #2563EB; border-radius: 8px; padding: 1rem; height: 100%;">
-                <h5 style="color: #1E3A8A; margin: 0 0 0.4rem 0; font-weight: 700;">1. Shut-In Surface CITHP Burst</h5>
-                <p style="font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">
-                    <b>Purpose:</b> Models static shut-in wellhead pressure via gas-column barometric equilibrium.
-                    <br><b>Why it matters:</b> Gas columns weigh almost nothing, transferring full reservoir BHP directly to surface equipment (SF_burst ≥ 1.10).
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col_m3_2:
-            st.markdown("""
-            <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #D97706; border-radius: 8px; padding: 1rem; height: 100%;">
-                <h5 style="color: #92400E; margin: 0 0 0.4rem 0; font-weight: 700;">2. NACE MR0175 Sour Service</h5>
-                <p style="font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">
-                    <b>Purpose:</b> Calculates H₂S partial pressure (pH2S = Pbhp × PPM / 1,000,000).
-                    <br><b>Why it matters:</b> At pH2S ≥ 0.05 psia, hard steels crack via Sulphide Stress Cracking (SSC). Caps hardness or mandates CRAs.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col_m3_3:
-            st.markdown("""
-            <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #059669; border-radius: 8px; padding: 1rem; height: 100%;">
-                <h5 style="color: #065F46; margin: 0 0 0.4rem 0; font-weight: 700;">3. Premium Connection Triggers</h5>
-                <p style="font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">
-                    <b>Purpose:</b> Evaluates 5 operational triggers forcing metal-to-metal seals over API EUE threads.
-                    <br><b>Why it matters:</b> Standard API threads leak gas at CITHP > 3000 psi, gall on CRA alloys, or wash out dope under high APB.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #2563EB; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+            <h5 style="color: #1E3A8A; margin: 0 0 0.4rem 0; font-weight: 700;">📘 Static Shut-In CITHP & Surface Burst Principles</h5>
+            <p style="font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">
+                <b>Purpose:</b> Models static shut-in closed-in tubing head pressure (CITHP) using gas-column barometric equilibrium.<br>
+                <b>Why it matters:</b> Dry gas columns exert minimal hydrostatic head, transferring nearly the full reservoir bottomhole pressure directly to surface equipment. 
+                The tubing string must maintain a minimum surface burst safety factor (<b>SF_burst ≥ 1.10</b>) and remain within the API 5CT hydrostatic proof-test limit.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Initialize defaults if not set in session state
         if 't3_pbhp' not in st.session_state: st.session_state.t3_pbhp = 4500.0
         if 't3_tvd' not in st.session_state: st.session_state.t3_tvd = 10000.0
-        if 't3_h2s' not in st.session_state: st.session_state.t3_h2s = 150.0
         if 't3_sg' not in st.session_state: st.session_state.t3_sg = 0.65
         if 't3_grade' not in st.session_state: st.session_state.t3_grade = "L80-1"
-        if 't3_conn' not in st.session_state: st.session_state.t3_conn = "API EUE"
-        if 't3_welltype' not in st.session_state: st.session_state.t3_welltype = "Oil Well"
-        if 't3_apb' not in st.session_state: st.session_state.t3_apb = 800.0
 
         # ---------------------------------------------------------------------
-        # 2. INTERACTIVE LAB SLIDERS & CONTROLS
+        # 2. INTERACTIVE CONTROLS
         # ---------------------------------------------------------------------
-        col_ctrl1, col_ctrl2 = st.columns([1.1, 1], gap="medium")
+        col_ctrl1, col_ctrl2 = st.columns(2, gap="medium")
 
         with col_ctrl1:
-            st.markdown("##### ⚡ Operating & Reservoir Chemistry Sliders")
+            st.markdown("##### ⚡ Reservoir & Gas Properties")
             t3_pbhp = st.slider("Bottomhole Pressure Pbhp (psi)", min_value=1000.0, max_value=15000.0, value=float(st.session_state.t3_pbhp), step=250.0, key="t3_pbhp_slider")
             t3_tvd = st.slider("True Vertical Depth TVD (ft)", min_value=2000.0, max_value=25000.0, value=float(st.session_state.t3_tvd), step=500.0, key="t3_tvd_slider")
-            t3_h2s = st.slider("H₂S Concentration (PPM)", min_value=0.0, max_value=5000.0, value=float(st.session_state.t3_h2s), step=25.0, key="t3_h2s_slider")
             t3_sg = st.slider("Gas Specific Gravity (Air=1.00)", min_value=0.55, max_value=1.00, value=float(st.session_state.t3_sg), step=0.01, key="t3_sg_slider")
 
         with col_ctrl2:
-            st.markdown("##### 🛠️ Candidate Metallurgy & Operational Triggers")
-            well_types = ["Oil Well", "Gas Well"]
-            t3_welltype = st.selectbox("Well Fluid Category:", well_types, index=well_types.index(st.session_state.t3_welltype) if st.session_state.t3_welltype in well_types else 0, key="t3_wt_select")
-
+            st.markdown("##### 🛠️ Pipe Rating Controls")
             grades_list = ["J55", "N80", "L80-1", "P110", "L80-13Cr", "S13Cr-110", "22Cr-110", "25Cr-125"]
             t3_grade = st.selectbox("Steel Grade Selection:", grades_list, index=grades_list.index(st.session_state.t3_grade) if st.session_state.t3_grade in grades_list else 2, key="t3_grade_select")
 
-            conn_list = ["API EUE", "Premium (VAM Top)", "Premium (TenarisHydril)"]
-            t3_conn = st.selectbox("Selected Thread / Connection Profile:", conn_list, index=conn_list.index(st.session_state.t3_conn) if st.session_state.t3_conn in conn_list else 0, key="t3_conn_select")
-
-            t3_apb = st.slider("Trapped APB Pressure Rise (psi)", min_value=0.0, max_value=4000.0, value=float(st.session_state.t3_apb), step=100.0, key="t3_apb_slider")
-
         st.session_state.t3_pbhp = t3_pbhp
         st.session_state.t3_tvd = t3_tvd
-        st.session_state.t3_h2s = t3_h2s
         st.session_state.t3_sg = t3_sg
         st.session_state.t3_grade = t3_grade
-        st.session_state.t3_conn = t3_conn
-        st.session_state.t3_welltype = t3_welltype
-        st.session_state.t3_apb = t3_apb
 
         # ---------------------------------------------------------------------
-        # 3. MATHEMATICAL COMPUTATIONS (TAB 3)
+        # 3. MATHEMATICAL COMPUTATIONS (CITHP & BURST)
         # ---------------------------------------------------------------------
         # Static CITHP Barometric Formula
         t_wh_f = 150.0
@@ -4143,70 +4101,28 @@ elif page == "4. Tubing Stress Analysis":
         burst_pass = sf_burst_cithp >= 1.10
         hydro_pass = p_test_mill >= cithp_calc_psi
 
-        # H2S Partial Pressure Calculation
-        p_h2s_psia = t3_pbhp * (t3_h2s / 1e6)
-        is_sour = p_h2s_psia >= 0.05
-
-        non_nace_grades = ["J55", "N80", "P110"]
-        nace_pass = True
-        nace_msg = "Compatible Clean/Sour Service"
-
-        if is_sour and t3_grade in non_nace_grades:
-            nace_pass = False
-            nace_msg = f"REJECTED: pH2S = {p_h2s_psia:.3f} psia ≥ 0.05 psia. {t3_grade} causes Sulphide Stress Cracking (SSC). Must use L80-1 (≤23 HRC) or CRA."
-        elif is_sour:
-            nace_msg = f"VALIDATED: Sour Service (pH2S = {p_h2s_psia:.3f} psia ≥ 0.05 psia). Grade {t3_grade} complies with NACE MR0175."
-
-        # Premium Connection Trigger Logic (5 Conditions)
-        prem_triggers = []
-        if t3_welltype == "Gas Well":
-            prem_triggers.append("Gas Flow Stream (Metal-to-Metal Seal Required)")
-        if cithp_calc_psi > 3000.0:
-            prem_triggers.append(f"High CITHP ({cithp_calc_psi:.0f} psi > 3000 psi) - Thread Leak Risk")
-        if t3_apb > 1500.0:
-            prem_triggers.append(f"Severe APB ({t3_apb:.0f} psi > 1500 psi) - Dope Washout Risk")
-        if "13Cr" in t3_grade or "22Cr" in t3_grade or "25Cr" in t3_grade:
-            prem_triggers.append("CRA Metallurgy - Galling Risk on API Threads")
-        if t3_tvd > 10000.0:
-            prem_triggers.append(f"High Depth / Axial Load ({t3_tvd:.0f} ft > 10,000 ft)")
-
-        needs_premium = len(prem_triggers) > 0
-        conn_pass = True
-
-        if needs_premium and t3_conn == "API EUE":
-            conn_pass = False
-            conn_msg = "REJECTED: API EUE thread unsuited for current operating envelope. " + " | ".join(prem_triggers)
-        elif needs_premium:
-            conn_msg = "VALIDATED: Premium Connection approved. Triggered by: " + " | ".join(prem_triggers)
-        else:
-            conn_msg = "VALIDATED: API EUE Thread acceptable for standard low-pressure liquid service."
-
         # ---------------------------------------------------------------------
         # 4. METRIC SUMMARY & STATUS BANNERS
         # ---------------------------------------------------------------------
         st.markdown("---")
-        m_e1, m_e2, m_e3, m_e4, m_e5 = st.columns(5)
+        st.markdown("### 📈 CITHP Burst Metric Summary")
+
+        m_e1, m_e2, m_e3, m_e4 = st.columns(4)
         m_e1.metric("Shut-In CITHP", f"{cithp_calc_psi:.0f} psi", help="Barometric static dry gas column")
-        m_e2.metric("Surface Burst SF", f"{sf_burst_cithp:.2f}", delta="SF >= 1.10", delta_color="normal" if burst_pass else "inverse")
-        m_e3.metric("pH2S Partial Pressure", f"{p_h2s_psia:.3f} psia", help="Sour threshold at 0.05 psia")
-        m_e4.metric("Proof Test P_test", f"{p_test_mill:.0f} psi", help="API 5CT Mill Test Gate")
-        m_e5.metric("Connection Required", "PREMIUM" if needs_premium else "API EUE")
+        m_e2.metric("Pipe Body Burst Limit", f"{p_burst:.0f} psi", help="Candidate internal yield pressure")
+        m_e3.metric("Surface Burst SF", f"{sf_burst_cithp:.2f}", delta="SF >= 1.10", delta_color="normal" if burst_pass else "inverse")
+        m_e4.metric("Mill Proof Test P_test", f"{p_test_mill:.0f} psi", help="API 5CT Mill Test Gate (80% yield)")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Dynamic Status Alerts
-        if not nace_pass:
-            st.error(f"🔴 **NACE MR0175 SOUR VIOLATION**: {nace_msg}")
+        if not burst_pass:
+            st.error(f"🔴 **SURFACE BURST FAILURE**: Calculated shut-in CITHP ({cithp_calc_psi:.0f} psi) exceeds allowable burst limit. Safety factor ({sf_burst_cithp:.2f}) is below target 1.10.")
         else:
-            st.success(f"🟢 **NACE METALLURGY OK**: {nace_msg}")
-
-        if not conn_pass:
-            st.warning(f"⚠️ **CONNECTION INTEGRITY ALERT**: {conn_msg}")
-        else:
-            st.info(f"🔵 **CONNECTION SELECTION STATUS**: {conn_msg}")
+            st.success(f"🟢 **SURFACE BURST SAFE**: Safety Factor ({sf_burst_cithp:.2f}) meets or exceeds the required 1.10 design threshold.")
 
         if not hydro_pass:
-            st.error(f"🔴 **API 5CT PROOF-TEST FAILURE**: Mill proof test ({p_test_mill:.0f} psi) is below expected static shut-in CITHP ({cithp_calc_psi:.0f} psi). Operating string above proved rating.")
+            st.warning(f"⚠️ **API 5CT PROOF-TEST ALERT**: Mill proof test pressure ({p_test_mill:.0f} psi) is below expected static shut-in CITHP ({cithp_calc_psi:.0f} psi). Wellhead pressure exceeds standard mill test parameters.")
 
 # -----------------------------------------------------------------------------
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
