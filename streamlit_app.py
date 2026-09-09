@@ -4131,6 +4131,343 @@ elif page == "5. Material Selection":
     st.markdown('<div class="main-header">Step 5: Metallurgical &amp; Material Property Selection</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Reserved for grade, sour-service, and corrosion-resistant alloy selection.</div>', unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # 1. INITIALIZE ISOLATED LAB SESSION STATE (NO GLOBAL MUTATION)
+    # -------------------------------------------------------------------------
+    if 'lab_inputs' not in st.session_state:
+        st.session_state.lab_inputs = {
+            'p_bhp': 4500.0,
+            'h2s_ppm': 150.0,
+            'tvd': 10000.0,
+            'delta_t_annular': 45.0,
+            'well_type': 'Oil Well (Liquid Dominated)',
+            'gor': 800.0,
+            'q_gas_mmscfd': 0.0,
+            'grade': 'L80-1',
+            'material': 'NACE Carbon Steel',
+            'connection': 'API EUE',
+            'weight_lbft': 6.5,
+            'od_in': 2.875,
+            'id_in': 2.441
+        }
+
+    # -------------------------------------------------------------------------
+    # 2. SIDEBAR PRESET SCENARIO CARD
+    # -------------------------------------------------------------------------
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🧪 Educational Lab Presets")
+    st.sidebar.caption("Pre-load real-world engineering scenarios into Tab 1:")
+
+    scenario_choice = st.sidebar.selectbox(
+        "Select Scenario Preset:",
+        [
+            "Custom Sensitivity Mode",
+            "1. High-Pressure Deep Gas Well",
+            "2. Shallow Sour Oil Well",
+            "3. Offshore Deepwater CRA Completion"
+        ]
+    )
+
+    if scenario_choice == "1. High-Pressure Deep Gas Well":
+        st.session_state.lab_inputs.update({
+            'p_bhp': 12000.0,
+            'h2s_ppm': 10.0,
+            'tvd': 15000.0,
+            'delta_t_annular': 65.0,
+            'well_type': 'Gas Well (Gas / Condensate)',
+            'gor': 5000.0,
+            'q_gas_mmscfd': 25.0,
+            'grade': 'P110',
+            'material': 'High-Strength Alloy',
+            'connection': 'API EUE',
+            'weight_lbft': 9.2,
+            'od_in': 3.5,
+            'id_in': 2.992
+        })
+    elif scenario_choice == "2. Shallow Sour Oil Well":
+        st.session_state.lab_inputs.update({
+            'p_bhp': 3500.0,
+            'h2s_ppm': 2500.0,
+            'tvd': 5500.0,
+            'delta_t_annular': 20.0,
+            'well_type': 'Oil Well (Liquid Dominated)',
+            'gor': 400.0,
+            'q_gas_mmscfd': 0.0,
+            'grade': 'N80',
+            'material': 'High-Strength Carbon Steel',
+            'connection': 'API EUE',
+            'weight_lbft': 6.5,
+            'od_in': 2.875,
+            'id_in': 2.441
+        })
+    elif scenario_choice == "3. Offshore Deepwater CRA Completion":
+        st.session_state.lab_inputs.update({
+            'p_bhp': 9500.0,
+            'h2s_ppm': 800.0,
+            'tvd': 12500.0,
+            'delta_t_annular': 85.0,
+            'well_type': 'Gas Well (Gas / Condensate)',
+            'gor': 3500.0,
+            'q_gas_mmscfd': 18.0,
+            'grade': 'L80-13Cr',
+            'material': 'Martensitic Stainless (CRA)',
+            'connection': 'API EUE',
+            'weight_lbft': 9.2,
+            'od_in': 3.5,
+            'id_in': 2.992
+        })
+
+    # -------------------------------------------------------------------------
+    # 3. PAGE 5 LAYOUT & TAB SELECTION
+    # -------------------------------------------------------------------------
+    st.markdown('<div class="main-header">Step 5: Interactive Educational Lab</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Interactive sandbox to master Sour Service (pH₂S) physics, NACE MR0175 metallurgy limits, and Premium Connection operational triggers.</div>', unsafe_allow_html=True)
+
+    tab1, = st.tabs(["🧪 Interactive Educational Lab (Sour Service & Premium Logic)"])
+
+    with tab1:
+        st.markdown("### 🎛️ Interactive 'What-If' Sensitivity Sandbox")
+        st.caption("Adjust parameters below to dynamically evaluate sour service boundaries and thread leak triggers without altering main app inputs.")
+
+        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+
+        with col_s1:
+            lab_pbhp = st.slider(
+                "Bottomhole Pressure - Pbhp (psi)",
+                min_value=1000.0, max_value=20000.0,
+                value=float(st.session_state.lab_inputs['p_bhp']),
+                step=250.0
+            )
+        with col_s2:
+            lab_h2s = st.slider(
+                "H₂S Concentration (PPM)",
+                min_value=0.0, max_value=10000.0,
+                value=float(st.session_state.lab_inputs['h2s_ppm']),
+                step=50.0
+            )
+        with col_s3:
+            lab_tvd = st.slider(
+                "True Vertical Depth - TVD (ft)",
+                min_value=2000.0, max_value=25000.0,
+                value=float(st.session_state.lab_inputs['tvd']),
+                step=500.0
+            )
+        with col_s4:
+            lab_dt = st.slider(
+                "Annular Temp Rise - ΔT (°F)",
+                min_value=0.0, max_value=150.0,
+                value=float(st.session_state.lab_inputs['delta_t_annular']),
+                step=5.0
+            )
+
+        # Update lab state from sliders
+        st.session_state.lab_inputs['p_bhp'] = lab_pbhp
+        st.session_state.lab_inputs['h2s_ppm'] = lab_h2s
+        st.session_state.lab_inputs['tvd'] = lab_tvd
+        st.session_state.lab_inputs['delta_t_annular'] = lab_dt
+
+        # ---------------------------------------------------------------------
+        # 4. MATH ENGINE FOR LAB CALCULATIONS
+        # ---------------------------------------------------------------------
+        # A. Sour Service Partial Pressure
+        p_h2s_psia = lab_pbhp * (lab_h2s / 1e6)
+        is_sour_active = p_h2s_psia >= 0.05
+
+        # B. Approximate Static CITHP (Barometric gas column model)
+        gas_sg = 0.65
+        t_avg_r = 180.0 + 459.67
+        z_fact = 0.88
+        cithp_calc = max(0.0, lab_pbhp * np.exp(-(0.01875 * gas_sg * lab_tvd) / (z_fact * t_avg_r)) - 14.7)
+
+        # C. APB Pressure Rise (Water-based brine baseline: alpha_v = 2.1e-4 /°C, kappa_t = 3.0e-6 /psi)
+        dt_celsius = lab_dt * (5.0 / 9.0)
+        apb_calc_psi = (2.1e-4 / 3.0e-6) * dt_celsius
+
+        # D. Axial Load Calculation (Lubinski buoyed weight + thermal)
+        buoyancy_factor = (1.0 - (65.0 / 490.0))
+        area_steel = (np.pi / 4.0) * (st.session_state.lab_inputs['od_in']**2 - st.session_state.lab_inputs['id_in']**2)
+        f_gravity_lbs = st.session_state.lab_inputs['weight_lbft'] * lab_tvd * buoyancy_factor
+        f_thermal_lbs = 30e6 * area_steel * 6.9e-6 * lab_dt
+        f_axial_klbs = (f_gravity_lbs + f_thermal_lbs) / 1000.0
+
+        # E. Evaluate 5 Premium Connection Triggers
+        is_gas_well = "Gas" in st.session_state.lab_inputs['well_type']
+        gor_val = st.session_state.lab_inputs['gor']
+        trig1_gas = is_gas_well or gor_val > 2000.0
+        trig2_cithp = cithp_calc > 3000.0
+        trig3_apb = apb_calc_psi > 1500.0
+        curr_grade = str(st.session_state.lab_inputs['grade']).upper()
+        trig4_cra = any(x in curr_grade for x in ["13CR", "22CR", "25CR", "CRA"]) or "CR" in curr_grade
+        trig5_load = lab_tvd > 10000.0 or f_axial_klbs > 150.0
+
+        premium_required = trig1_gas or trig2_cithp or trig3_apb or trig4_cra or trig5_load
+
+        # ---------------------------------------------------------------------
+        # 5. LIVE DIAGNOSTIC STATUS CARDS ("LIGHT BULB" INDICATORS)
+        # ---------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🚦 Live Diagnostic Status Indicators")
+
+        col_d1, col_d2 = st.columns(2)
+
+        with col_d1:
+            if is_sour_active:
+                st.error(f"""
+                #### 🔴 SOUR SERVICE ACTIVE ($p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.3f}\\text{{ psia}} \\ge 0.05\\text{{ psia}$)
+                **NACE MR0175 Mandatory Constraints Engaged:**
+                * **Rejected Grades:** Standard carbon steels (**J55, N80, P110, Q125**) rejected due to **Sulfide Stress Cracking (SSC)**.
+                * **Mandated Grades:** NACE MR0175 compliant grades (**L80-1** $\\le 26\\text{{ HRC Max}}$, C75, T95) or **Corrosion-Resistant Alloys (CRAs)**.
+                """)
+            else:
+                st.success(f"""
+                #### 🟢 SWEET SERVICE ENVIRONMENT ($p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.3f}\\text{{ psia}} < 0.05\\text{{ psia}$)
+                **Standard Metallurgy Allowed:**
+                * Standard high-strength carbon steels (J55, N80, P110, Q125) remain mechanically acceptable.
+                * No NACE MR0175 HRC hardness capping required.
+                """)
+
+        with col_d2:
+            if premium_required:
+                st.warning(f"""
+                #### ⚠️ PREMIUM CONNECTION REQUIRED (Metal-to-Metal Torque Shoulder)
+                **Thread Integrity Evaluation:** Standard API EUE threads **REJECTED**.
+                * **Failure Mode:** API EUE relies on thread compound (dope) which washes out under gas leaks, high differential pressure, or APB.
+                * **Required Feature:** Metal-to-metal seal with standard torque shoulder to guarantee pressure containment.
+                """)
+            else:
+                st.info("""
+                #### 🟢 API EUE THREAD ACCEPTABLE
+                **Standard Connection Validated:**
+                * Operational loads sit within API EUE thread compound containment capabilities.
+                """)
+
+        # ---------------------------------------------------------------------
+        # 6. OPERATIONAL TRIGGER SUMMARY MATRIX
+        # ---------------------------------------------------------------------
+        st.markdown("#### ⚡ Connection Trigger Diagnostic Table")
+
+        t1_icon = "🔴 ACTIVE" if trig1_gas else "🟢 Inactive"
+        t2_icon = "🔴 ACTIVE" if trig2_cithp else "🟢 Inactive"
+        t3_icon = "🔴 ACTIVE" if trig3_apb else "🟢 Inactive"
+        t4_icon = "🔴 ACTIVE" if trig4_cra else "🟢 Inactive"
+        t5_icon = "🔴 ACTIVE" if trig5_load else "🟢 Inactive"
+
+        trigger_table_html = f"""
+        <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.88rem;">
+            <thead>
+                <tr style="background-color: #1E3A8A; color: white; text-align: left;">
+                    <th style="padding: 8px;">Trigger Condition</th>
+                    <th style="padding: 8px;">Evaluated Value</th>
+                    <th style="padding: 8px;">Threshold Limit</th>
+                    <th style="padding: 8px;">Status</th>
+                    <th style="padding: 8px;">Engineering Failure Mechanism</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                    <td style="padding: 8px; font-weight: 600;">1. Gas Well / High GOR</td>
+                    <td style="padding: 8px;">{st.session_state.lab_inputs['well_type']} (GOR: {gor_val:.0f})</td>
+                    <td style="padding: 8px;">Gas Well OR GOR > 2,000 scf/STB</td>
+                    <td style="padding: 8px; font-weight: 700;">{t1_icon}</td>
+                    <td style="padding: 8px; font-size: 0.82rem;">Gas molecule helical leak through thread dope helical path</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                    <td style="padding: 8px; font-weight: 600;">2. High CITHP</td>
+                    <td style="padding: 8px;">{cithp_calc:.1f} psi</td>
+                    <td style="padding: 8px;">CITHP > 3,000 psi</td>
+                    <td style="padding: 8px; font-weight: 700;">{t2_icon}</td>
+                    <td style="padding: 8px; font-size: 0.82rem;">High gas pressure ballooning deforms thread roots</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                    <td style="padding: 8px; font-weight: 600;">3. Severe APB Rise</td>
+                    <td style="padding: 8px;">{apb_calc_psi:.1f} psi</td>
+                    <td style="padding: 8px;">ΔP_APB > 1,500 psi</td>
+                    <td style="padding: 8px; font-weight: 700;">{t3_icon}</td>
+                    <td style="padding: 8px; font-size: 0.82rem;">External pressure differential extruded thread compound</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                    <td style="padding: 8px; font-weight: 600;">4. CRA Metallurgy</td>
+                    <td style="padding: 8px;">{st.session_state.lab_inputs['grade']} ({st.session_state.lab_inputs['material']})</td>
+                    <td style="padding: 8px;">13Cr / 22Cr / 25Cr / CRA</td>
+                    <td style="padding: 8px; font-weight: 700;">{t4_icon}</td>
+                    <td style="padding: 8px; font-size: 0.82rem;">High galling propensity of chrome alloys during API makeup</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: 600;">5. Depth / Axial Tension</td>
+                    <td style="padding: 8px;">TVD: {lab_tvd:.0f} ft | Load: {f_axial_klbs:.1f} klbs</td>
+                    <td style="padding: 8px;">TVD > 10,000 ft OR Axial > 150 klbs</td>
+                    <td style="padding: 8px; font-weight: 700;">{t5_icon}</td>
+                    <td style="padding: 8px; font-size: 0.82rem;">Tensile stretch disengages API EUE pin/box contact flanks</td>
+                </tr>
+            </tbody>
+        </table>
+        """
+        st.markdown(trigger_table_html, unsafe_allow_html=True)
+
+        # ---------------------------------------------------------------------
+        # 7. STEP-BY-STEP MATHEMATICAL UNFOLDING CARDS
+        # ---------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🧮 Step-by-Step Mathematical Unfolding Cards")
+
+        with st.expander("📐 Card 1: Sour Service Partial Pressure Substitution ($p_{\\text{H}_2\\text{S}}$)", expanded=True):
+            st.markdown(f"""
+            **1. Mathematical Formula:**
+            $$p_{{\\text{{H}}_2\\text{{S}}}} = P_{{\\text{{bhp}}}} \\times \\left( \\frac{{\\text{{H}}_2\\text{{S PPM}}}}{{1,000,000}} \\right)$$
+
+            **2. Exact Numerical Substitution:**
+            $$p_{{\\text{{H}}_2\\text{{S}}}} = {lab_pbhp:.1f}\\text{{ psia}} \\times \\left( \\frac{{{lab_h2s:.1f}}}{{1,000,000}} \\right)$$
+
+            **3. Calculated Result & Decision Gate:**
+            $$p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f}\\text{{ psia}}$$
+            """)
+
+            if is_sour_active:
+                st.markdown(f"> **NACE Verdict:** $p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f}\\text{{ psia}} \\ge 0.05\\text{{ psia}}$. **Active Sour Service Triggered.** High-strength carbon steels ($J55, N80, P110, Q125$) are **REJECTED** due to Sulfide Stress Cracking (SSC). $L80\\text{{-}}1$ (26 HRC Max) or CRAs are required.")
+            else:
+                st.markdown(f"> **NACE Verdict:** $p_{{\\text{{H}}_2\\text{{S}}}} = {p_h2s_psia:.4f}\\text{{ psia}} < 0.05\\text{{ psia}}$. **Sweet Service Context.** Standard API carbon steel grades are acceptable.")
+
+        with st.expander("📐 Card 2: Trapped Annular Pressure Build-up (${\\Delta P_{\\text{APB}}}$)", expanded=False):
+            st.markdown(f"""
+            **1. Mathematical Formula:**
+            $$\\Delta T_{{(\\text{{Celsius}})}} = \\frac{{5}}{{9}} \\times \\Delta T_{{(\\text{{Fahrenheit}})}}$$
+            $$\\Delta P_{{\\text{{APB}}}} = \\left( \\frac{{\\alpha_v}}{{\\kappa_T}} \\right) \\times \\Delta T_{{(\\text{{Celsius}})}}$$
+
+            **2. Exact Numerical Substitution (Water-Based Brine: $\\alpha_v = 2.1 \\times 10^{{-4}} /^\\circ\\text{{C}}$, $\\kappa_T = 3.0 \\times 10^{{-6}} /\\text{{psi}}$):**
+            $$\\Delta T_{{(\\text{{Celsius}})}} = \\frac{{5}}{{9}} \\times {lab_dt:.1f}^\\circ\\text{{F}} = {dt_celsius:.2f}^\\circ\\text{{C}}$$
+            $$\\Delta P_{{\\text{{APB}}}} = \\left( \\frac{{2.1 \\times 10^{{-4}}}{{3.0 \\times 10^{{-6}}}} \\right) \\times {dt_celsius:.2f}^\\circ\\text{{C}}$$
+
+            **3. Calculated Result:**
+            $$\\Delta P_{{\\text{{APB}}}} = 70.0 \\times {dt_celsius:.2f} = {apb_calc_psi:.1f}\\text{{ psi}}$$
+            """)
+
+            if trig3_apb:
+                st.markdown(f"> **APB Verdict:** $\\Delta P_{{\\text{{APB}}}} = {apb_calc_psi:.1f}\\text{{ psi}} > 1,500\\text{{ psi}}$. Severe pressure rise requires a **Premium Connection** to prevent thread compound extrusion.")
+            else:
+                st.markdown(f"> **APB Verdict:** $\\Delta P_{{\\text{{APB}}}} = {apb_calc_psi:.1f}\\text{{ psi}} \\le 1,500\\text{{ psi}}$. Within standard API thread compound pressure containment limit.")
+
+        with st.expander("📐 Card 3: Net Axial Load & Thermal Stretch ($F_{\\text{axial}}$)", expanded=False):
+            st.markdown(f"""
+            **1. Mathematical Formulas:**
+            $$BF = 1 - \\left(\\frac{{\\rho_{{\\text{{slurry}}}}}}{{490}}\\right) = 1 - \\left(\\frac{{65.0}}{{490}}\\right) = {buoyancy_factor:.4f}$$
+            $$F_{{\\text{{gravity}}}} = W_{{\\text{{lbft}}}} \\times \\text{{TVD}} \\times BF$$
+            $$F_{{\\text{{thermal}}}} = E \\times A_{{\\text{{steel}}}} \\times \\alpha \\times \\Delta T$$
+            $$F_{{\\text{{axial}}}} = \\frac{{F_{{\\text{{gravity}}}} + F_{{\\text{{thermal}}}}}}{{1,000}}$$
+
+            **2. Exact Numerical Substitution:**
+            $$A_{{\\text{{steel}}}} = \\frac{{\\pi}}{{4}} \\left( {st.session_state.lab_inputs['od_in']}^2 - {st.session_state.lab_inputs['id_in']}^2 \\right) = {area_steel:.3f}\\text{{ in}}^2$$
+            $$F_{{\\text{{gravity}}}} = {st.session_state.lab_inputs['weight_lbft']} \\times {lab_tvd:.0f} \\times {buoyancy_factor:.4f} = {f_gravity_lbs:.1f}\\text{{ lbs}}$$
+            $$F_{{\\text{{thermal}}}} = (30 \\times 10^6) \\times {area_steel:.3f} \\times (6.9 \\times 10^{{-6}}) \\times {lab_dt:.1f} = {f_thermal_lbs:.1f}\\text{{ lbs}}$$
+
+            **3. Calculated Result:**
+            $$F_{{\\text{{axial}}}} = \\frac{{{f_gravity_lbs:.1f} + {f_thermal_lbs:.1f}}}{{1,000}} = {f_axial_klbs:.1f}\\text{{ klbs}}$$
+            """)
+
+            if f_axial_klbs > 150.0 or lab_tvd > 10000.0:
+                st.markdown(f"> **Axial Load Verdict:** $F_{{\\text{{axial}}}} = {f_axial_klbs:.1f}\\text{{ klbs}}$ or $\\text{{TVD}} = {lab_tvd:.0f}\\text{{ ft}}$. Exceeds standard API EUE tensile limit (150 klbs / 10,000 ft). **Premium connection mandated.**")
+            else:
+                st.markdown(f"> **Axial Load Verdict:** $F_{{\\text{{axial}}}} = {f_axial_klbs:.1f}\\text{{ klbs}}$ within API EUE thread load rating.")
+
 # -----------------------------------------------------------------------------
 # PAGE 6: CALCULATION METHODOLOGY (REFINED & RESTORED)
 # -----------------------------------------------------------------------------
