@@ -4024,7 +4024,7 @@ elif page == "4. Tubing Stress Analysis":
         m_t3.metric("Bending Stress (DLS)", f"{t2_sigma_bending:.0f} psi")
         m_t4.metric("Triaxial Status", "PASS" if triaxial_sf_t2 >= 1.25 else "YIELD FAILURE", delta="-CRITICAL" if triaxial_sf_t2 < 1.25 else "SAFE", delta_color="inverse" if triaxial_sf_t2 < 1.25 else "normal")
 
-    # =========================================================================
+# =========================================================================
     # TAB 3: ENVIRONMENTAL INTEGRITY, SHUT-IN BURST & CONNECTION LOGIC
     # =========================================================================
     with tab3:
@@ -4070,59 +4070,7 @@ elif page == "4. Tubing Stress Analysis":
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ---------------------------------------------------------------------
-        # 2. INTERACTIVE GUIDED SCENARIO PRESET BUTTONS
-        # ---------------------------------------------------------------------
-        st.markdown("#### 🎯 Guided Operational Scenario Selector")
-        st.caption("Click any scenario button below to load specialized parameters into session state:")
-
-        col_sc1, col_sc2, col_sc3, col_sc4 = st.columns(4)
-
-        if col_sc1.button("🔥 Scenario A: Deep HP Gas", use_container_width=True, key="btn_sc_a"):
-            st.session_state.t3_pbhp = 8500.0
-            st.session_state.t3_tvd = 14500.0
-            st.session_state.t3_h2s = 50.0
-            st.session_state.t3_sg = 0.68
-            st.session_state.t3_grade = "P110"
-            st.session_state.t3_conn = "Premium (VAM Top)"
-            st.session_state.t3_welltype = "Gas Well"
-            st.session_state.t3_apb = 1800.0
-            st.rerun()
-
-        if col_sc2.button("☣️ Scenario B: Shallow Sour Oil", use_container_width=True, key="btn_sc_b"):
-            st.session_state.t3_pbhp = 3800.0
-            st.session_state.t3_tvd = 6500.0
-            st.session_state.t3_h2s = 1500.0
-            st.session_state.t3_sg = 0.72
-            st.session_state.t3_grade = "N80"
-            st.session_state.t3_conn = "API EUE"
-            st.session_state.t3_welltype = "Oil Well"
-            st.session_state.t3_apb = 400.0
-            st.rerun()
-
-        if col_sc3.button("🌊 Scenario C: Offshore CRA", use_container_width=True, key="btn_sc_c"):
-            st.session_state.t3_pbhp = 6200.0
-            st.session_state.t3_tvd = 11000.0
-            st.session_state.t3_h2s = 350.0
-            st.session_state.t3_sg = 0.65
-            st.session_state.t3_grade = "L80-13Cr"
-            st.session_state.t3_conn = "Premium (TenarisHydril)"
-            st.session_state.t3_welltype = "Gas Well"
-            st.session_state.t3_apb = 2200.0
-            st.rerun()
-
-        if col_sc4.button("🔄 Reset Baseline", use_container_width=True, key="btn_sc_reset"):
-            st.session_state.t3_pbhp = 4500.0
-            st.session_state.t3_tvd = 10000.0
-            st.session_state.t3_h2s = 150.0
-            st.session_state.t3_sg = 0.65
-            st.session_state.t3_grade = "L80-1"
-            st.session_state.t3_conn = "API EUE"
-            st.session_state.t3_welltype = "Oil Well"
-            st.session_state.t3_apb = 800.0
-            st.rerun()
-
-        # Initialize defaults if not set
+        # Initialize defaults if not set in session state
         if 't3_pbhp' not in st.session_state: st.session_state.t3_pbhp = 4500.0
         if 't3_tvd' not in st.session_state: st.session_state.t3_tvd = 10000.0
         if 't3_h2s' not in st.session_state: st.session_state.t3_h2s = 150.0
@@ -4132,10 +4080,8 @@ elif page == "4. Tubing Stress Analysis":
         if 't3_welltype' not in st.session_state: st.session_state.t3_welltype = "Oil Well"
         if 't3_apb' not in st.session_state: st.session_state.t3_apb = 800.0
 
-        st.markdown("---")
-
         # ---------------------------------------------------------------------
-        # 3. INTERACTIVE LAB SLIDERS & CONTROLS
+        # 2. INTERACTIVE LAB SLIDERS & CONTROLS
         # ---------------------------------------------------------------------
         col_ctrl1, col_ctrl2 = st.columns([1.1, 1], gap="medium")
 
@@ -4169,8 +4115,8 @@ elif page == "4. Tubing Stress Analysis":
         st.session_state.t3_apb = t3_apb
 
         # ---------------------------------------------------------------------
-        # 4. MATHEMATICAL COMPUTATIONS (TAB 3)
-        # -------------------------------------------------------------------------
+        # 3. MATHEMATICAL COMPUTATIONS (TAB 3)
+        # ---------------------------------------------------------------------
         # Static CITHP Barometric Formula
         t_wh_f = 150.0
         t_bht_f = 210.0
@@ -4236,7 +4182,7 @@ elif page == "4. Tubing Stress Analysis":
             conn_msg = "VALIDATED: API EUE Thread acceptable for standard low-pressure liquid service."
 
         # ---------------------------------------------------------------------
-        # 5. METRIC SUMMARY & STATUS BANNERS
+        # 4. METRIC SUMMARY & STATUS BANNERS
         # ---------------------------------------------------------------------
         st.markdown("---")
         m_e1, m_e2, m_e3, m_e4, m_e5 = st.columns(5)
@@ -4261,46 +4207,6 @@ elif page == "4. Tubing Stress Analysis":
 
         if not hydro_pass:
             st.error(f"🔴 **API 5CT PROOF-TEST FAILURE**: Mill proof test ({p_test_mill:.0f} psi) is below expected static shut-in CITHP ({cithp_calc_psi:.0f} psi). Operating string above proved rating.")
-
-        # ---------------------------------------------------------------------
-        # 6. UNFOLDING MATHEMATICAL EXPANDERS
-        # ---------------------------------------------------------------------
-        st.markdown("---")
-        st.markdown("#### 🧮 Step-by-Step Unfolding Mathematical Derivations")
-
-        with st.expander("📄 1. Static Shut-In CITHP Barometric Column & Surface Burst Derivation"):
-            st.latex(r"\text{CITHP} = \left(P_{\text{bhp}} + 14.7\right) \cdot \exp\left(-\frac{0.01875 \cdot \gamma_g \cdot \text{TVD}}{Z \cdot T_{\text{avg,R}}}\right) - 14.7")
-            st.markdown(f"""
-            - **Bottomhole Pressure (Pbhp):** `{t3_pbhp:.1f} psi` ({p_bhp_psia:.1f} psia)
-            - **Gas Specific Gravity (γ_g):** `{t3_sg:.2f}` (Air = 1.00)
-            - **True Vertical Depth (TVD):** `{t3_tvd:.0f} ft`
-            - **Calculated Z-Factor:** `{z_fact:.3f}` | **Mean Well Temp:** `{t_avg_r:.1f} °R`
-            - **Calculated Static Shut-In CITHP:** `{cithp_calc_psi:.1f} psi`
-            - **Candidate Pipe Body Burst Limit:** `{p_burst:.0f} psi`
-            - **Surface Burst Safety Factor:** `SF = {p_burst:.0f} / {cithp_calc_psi:.1f} = {sf_burst_cithp:.2f}` (Target ≥ 1.10)
-            """)
-
-        with st.expander("☣️ 2. NACE MR0175 H₂S Partial Pressure & Sulphide Stress Cracking (SSC) Mechanics"):
-            st.latex(r"p_{\text{H}_2\text{S}} = P_{\text{bhp}} \times \left(\frac{\text{H}_2\text{S PPM}}{1,000,000}\right)")
-            st.markdown(f"""
-            - **Bottomhole Pressure (Pbhp):** `{t3_pbhp:.1f} psi`
-            - **H₂S Concentration:** `{t3_h2s:.1f} PPM`
-            - **Calculated Partial Pressure (pH2S):** `{t3_pbhp:.1f} × ({t3_h2s:.1f} / 1,000,000) = {p_h2s_psia:.4f} psia`
-            - **NACE Sour Threshold:** `0.0500 psia`
-            - **Sour Service Active?** `{"YES - NACE Rules Apply" if is_sour else "NO - Sweet Service"}`
-            - **Metallurgical Compliance:** Candidate `{t3_grade}` is **`{"PASS" if nace_pass else "FAIL - Non-NACE Grade"}`**.
-            """)
-
-        with st.expander("🔧 3. Premium Connection 5-Condition Trigger Evaluation"):
-            st.markdown(f"""
-            1. **Gas Stream Category:** `{"TRIGGERED (Gas Well)" if t3_welltype == "Gas Well" else "Pass (Oil Well)"}`
-            2. **High CITHP Surface Pressure (> 3000 psi):** `{"TRIGGERED (" + str(round(cithp_calc_psi, 0)) + " psi)" if cithp_calc_psi > 3000 else "Pass"}`
-            3. **Severe Trapped APB Pressure (> 1500 psi):** `{"TRIGGERED (" + str(round(t3_apb, 0)) + " psi)" if t3_apb > 1500 else "Pass"}`
-            4. **Corrosion Resistant Alloy (CRA) Metallurgy:** `{"TRIGGERED (" + t3_grade + ")" if "13Cr" in t3_grade or "22Cr" in t3_grade or "25Cr" in t3_grade else "Pass (Carbon Steel)"}`
-            5. **Deep Well / Heavy Load (> 10,000 ft):** `{"TRIGGERED (" + str(round(t3_tvd, 0)) + " ft)" if t3_tvd > 10000 else "Pass"}`
-            
-            **Final Connection Decision:** **`{"PREMIUM CONNECTION REQUIRED" if needs_premium else "API EUE THREAD ACCEPTABLE"}`**
-            """)
 
 # -----------------------------------------------------------------------------
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
