@@ -3812,10 +3812,10 @@ elif page == "4. Tubing Stress Analysis":
         st.plotly_chart(fig, use_container_width=True)
 
     # -------------------------------------------------------------------------
-    # 5. METRIC CARDS & DETAILED MATHEMATICAL BREAKDOWN
+    # 5. METRIC CARDS SUMMARY
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 📈 Metric Summary & Force Vector Breakdown")
+    st.markdown("### 📈 Metric Summary")
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Net Axial Load", f"{f_axial_net_lbs/1000:.1f} klbs", help="Summation of all 5 Lubinski forces + Overpull")
@@ -3823,28 +3823,6 @@ elif page == "4. Tubing Stress Analysis":
     m3.metric("APB Pressure Rise", f"{dp_apb_psi:.1f} psi", help="Thermal expansion of trapped annular fluid")
     m4.metric("Tubing MAASP", f"{maasp_psi:.1f} psi", help="Collapse Rating / SF - Annular Hydrostatic Head")
     m5.metric("Structural Status", "FAIL" if string_failed else "PASS", delta="-CRITICAL" if string_failed else "SAFE", delta_color="inverse" if string_failed else "normal")
-
-    with st.expander("🧮 View Complete Mathematical Load Balance Breakdown"):
-        st.markdown("**Lubinski Net Axial Force Formula:**")
-        st.latex(r"F_{\text{axial}} = F_{\text{gravity}} + F_{\text{thermal}} + F_{\text{piston}} + F_{\text{ballooning}} + F_{\text{drag}} + F_{\text{overpull}}")
-        st.markdown(f"""
-        - **Buoyed Gravity Force (F_gravity):** `{f_gravity_lbs:.1f} lbs`
-        - **Restrained Thermal Growth Force (F_thermal):** `{f_thermal_lbs:.1f} lbs`
-        - **Packer Piston End-Load Force (F_piston):** `{f_piston_lbs:.1f} lbs`
-        - **Radial Ballooning Shortening Force (F_ballooning):** `{f_ballooning_lbs:.1f} lbs`
-        - **Fluid Drag Force (F_drag):** `{f_drag_lbs:.1f} lbs`
-        - **Applied Surface Tension / Overpull (F_overpull):** `{f_overpull:.1f} lbs`
-        """)
-        
-        st.markdown("---")
-        st.markdown("**Tubing Collapse MAASP Formula:**")
-        st.latex(r"\text{MAASP}_{\text{collapse}} = \frac{P_{\text{collapse}}}{\text{SF}_{\text{collapse}}} - (\text{Depth}_{\text{packer}} \cdot g_{\text{annular}})")
-        st.markdown(f"""
-        - **Tubing Collapse Rating (P_collapse):** `{collapse_rating_psi:.0f} psi`
-        - **Collapse Safety Factor (SF_collapse):** `{sf_collapse:.2f}`
-        - **Annular Hydrostatic Head:** `{packer_depth_ft * annular_gradient_psi_ft:.1f} psi` (Gradient: `{annular_gradient_psi_ft:.3f} psi/ft`)
-        - **Calculated Tubing Collapse MAASP:** `{maasp_psi:.1f} psi`
-        """)
 
 # -----------------------------------------------------------------------------
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION
