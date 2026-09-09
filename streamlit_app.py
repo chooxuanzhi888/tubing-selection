@@ -4128,7 +4128,7 @@ elif page == "4. Tubing Stress Analysis":
 # PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION (SOUR & PREMIUM LAB)
 # -----------------------------------------------------------------------------
 elif page == "5. Material Selection":
-    # Custom Styling for Page 5 Aesthetic Enhancements
+    # Custom CSS Styling for Presentation-Grade Lab Design
     st.markdown("""
         <style>
         .lab-card {
@@ -4163,15 +4163,7 @@ elif page == "5. Material Selection":
             border-radius: 8px;
             padding: 1rem 1.2rem;
         }
-        .tag-pill {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 5px;
-        }
-        /* Fix for truncated symbols and long table headers */
+        /* Strict header formatting to prevent symbol truncation */
         .full-text-table table {
             width: 100% !important;
         }
@@ -4179,6 +4171,7 @@ elif page == "5. Material Selection":
             white-space: nowrap !important;
             background-color: #F8FAFC !important;
             color: #1E293B !important;
+            font-size: 0.85rem !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -4187,7 +4180,7 @@ elif page == "5. Material Selection":
     st.markdown('<div class="sub-header">Simulate real-time H₂S partial pressure sour risks and premium connection operational triggers.</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 1. STREAMLINED & CONCISE CONCEPT INTRO
+    # 1. STREAMLINED CONCEPT PRIMER
     # -------------------------------------------------------------------------
     with st.expander("💡 Quick Primer: Sour Service & Connection Physics", expanded=True):
         col_i1, col_i2 = st.columns(2)
@@ -4195,19 +4188,48 @@ elif page == "5. Material Selection":
             st.markdown("""
             **🧪 Sour Service (H₂S Risk)**
             * **Sulfide Stress Cracking (SSC):** Invisible H₂S gas breaks down in water, forcing atomic hydrogen into steel. This causes high-strength pipe to shatter without warning.
-            * **NACE MR0175 Standard:** If $p_{\text{H}_2\text{S}} \ge 0.05 \text{ psia}$, standard steels (**J55, N80, P110, Q125**) are **rejected**. Softened/controlled steel (**L80-1**) or Alloys (**13Cr, 22Cr, 25Cr**) are required.
+            * **NACE MR0175 Standard:** If $p_{\mathrm{H}_2\mathrm{S}} \ge 0.05 \text{ psia}$, standard steels (**J55, N80, P110, Q125**) are **rejected**. Softened steel (**L80-1**) or Alloys (**13Cr, 22Cr, 25Cr**) are required.
             """)
         with col_i2:
             st.markdown("""
             **🔩 Connection Integrity (API vs. Premium)**
             * **Standard API Threads (EUE):** Rely on thread grease ("dope") to plug gaps. High pressure, gas streams, or heavy bending wash dope out, causing micro-leaks.
-            * **Premium Connections:** Feature a engineered **metal-to-metal radial seal** and a solid **torque shoulder** that prevents leaks and stops thread galling on chrome alloys.
+            * **Premium Connections:** Feature an engineered **metal-to-metal radial seal** and a solid **torque shoulder** that prevents leaks and stops thread galling on chrome alloys.
             """)
+
+    st.markdown("<br/>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------------
+    # 2. CONNECTION SEAL INTEGRITY COMPARISON (POSITIONED ABOVE PRESETS)
+    # -------------------------------------------------------------------------
+    st.markdown("### 🔩 Connection Seal Integrity Comparison")
+    
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown("""
+        <div class="lab-card" style="border-top: 4px solid #EF4444;">
+            <h4 style="color:#991B1B; margin-top:0;">❌ API EUE Threaded Connection</h4>
+            <p style="font-size:0.88rem; color:#334155;">
+                <b>Sealing Mechanism:</b> Helical thread clearance filled with thread compound ("pipe dope").<br/>
+                <b>Vulnerability:</b> Pressure cycles or gas streams wash out the thread dope, opening micro-annular leak paths. Chrome alloys readily gall under API thread interference.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_t2:
+        st.markdown("""
+        <div class="lab-card" style="border-top: 4px solid #10B981;">
+            <h4 style="color:#065F46; margin-top:0;">✅ Premium Metal-to-Metal Connection</h4>
+            <p style="font-size:0.88rem; color:#334155;">
+                <b>Sealing Mechanism:</b> Engineered 100% metal-to-metal radial seal + pin/box torque shoulder.<br/>
+                <b>Advantage:</b> Torque shoulder acts as a positive mechanical stop that resists high axial loads and pressure cycles while maintaining a 100% gas-tight seal.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # -------------------------------------------------------------------------
-    # 2. LOCAL LAB STATE INITIALIZATION (ISOLATED TO PAGE 5)
+    # 3. LOCAL LAB STATE INITIALIZATION (ISOLATED TO PAGE 5)
     # -------------------------------------------------------------------------
     if 'lab_p_bhp' not in st.session_state:
         st.session_state.lab_p_bhp = float(st.session_state.inputs.get('p_bhp', 4500.0))
@@ -4229,7 +4251,7 @@ elif page == "5. Material Selection":
         st.session_state.lab_axial = 120.0
 
     # -------------------------------------------------------------------------
-    # 3. REAL-WORLD ENGINEERING SCENARIO PRESETS
+    # 4. REAL-WORLD ENGINEERING SCENARIO PRESETS
     # -------------------------------------------------------------------------
     st.markdown("### 🎯 Quick Scenario Presets")
     col_p1, col_p2, col_p3 = st.columns(3)
@@ -4273,7 +4295,7 @@ elif page == "5. Material Selection":
     st.markdown("<br/>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 4. SENSITIVITY CONTROLS & LIVE DIAGNOSTICS (REAL-TIME UPDATE)
+    # 5. SENSITIVITY CONTROLS & LIVE DIAGNOSTICS (REAL-TIME RE-EVALUATION)
     # -------------------------------------------------------------------------
     st.markdown("### 🎛️ Dynamic Sensitivity Controls & Live Status")
     
@@ -4293,21 +4315,21 @@ elif page == "5. Material Selection":
         with col_c1:
             st.session_state.lab_is_gas = st.checkbox("Gas Well Fluid Stream", value=bool(st.session_state.lab_is_gas))
         with col_c2:
-            st.session_state.lab_mat = st.selectbox(
-                "Tubing Metallurgy Class",
-                ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"],
-                index=["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"].index(st.session_state.lab_mat) if st.session_state.lab_mat in ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"] else 1
-            )
+            mat_options = ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless (13Cr)", "Duplex Stainless (22Cr/25Cr)", "High-Strength Alloy"]
+            current_mat = st.session_state.lab_mat
+            mat_idx = mat_options.index(current_mat) if current_mat in mat_options else 1
+            st.session_state.lab_mat = st.selectbox("Tubing Metallurgy Class", mat_options, index=mat_idx)
 
-    # Dynamic Calculations for Real-Time Diagnostics
+    # Core Calculations for Real-Time Diagnostics
     p_h2s_psia = st.session_state.lab_p_bhp * (st.session_state.lab_h2s_ppm / 1e6)
     is_sour = p_h2s_psia >= 0.05
 
-    trig_gas = st.session_state.lab_is_gas or st.session_state.lab_gor > 2000.0
-    trig_cithp = st.session_state.lab_cithp > 3000.0
-    trig_apb = st.session_state.lab_apb > 1500.0
-    trig_cra = "Cr" in st.session_state.lab_mat or "Duplex" in st.session_state.lab_mat
-    trig_load = st.session_state.lab_tvd > 10000.0 or st.session_state.lab_axial > 150.0
+    # Operational Trigger Evaluation
+    trig_gas = bool(st.session_state.lab_is_gas or st.session_state.lab_gor > 2000.0)
+    trig_cithp = bool(st.session_state.lab_cithp > 3000.0)
+    trig_apb = bool(st.session_state.lab_apb > 1500.0)
+    trig_cra = bool("Cr" in st.session_state.lab_mat or "Duplex" in st.session_state.lab_mat)
+    trig_load = bool(st.session_state.lab_tvd > 10000.0 or st.session_state.lab_axial > 150.0)
 
     active_triggers_count = sum([trig_gas, trig_cithp, trig_apb, trig_cra, trig_load])
     needs_premium = active_triggers_count > 0
@@ -4315,13 +4337,13 @@ elif page == "5. Material Selection":
     with diag_col:
         st.markdown("**Live Diagnostic Lightbulb Indicators:**")
         
-        # Sour Service Diagnostic Lightbulb
+        # Sour Service Lightbulb Diagnostic
         if is_sour:
             st.markdown(f"""
                 <div class="status-card-sour">
-                    <h4 style="color:#991B1B; margin:0; font-size:1.1rem;">🔴 SOUR SERVICE ACTIVE (NACE MR0175)</h4>
-                    <p style="margin-top:5px; font-size:0.9rem; color:#7F1D1D;">
-                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.1rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (≥ 0.05 psia Limit)<br/>
+                    <h4 style="color:#991B1B; margin:0; font-size:1.05rem;">🔴 SOUR SERVICE ACTIVE (NACE MR0175)</h4>
+                    <p style="margin-top:5px; font-size:0.88rem; color:#7F1D1D; line-height:1.4;">
+                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.05rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (≥ 0.05 psia Limit)<br/>
                         <b>Status:</b> Standard steels (J55, N80, P110, Q125) are <b>REJECTED</b> due to Sulfide Stress Cracking (SSC). 
                         Must use <b>L80-1 (26 HRC Max)</b> or <b>CRAs</b>.
                     </p>
@@ -4330,9 +4352,9 @@ elif page == "5. Material Selection":
         else:
             st.markdown(f"""
                 <div class="status-card-sweet">
-                    <h4 style="color:#065F46; margin:0; font-size:1.1rem;">🟢 SWEET SERVICE ENVIRONMENT</h4>
-                    <p style="margin-top:5px; font-size:0.9rem; color:#064E3B;">
-                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.1rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (< 0.05 psia Limit)<br/>
+                    <h4 style="color:#065F46; margin:0; font-size:1.05rem;">🟢 SWEET SERVICE ENVIRONMENT</h4>
+                    <p style="margin-top:5px; font-size:0.88rem; color:#064E3B; line-height:1.4;">
+                        <b>pH₂S Partial Pressure:</b> <span style="font-size:1.05rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (&lt; 0.05 psia Limit)<br/>
                         <b>Status:</b> Standard high-strength carbon steels are permitted.
                     </p>
                 </div>
@@ -4340,20 +4362,23 @@ elif page == "5. Material Selection":
 
         st.markdown("<br/>", unsafe_allow_html=True)
 
-        # Connection Diagnostic Lightbulb
+        # Connection Lightbulb Diagnostic & Active Trigger Breakdown
         if needs_premium:
+            trigger_list_html = ""
+            if trig_gas: trigger_list_html += "<li>Gas Stream / GOR &gt; 2000 scf/STB</li>"
+            if trig_cithp: trigger_list_html += "<li>High Shut-In CITHP &gt; 3000 psi</li>"
+            if trig_apb: trigger_list_html += "<li>Annular Pressure Build-up (APB) &gt; 1500 psi</li>"
+            if trig_cra: trigger_list_html += "<li>Corrosion Resistant Alloy (CRA Metallurgy)</li>"
+            if trig_load: trigger_list_html += "<li>TVD &gt; 10,000 ft or Net Axial Tension &gt; 150 klbs</li>"
+
             st.markdown(f"""
                 <div class="status-card-premium">
-                    <h4 style="color:#92400E; margin:0; font-size:1.1rem;">🟠 PREMIUM CONNECTION MANDATED ({active_triggers_count}/5 Triggers)</h4>
-                    <p style="margin-top:5px; font-size:0.88rem; color:#78350F;">
+                    <h4 style="color:#92400E; margin:0; font-size:1.05rem;">🟠 PREMIUM CONNECTION MANDATED ({active_triggers_count}/5 Triggers)</h4>
+                    <p style="margin-top:5px; font-size:0.85rem; color:#78350F; line-height:1.4;">
                         <b>Status:</b> Standard API EUE threads are <b>REJECTED</b> due to leak/galling risk.<br/>
                         <b>Active Operational Triggers:</b>
-                        <ul style="margin-bottom:0; padding-left:20px;">
-                            {"<li>Gas Stream / GOR > 2000 scf/STB</li>" if trig_gas else ""}
-                            {"<li>High Shut-In CITHP > 3000 psi</li>" if trig_cithp else ""}
-                            {"<li>Annular Pressure Build-up (APB) > 1500 psi</li>" if trig_apb else ""}
-                            {"<li>Corrosion Resistant Alloy (CRA Metallurgy)</li>" if trig_cra else ""}
-                            {"<li>TVD > 10,000 ft or Net Axial Tension > 150 klbs</li>" if trig_load else ""}
+                        <ul style="margin-top:4px; margin-bottom:0; padding-left:18px;">
+                            {trigger_list_html}
                         </ul>
                     </p>
                 </div>
@@ -4361,8 +4386,8 @@ elif page == "5. Material Selection":
         else:
             st.markdown("""
                 <div class="status-card-api">
-                    <h4 style="color:#1E40AF; margin:0; font-size:1.1rem;">🟢 STANDARD API EUE PERMITTED</h4>
-                    <p style="margin-top:5px; font-size:0.9rem; color:#1E3A8A;">
+                    <h4 style="color:#1E40AF; margin:0; font-size:1.05rem;">🟢 STANDARD API EUE PERMITTED</h4>
+                    <p style="margin-top:5px; font-size:0.88rem; color:#1E3A8A; line-height:1.4;">
                         <b>Status:</b> No active premium connection triggers. API EUE/NUE threaded connections are suitable for this non-gas liquid service.
                     </p>
                 </div>
@@ -4371,7 +4396,7 @@ elif page == "5. Material Selection":
     st.markdown("---")
 
     # -------------------------------------------------------------------------
-    # 5. METALLURGICAL REJECTION MATRIX (SYMBOLS FIXED & FULL TEXT)
+    # 6. DYNAMIC METALLURGICAL GRADE EVALUATION MATRIX
     # -------------------------------------------------------------------------
     st.markdown("### 📊 Dynamic Metallurgical Grade Evaluation Matrix")
     st.caption("Live evaluation of candidate tubing grades based on active pH₂S partial pressure and NACE hardness limits.")
@@ -4388,37 +4413,10 @@ elif page == "5. Material Selection":
 
     df_grades = pd.DataFrame(grades_data)
     
-    # Custom HTML Table Container to prevent header truncation or 'ext...' symbols
+    # Render table in container with clean CSS to avoid 'ext...' symbol artifacts
     st.markdown('<div class="full-text-table">', unsafe_allow_html=True)
     st.table(df_grades)
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # -------------------------------------------------------------------------
-    # 6. THREAD INTEGRITY COMPARISON DISPLAY
-    # -------------------------------------------------------------------------
-    st.markdown("### 🔩 Connection Seal Integrity Comparison")
-    
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.markdown("""
-        <div class="lab-card" style="border-top: 4px solid #EF4444;">
-            <h4 style="color:#991B1B; margin-top:0;">API EUE Threaded Connection</h4>
-            <p style="font-size:0.88rem; color:#334155;">
-                <b>Sealing Mechanism:</b> Helical thread clearance filled with thread compound ("pipe dope").<br/>
-                <b>Vulnerability:</b> Pressure cycles or gas streams wash out the thread dope, opening micro-annular leak paths. Chrome alloys readily gall under API thread interference.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_t2:
-        st.markdown("""
-        <div class="lab-card" style="border-top: 4px solid #10B981;">
-            <h4 style="color:#065F46; margin-top:0;">Premium Metal-to-Metal Connection</h4>
-            <p style="font-size:0.88rem; color:#334155;">
-                <b>Sealing Mechanism:</b> Engineered 100% metal-to-metal radial seal + pin/box torque shoulder.<br/>
-                <b>Advantage:</b> Torque shoulder acts as a positive mechanical stop that resists high axial loads and pressure cycles while maintaining a 100% gas-tight seal.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # PAGE 6: CALCULATION METHODOLOGY (REFINED & RESTORED)
