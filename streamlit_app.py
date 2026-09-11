@@ -4169,19 +4169,46 @@ elif page == "7. Well & Fluid Inputs":
                 gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor', 800.0)), step=50.0, format="%.3f")
             bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('t_bht', 210.0)), step=1.0, format="%.3f")
 
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # TAB 3: LATE-LIFE (DEPLETED / HIGH WATER CUT ENVELOPES)
     # -------------------------------------------------------------------------
     with tab_late:
         st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)")
-
-        manual_override = st.checkbox("🛠️ Enable Manual Override for Late-Life Parameters", value=False)
+        
+        # Action columns: Manual Override toggle & Copy Early-Life button
+        col_ctrl1, col_ctrl2 = st.columns([1.5, 1.0])
+        
+        with col_ctrl1:
+            manual_override = st.checkbox(
+                "🛠️ Enable Manual Override for Late-Life Parameters", 
+                value=st.session_state.inputs.get('manual_override_late', False)
+            )
+            
+        with col_ctrl2:
+            if st.button("📋 Same as Initial Parameters (Early Life)", use_container_width=True):
+                # Enable manual override and copy early-life values into late-life session state
+                st.session_state.inputs['manual_override_late'] = True
+                st.session_state.inputs['p_bhp_late'] = p_bhp_early
+                st.session_state.inputs['p_wh_late'] = p_wh_early
+                st.session_state.inputs['bht_late'] = bht_early
+                
+                if "Gas" in well_type:
+                    st.session_state.inputs['q_gas_late'] = q_gas_early
+                    st.session_state.inputs['cgr_late'] = cgr_early
+                    st.session_state.inputs['wgr_late'] = wgr_early
+                else:
+                    st.session_state.inputs['q_liq_late'] = q_liq_early
+                    st.session_state.inputs['wc_late'] = wc_early
+                    st.session_state.inputs['gor_late'] = gor_early
+                    
+                st.success("Copied Early-Life parameters to Late-Life!")
+                st.rerun()
 
         # Auto-Predictive Calculation Logic
         pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3))
         pred_p_wh_late = float(round(p_wh_early * 0.40, 3))
         pred_bht_late = float(round(max(80.0, bht_early - 30.0), 3))
-
+        
         if "Gas" in well_type:
             pred_q_gas_late = float(round(q_gas_early * ((1.0 - decline_rate / 100.0) ** field_life), 3))
             pred_cgr_late = float(round(cgr_early * 0.60, 3))
@@ -4192,14 +4219,11 @@ elif page == "7. Well & Fluid Inputs":
             pred_gor_late = float(round(gor_early * 0.60, 3))
 
         col_l1, col_l2, col_l3 = st.columns(3)
-
         if not manual_override:
-            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using annual field decline rates and reservoir depletion rules. Check above to adjust manually.")
-
+            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using annual field decline rates and reservoir depletion rules. Enable manual override or click the button above to copy initial parameters.")
             with col_l1:
                 p_bhp_late = st.number_input("Late BHP (psi)", value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), disabled=True, format="%.3f")
                 p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), disabled=True, format="%.3f")
-
             with col_l2:
                 if "Gas" in well_type:
                     q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), disabled=True, format="%.3f")
@@ -4209,19 +4233,16 @@ elif page == "7. Well & Fluid Inputs":
                     q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), disabled=True, format="%.3f")
                     wc_late = st.number_input("Late Water Cut (%)", value=float(current_inputs.get('wc_late', pred_wc_late)), disabled=True, format="%.3f")
                     q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
-
             with col_l3:
                 if "Gas" in well_type:
                     wgr_late = st.number_input("Late WGR (bbl/MMscf)", value=float(current_inputs.get('wgr_late', pred_wgr_late)), disabled=True, format="%.3f")
                 else:
                     gor_late = st.number_input("Late Producing GOR (scf/STB)", value=float(current_inputs.get('gor_late', pred_gor_late)), disabled=True, format="%.3f")
                 bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", value=float(current_inputs.get('bht_late', pred_bht_late)), disabled=True, format="%.3f")
-
         else:
             with col_l1:
                 p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.0, max_value=20000.0, value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), step=50.0, format="%.3f")
                 p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.0, max_value=5000.0, value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), step=20.0, format="%.3f")
-
             with col_l2:
                 if "Gas" in well_type:
                     q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), step=0.5, format="%.3f")
@@ -4231,15 +4252,12 @@ elif page == "7. Well & Fluid Inputs":
                     q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.0, max_value=50000.0, value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), step=100.0, format="%.3f")
                     wc_late = st.number_input("Late Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('wc_late', pred_wc_late)), step=0.5, format="%.3f")
                     q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
-
             with col_l3:
                 if "Gas" in well_type:
                     wgr_late = st.number_input("Late WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(current_inputs.get('wgr_late', pred_wgr_late)), step=0.5, format="%.3f")
                 else:
                     gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor_late', pred_gor_late)), step=50.0, format="%.3f")
                 bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('bht_late', pred_bht_late)), step=1.0, format="%.3f")
-
-    st.markdown("---")
 
     # -------------------------------------------------------------------------
     # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX
