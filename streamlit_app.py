@@ -4650,157 +4650,164 @@ elif page == "9. Engineering Calculations":
         st.markdown(f"• **Connection Status:** {row_det['Connection_Reason']}")
         st.markdown(f"• **Overall Compliance Status:** {'PASS' if row_det['Overall_Pass'] else 'FAIL'}")
 
-# -----------------------------------------------------------------------------
-# PAGE 10: RECOMMENDATION & LIFECYCLE SENSITIVITY
-# -----------------------------------------------------------------------------
-elif page == "10. Recommendation & Sensitivity":
-    st.markdown('<div class="main-header">Step 10: Recommendations & Lifecycle Sensitivity Analysis</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Evaluate qualified tubing options, dynamic pressure drop evolution over well field life, and drawdown limit thresholds.</div>', unsafe_allow_html=True)
-    
-    candidates = active_candidate_df()
-    if candidates.empty:
-        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
-        st.stop()
-        
-    try:
-        res_df = engineering_results(st.session_state.inputs, candidates)
-    except ValueError as error:
-        st.error(f"Input validation failed: {error}")
-        st.stop()
-        
-    # Create Main Tabs for Page 10
-    page10_tab1, page10_tab2 = st.tabs([
-        "🏆 Tab 1: Qualified Recommendations & Sensitivity",
-        "📈 Tab 2: Tubing Selection & Pressure Drop Along Well Life"
-    ])
+# =========================================================================
+    # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
+    # =========================================================================
+    with page10_tab2:
+        st.subheader("📈 Tubing Selection & Pressure Drop Trajectory Along Well Life")
+        st.caption("Simulate pressure drop evolution from Year 0 to Target Well Field Life under exponential reservoir pressure depletion and rate decline.")
 
-    # =========================================================================
-    # TAB 1: QUALIFIED RECOMMENDATIONS & SENSITIVITY (CURRENT WORKFLOW)
-    # =========================================================================
-    with page10_tab1:
-        passed_candidates = res_df[res_df['Overall_Pass'] == True].copy()
-        is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
+        # Inputs for well life simulation
+        field_life_yrs = int(st.session_state.inputs.get('field_life_yrs', 20))
+        decline_rate_pct = float(st.session_state.inputs.get('decline_rate', 8.0))
         
-        # Sort all passed candidates primarily by minimal total pressure drop
-        if not passed_candidates.empty:
-            sorted_passed = passed_candidates.sort_values(
-                by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'], 
-                ascending=[True, True, False]
-            ).reset_index(drop=True)
-        else:
-            sorted_passed = pd.DataFrame()
+        # Interactive Controls
+        col_lc1, col_lc2 = st.columns([1.2, 1.0], gap="medium")
+        with col_lc1:
+            st.markdown("##### ⚙️ Tubing Specification Input & Life Controls")
+            cand_names = res_df['Name'].tolist()
+            selected_life_tubing = st.selectbox(
+                "Select Tubing Candidate to Analyze Across Well Life:",
+                options=cand_names,
+                index=0,
+                key="life_tubing_selector"
+            )
             
-        col1, col2 = st.columns([1.2, 1.8], gap="medium")
+            # Custom Overrides for Field Life parameters
+            life_yrs_sim = st.slider("Target Well Field Life (Years)", min_value=5, max_value=40, value=field_life_yrs, step=1, key="life_yrs_sim")
+            decline_sim = st.slider("Annual Production & Pressure Decline Rate (%)", min_value=0.0, max_value=25.0, value=decline_rate_pct, step=0.5, key="decline_sim")
+            
+        # Get baseline parameters for chosen candidate
+        selected_row = res_df[res_df['Name'] == selected_life_tubing].iloc[0]
+        id_in_sim = float(selected_row['ID_in'])
+        od_in_sim = float(selected_row['OD_in'])
+        grade_sim = selected_row['Grade']
         
-        with col1:
-            st.subheader("Qualified Candidate Ranking")
-            if not sorted_passed.empty:
-                st.markdown(f"**Total Candidates Passed Screening:** `{len(sorted_passed)}` of `{len(res_df)}`")
+        p_bhp_0 = float(st.session_state.inputs.get('p_bhp', 4500.0))
+        p_wh_0 = float(st.session_state.inputs.get('p_wh', 800.0))
+        
+        # Calculate year-by-year lifecycle trajectory
+        years_arr = np.arange(0, life_yrs_sim + 1)
+        
+        # Depletion model over time
+        decline_factor = (1.0 - decline_sim / 100.0) ** years_arr
+        p_bhp_t = p_bhp_0 * decline_factor
+        p_wh_t = np.maximum(p_wh_0 * decline_factor, 50.0)  # Minimum wellhead arrival pressure constraint
+        dp_available_t = p_bhp_t - p_wh_t
+        
+        # Recalculate Total Pressure Drop along field life
+        dp_hydro_0 = float(selected_row['dp_hydro_psi'])
+        dp_fric_0 = float(selected_row['dp_fric_psi'])
+        
+        dp_fric_t = dp_fric_0 * (decline_factor ** 1.8)
+        dp_hydro_t = dp_hydro_0 * (0.92 + 0.08 * decline_factor)
+        dp_total_t = dp_hydro_t + dp_fric_t
+        
+        # ---------------------------------------------------------------------
+        # EXACT INTERSECTION CALCULATION (Linear Interpolation Between Steps)
+        # ---------------------------------------------------------------------
+        diff = dp_total_t - dp_available_t
+        exact_intersection_year = None
+        exact_intersection_dp = None
+        
+        for i in range(len(years_arr) - 1):
+            if diff[i] == 0:
+                exact_intersection_year = float(years_arr[i])
+                exact_intersection_dp = float(dp_total_t[i])
+                break
+            elif diff[i] < 0 and diff[i+1] > 0:  # Pressure drop exceeds available drawdown
+                # Linear interpolation between Year i and Year i+1
+                y1, y2 = years_arr[i], years_arr[i+1]
+                d1, d2 = diff[i], diff[i+1]
+                exact_intersection_year = float(y1 + (0 - d1) * (y2 - y1) / (d2 - d1))
                 
-                # Top 3 Candidates displayed as Feature Cards
-                top_3 = sorted_passed.head(3)
-                for idx, candidate in top_3.iterrows():
-                    rank = idx + 1
-                    if rank == 1:
-                        border_color, bg_color, badge = "#10B981", "#ECFDF5", "🏆 Rank 1 (Top Preferred)"
-                    elif rank == 2:
-                        border_color, bg_color, badge = "#3B82F6", "#EFF6FF", "🥈 Rank 2"
-                    else:
-                        border_color, bg_color, badge = "#F59E0B", "#FFFBEB", "🥉 Rank 3"
-                    
-                    st.markdown(f"""
-                    <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
-                            <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
-                            <div><b>Total ΔP:</b> {candidate['dp_total_psi']} psi</div>
-                            <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
-                            <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
-                            <div><b>Connection:</b> {candidate['Connection']}</div>
-                            <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
-                            <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                # Remaining Passing Candidates
-                remaining_passed = sorted_passed.iloc[3:]
-                if not remaining_passed.empty:
-                    st.markdown("##### Other Qualified Candidates")
-                    table_df = remaining_passed.copy()
-                    table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_passed) + 1)]
-                    table_df = table_df[[
-                        'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
-                    ]].rename(columns={
-                        'Name': 'Tubing', 'dp_total_psi': 'ΔP (psi)', 'Velocity_fts': 'Vel (ft/s)',
-                        'triaxial_sf': 'Triaxial SF', 'burst_sf': 'Burst SF'
-                    })
-                    st.dataframe(table_df, use_container_width=True, hide_index=True)
+                p1, p2 = dp_total_t[i], dp_total_t[i+1]
+                exact_intersection_dp = float(p1 + (exact_intersection_year - y1) * (p2 - p1) / (y2 - y1))
+                break
+
+        if exact_intersection_year is not None:
+            breach_status_str = f"⚠️ **Year {exact_intersection_year:.2f}**"
+            breach_alert = f"Drawdown limit reached at **Year {exact_intersection_year:.2f}**. Natural flow ceases as total pressure drop ({exact_intersection_dp:.1f} psi) exceeds available drawdown."
+            breach_pass = False
+        else:
+            breach_status_str = "🟢 **Not Breached (Sustained Natural Flow)**"
+            breach_alert = f"Natural flow is successfully sustained across the full **{life_yrs_sim}-year** target well life!"
+            breach_pass = True
+
+        with col_lc2:
+            st.markdown("##### 📌 Lifecycle Key Performance Indicators")
+            m1, m2 = st.columns(2)
+            m1.metric("Selected Tubing", selected_life_tubing)
+            m2.metric("Target Field Life", f"{life_yrs_sim} Years")
+            
+            m3, m4 = st.columns(2)
+            m3.metric("Initial ΔP (Year 0)", f"{dp_total_t[0]:.1f} psi")
+            m4.metric("Drawdown Limit Breach", breach_status_str)
+            
+            if breach_pass:
+                st.success(f"✅ **Target Well Life Met:** {breach_alert}")
             else:
-                st.error("### No Candidates Passed All Screenings!")
-                st.warning("Consider increasing bottomhole pressure, selecting higher steel grades, or upgrading to premium connections.")
+                st.error(f"❌ **Drawdown Limit Reached:** {breach_alert}")
 
-        with col2:
-            st.subheader("Engineering Justification Rationale")
-            if not sorted_passed.empty:
-                top_1 = sorted_passed.iloc[0]
-                rate_str = (
-                    f"**{st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D** gas with **{st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf** condensate"
-                    if is_gas else
-                    f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
-                )
-                
-                st.markdown(f"""
-                <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
-                    <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Why {top_1['Name']} is Ranked #1</h4>
-                    <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
-                        <b>{top_1['Name']}</b> achieves the lowest total pressure drop (<b>{top_1['dp_total_psi']} psi</b>) among all qualified candidates while operating safely within the velocity window (<b>{top_1['Velocity_fts']} ft/s</b>). 
-                        It maintains robust structural margins under Lubinski axial load (Triaxial SF = <b>{top_1['triaxial_sf']}</b> ≥ 1.25) and static closed-in surface burst (Burst SF = <b>{top_1['burst_sf']}</b> ≥ 1.10).
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown(rf"""
-                ##### General Compliance Rationale (All Qualified Candidates)
-                * **Hydraulic Validation:** All qualified candidates operate with total pressure drop ($\Delta P_{{\text{{total}}}}$) fully within the available drawdown drive (**{top_1['dp_avail_psi']} psi**). Dynamic Z-factor (**{top_1['Z_Factor']}**) confirms live fluid conditions at a rate of {rate_str}.
-                * **Velocity Window:** Initial flow velocities sit safely between the minimum sand carrying limit (**{top_1['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{top_1['v_erosional']} ft/s**).
-                * **Shut-In CITHP & Surface Integrity:** Static Closed-In Tubing Head Pressure of **{top_1['cithp_psi']} psi** yields static surface burst safety factors meeting or exceeding $SF \ge 1.10$.
-                * **NACE & Structural Safety:** All passed candidates provide a von Mises triaxial SF $\ge 1.25$ under Lubinski net axial tension and APB rise (**{top_1['dp_apb_psi']} psi**).
-                """)
-
-        # General Interactive Sensitivity Charts (Current Page 10 Tab 1 Plots)
         st.markdown("---")
-        st.subheader("General Tubing Diameter Sensitivity Charts")
-        sens_tab1, sens_tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
-        with sens_tab1:
-            fig_dp = px.line(
-                res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
-                title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
-                labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
-                hover_data=["Name", "Velocity_fts", "Overall_Pass"]
+        st.markdown(f"#### 📊 Lifecycle Pressure Drop & Available Drawdown Trajectory ({selected_life_tubing})")
+        
+        # Plot Lifecycle Pressure Drop Trajectory Graph
+        fig_life = go.Figure()
+        
+        # 1. Total Pressure Drop curve
+        fig_life.add_trace(go.Scatter(
+            x=years_arr, y=dp_total_t, mode='lines+markers',
+            name=f'ΔP_total ({selected_life_tubing})',
+            line=dict(color='#1E3A8A', width=3),
+            hovertemplate='Year %{x}: ΔP_total = %{y:.1f} psi<extra></extra>'
+        ))
+        
+        # 2. Available Drawdown Limit curve
+        fig_life.add_trace(go.Scatter(
+            x=years_arr, y=dp_available_t, mode='lines+markers',
+            name='Available Drawdown Limit (P_bhp - P_wh)',
+            line=dict(color='#DC2626', width=2.5, dash='dash'),
+            hovertemplate='Year %{x}: Available Drawdown = %{y:.1f} psi<extra></extra>'
+        ))
+        
+        # 3. Hydrostatic Component
+        fig_life.add_trace(go.Scatter(
+            x=years_arr, y=dp_hydro_t, mode='lines',
+            name='Hydrostatic Component (ΔP_hydro)',
+            line=dict(color='#2563EB', width=1.5, dash='dot'),
+            visible='legendonly'
+        ))
+        
+        # 4. Frictional Component
+        fig_life.add_trace(go.Scatter(
+            x=years_arr, y=dp_fric_t, mode='lines',
+            name='Frictional Component (ΔP_fric)',
+            line=dict(color='#D97706', width=1.5, dash='dot'),
+            visible='legendonly'
+        ))
+        
+        # 5. Exact Intersection Point Marker and Vertical Line
+        if exact_intersection_year is not None:
+            # Vertical dashed line at exact intersection year
+            fig_life.add_vline(
+                x=exact_intersection_year, line_dash="dashdot", line_color="#DC2626", line_width=1.5
             )
-            fig_dp.update_traces(marker=dict(size=10))
-            fig_dp.add_hline(
-                y=res_df['dp_avail_psi'].iloc[0], line_dash="dash", line_color="red",
-                annotation_text="Available Drawdown Limit", annotation_position="bottom right"
-            )
-            st.plotly_chart(fig_dp, use_container_width=True)
+            
+            # Exact Intersection Marker at coordinate (X_intersect, Y_intersect)
+            fig_life.add_trace(go.Scatter(
+                x=[exact_intersection_year],
+                y=[exact_intersection_dp],
+                mode='markers+text',
+                marker=dict(size=14, color='#DC2626', symbol='x', line=dict(width=2, color='black')),
+                text=[f"  Intersection: Yr {exact_intersection_year:.2f} ({exact_intersection_dp:.0f} psi)"],
+                textposition="top right",
+                textfont=dict(color="#DC2626", size=12, family="Arial Black"),
+                name='Exact Drawdown Limit Breach Point'
+            ))
 
-        with sens_tab2:
-            fig_v = go.Figure()
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Salama Sand Erosional Limit (Max)', line=dict(dash='dash', color='red')))
-            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_carrying'], mode='lines', name='Min Sand Carrying Limit', line=dict(dash='dot', color='orange')))
-            fig_v.update_layout(
-                title="Flow Velocity Window vs. Tubing Inner Diameter",
-                xaxis_title="Inner Diameter (inches)", yaxis_title="Velocity (ft/s)", margin=dict(t=50, b=40)
-            )
-            st.plotly_chart(fig_v, use_container_width=True)
-
-    # =========================================================================
+        # Layout styling: Legend repositioned to avoid title overlap
+# =========================================================================
     # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
     # =========================================================================
     with page10_tab2:
@@ -4978,6 +4985,21 @@ elif page == "10. Recommendation & Sensitivity":
                 borderwidth=1
             )
         )
+        
+        st.plotly_chart(fig_life, use_container_width=True)
+        
+        # Explanatory Callout Card
+        st.markdown(f"""
+        <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1rem; margin-top: 0.5rem;">
+            <h5 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.4rem; font-weight: 700;">💡 Well Life Lifecycle Analysis Findings</h5>
+            <ul style="margin: 0; font-size: 0.88rem; color: #1E293B; line-height: 1.6;">
+                <li><b>Target Field Life:</b> <b>{life_yrs_sim} Years</b> (Annual production decline rate: <b>{decline_sim}%</b>).</li>
+                <li><b>Selected Tubing Candidate:</b> <b>{selected_life_tubing}</b> (ID: <b>{id_in_sim}"</b>, OD: <b>{od_in_sim}"</b>, Grade: <b>{grade_sim}</b>).</li>
+                <li><b>Drawdown Status:</b> {breach_alert}</li>
+                <li><b>Engineering Recommendation:</b> {"If drawdown limit is breached prior to target well life, artificial lift (e.g., gas lift or ESP) or a velocity string retrofit must be scheduled prior to the breach year." if not breach_pass else "This candidate provides sufficient hydraulic diameter to sustain natural flow throughout the full target well life."}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
         
         st.plotly_chart(fig_life, use_container_width=True)
         
