@@ -4650,6 +4650,156 @@ elif page == "9. Engineering Calculations":
         st.markdown(f"• **Connection Status:** {row_det['Connection_Reason']}")
         st.markdown(f"• **Overall Compliance Status:** {'PASS' if row_det['Overall_Pass'] else 'FAIL'}")
 
+# -----------------------------------------------------------------------------
+# PAGE 10: RECOMMENDATION & LIFECYCLE SENSITIVITY
+# -----------------------------------------------------------------------------
+elif page == "10. Recommendation & Sensitivity":
+    st.markdown('<div class="main-header">Step 10: Recommendations & Lifecycle Sensitivity Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Evaluate qualified tubing options, dynamic pressure drop evolution over well field life, and drawdown limit thresholds.</div>', unsafe_allow_html=True)
+    
+    candidates = active_candidate_df()
+    if candidates.empty:
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
+        st.stop()
+        
+    try:
+        res_df = engineering_results(st.session_state.inputs, candidates)
+    except ValueError as error:
+        st.error(f"Input validation failed: {error}")
+        st.stop()
+        
+    # Create Main Tabs for Page 10
+    page10_tab1, page10_tab2 = st.tabs([
+        "🏆 Tab 1: Qualified Recommendations & Sensitivity",
+        "📈 Tab 2: Tubing Selection & Pressure Drop Along Well Life"
+    ])
+
+    # =========================================================================
+    # TAB 1: QUALIFIED RECOMMENDATIONS & SENSITIVITY (CURRENT WORKFLOW)
+    # =========================================================================
+    with page10_tab1:
+        passed_candidates = res_df[res_df['Overall_Pass'] == True].copy()
+        is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
+        
+        # Sort all passed candidates primarily by minimal total pressure drop
+        if not passed_candidates.empty:
+            sorted_passed = passed_candidates.sort_values(
+                by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'], 
+                ascending=[True, True, False]
+            ).reset_index(drop=True)
+        else:
+            sorted_passed = pd.DataFrame()
+            
+        col1, col2 = st.columns([1.2, 1.8], gap="medium")
+        
+        with col1:
+            st.subheader("Qualified Candidate Ranking")
+            if not sorted_passed.empty:
+                st.markdown(f"**Total Candidates Passed Screening:** `{len(sorted_passed)}` of `{len(res_df)}`")
+                
+                # Top 3 Candidates displayed as Feature Cards
+                top_3 = sorted_passed.head(3)
+                for idx, candidate in top_3.iterrows():
+                    rank = idx + 1
+                    if rank == 1:
+                        border_color, bg_color, badge = "#10B981", "#ECFDF5", "🏆 Rank 1 (Top Preferred)"
+                    elif rank == 2:
+                        border_color, bg_color, badge = "#3B82F6", "#EFF6FF", "🥈 Rank 2"
+                    else:
+                        border_color, bg_color, badge = "#F59E0B", "#FFFBEB", "🥉 Rank 3"
+                    
+                    st.markdown(f"""
+                    <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
+                            <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
+                            <div><b>Total ΔP:</b> {candidate['dp_total_psi']} psi</div>
+                            <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
+                            <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
+                            <div><b>Connection:</b> {candidate['Connection']}</div>
+                            <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
+                            <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                # Remaining Passing Candidates
+                remaining_passed = sorted_passed.iloc[3:]
+                if not remaining_passed.empty:
+                    st.markdown("##### Other Qualified Candidates")
+                    table_df = remaining_passed.copy()
+                    table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_passed) + 1)]
+                    table_df = table_df[[
+                        'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
+                    ]].rename(columns={
+                        'Name': 'Tubing', 'dp_total_psi': 'ΔP (psi)', 'Velocity_fts': 'Vel (ft/s)',
+                        'triaxial_sf': 'Triaxial SF', 'burst_sf': 'Burst SF'
+                    })
+                    st.dataframe(table_df, use_container_width=True, hide_index=True)
+            else:
+                st.error("### No Candidates Passed All Screenings!")
+                st.warning("Consider increasing bottomhole pressure, selecting higher steel grades, or upgrading to premium connections.")
+
+        with col2:
+            st.subheader("Engineering Justification Rationale")
+            if not sorted_passed.empty:
+                top_1 = sorted_passed.iloc[0]
+                rate_str = (
+                    f"**{st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D** gas with **{st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf** condensate"
+                    if is_gas else
+                    f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
+                )
+                
+                st.markdown(f"""
+                <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                    <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Why {top_1['Name']} is Ranked #1</h4>
+                    <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
+                        <b>{top_1['Name']}</b> achieves the lowest total pressure drop (<b>{top_1['dp_total_psi']} psi</b>) among all qualified candidates while operating safely within the velocity window (<b>{top_1['Velocity_fts']} ft/s</b>). 
+                        It maintains robust structural margins under Lubinski axial load (Triaxial SF = <b>{top_1['triaxial_sf']}</b> ≥ 1.25) and static closed-in surface burst (Burst SF = <b>{top_1['burst_sf']}</b> ≥ 1.10).
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(rf"""
+                ##### General Compliance Rationale (All Qualified Candidates)
+                * **Hydraulic Validation:** All qualified candidates operate with total pressure drop ($\Delta P_{{\text{{total}}}}$) fully within the available drawdown drive (**{top_1['dp_avail_psi']} psi**). Dynamic Z-factor (**{top_1['Z_Factor']}**) confirms live fluid conditions at a rate of {rate_str}.
+                * **Velocity Window:** Initial flow velocities sit safely between the minimum sand carrying limit (**{top_1['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{top_1['v_erosional']} ft/s**).
+                * **Shut-In CITHP & Surface Integrity:** Static Closed-In Tubing Head Pressure of **{top_1['cithp_psi']} psi** yields static surface burst safety factors meeting or exceeding $SF \ge 1.10$.
+                * **NACE & Structural Safety:** All passed candidates provide a von Mises triaxial SF $\ge 1.25$ under Lubinski net axial tension and APB rise (**{top_1['dp_apb_psi']} psi**).
+                """)
+
+        # General Interactive Sensitivity Charts (Current Page 10 Tab 1 Plots)
+        st.markdown("---")
+        st.subheader("General Tubing Diameter Sensitivity Charts")
+        sens_tab1, sens_tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
+        with sens_tab1:
+            fig_dp = px.line(
+                res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
+                title="Total Pressure Drop vs. Tubing Inner Diameter (ID)",
+                labels={"ID_in": "Inner Diameter (inches)", "dp_total_psi": "Total Pressure Drop (psi)"},
+                hover_data=["Name", "Velocity_fts", "Overall_Pass"]
+            )
+            fig_dp.update_traces(marker=dict(size=10))
+            fig_dp.add_hline(
+                y=res_df['dp_avail_psi'].iloc[0], line_dash="dash", line_color="red",
+                annotation_text="Available Drawdown Limit", annotation_position="bottom right"
+            )
+            st.plotly_chart(fig_dp, use_container_width=True)
+
+        with sens_tab2:
+            fig_v = go.Figure()
+            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
+            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
+            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Salama Sand Erosional Limit (Max)', line=dict(dash='dash', color='red')))
+            fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_carrying'], mode='lines', name='Min Sand Carrying Limit', line=dict(dash='dot', color='orange')))
+            fig_v.update_layout(
+                title="Flow Velocity Window vs. Tubing Inner Diameter",
+                xaxis_title="Inner Diameter (inches)", yaxis_title="Velocity (ft/s)", margin=dict(t=50, b=40)
+            )
+            st.plotly_chart(fig_v, use_container_width=True)
+
 # =========================================================================
     # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
     # =========================================================================
