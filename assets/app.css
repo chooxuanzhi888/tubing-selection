@@ -1,0 +1,129 @@
+.main-header {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1E3A8A;
+    margin-bottom: 0.5rem;
+}
+.sub-header {
+    font-size: 1.1rem;
+    color: #475569;
+    margin-bottom: 1.5rem;
+}
+.card {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+.formula-card {
+    background-color: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.purpose-box {
+    background-color: #F1F5F9;
+    border-left: 4px solid #3B82F6;
+    padding: 0.65rem 0.85rem;
+    border-radius: 4px;
+    font-size: 0.88rem;
+    color: #1E293B;
+    margin-top: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+.param-key {
+    font-size: 0.84rem;
+    color: #334155;
+    line-height: 1.6;
+    background-color: #FAFAFA;
+    padding: 0.65rem 0.85rem;
+    border-radius: 6px;
+    border: 1px dashed #CBD5E1;
+    margin-bottom: 0.6rem;
+}
+.filter-box {
+    background-color: #FEF2F2;
+    border-left: 4px solid #EF4444;
+    padding: 0.6rem 0.85rem;
+    border-radius: 4px;
+    font-size: 0.84rem;
+    color: #991B1B;
+    margin-top: 0.5rem;
+}
+
+/* ---- Page 6 methodology layout ------------------------------------- */
+/* Full-width formula card: heading, then formula, then labelled blocks. */
+.m2-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+           padding: 1.15rem 1.35rem 1.25rem; margin: 0 0 1.4rem;
+           box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+.m2-card-head { display: flex; align-items: baseline; gap: 0.6rem;
+                padding-bottom: 0.6rem; margin-bottom: 0.9rem;
+                border-bottom: 1px solid #E2E8F0; }
+.m2-card-num { flex: none; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em;
+               padding: 0.16rem 0.5rem; border-radius: 5px; background: #F1F5F9; color: #475569; }
+.m2-card-title { font-size: 1.06rem; font-weight: 700; margin: 0; line-height: 1.3; }
+/* Small uppercase label that introduces each block inside a card. */
+.m2-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
+            text-transform: uppercase; color: #64748B; margin: 1.1rem 0 0.4rem; }
+.m2-label:first-child { margin-top: 0; }
+/* Left-aligned on purpose: these paragraphs embed inline glossary terms whose
+   pop-up panels cannot be broken across lines, so justification would stretch
+   the spaces around each term into visible gaps. */
+.m2-purpose { font-size: 0.9rem; line-height: 1.65; color: #1E293B;
+              background: #F8FAFC; border-left: 3px solid #3B82F6;
+              padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
+              text-align: left; }
+.m2-gate { font-size: 0.86rem; line-height: 1.6; color: #991B1B;
+           background: #FEF2F2; border-left: 3px solid #EF4444;
+           padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
+           text-align: left; }
+/* Parameter definition table: symbol | meaning | units. */
+.m2-param-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.m2-param-table th { text-align: left; font-size: 0.68rem; font-weight: 800;
+                     letter-spacing: 0.07em; text-transform: uppercase; color: #64748B;
+                     padding: 0.4rem 0.6rem; border-bottom: 1.5px solid #CBD5E1;
+                     background: #F8FAFC; }
+.m2-param-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #EEF2F6;
+                     color: #334155; line-height: 1.5; vertical-align: top;
+                     text-align: left; }
+.m2-param-table tr:last-child td { border-bottom: none; }
+.m2-param-table td.m2-sym { white-space: nowrap; font-weight: 700; color: #0F172A;
+                            width: 16%; font-family: "SFMono-Regular", Consolas, monospace; }
+.m2-param-table td.m2-unit { white-space: nowrap; color: #64748B; width: 24%; font-size: 0.8rem; }
+/* Caption naming the quantity each formula solves for. */
+.m2-fx-caption { font-size: 0.82rem; color: #475569; font-weight: 600; margin: 0.55rem 0 -0.35rem; }
+
+/* ---- Glossary pop-up ------------------------------------------------ */
+/* Built from inline <span>/<label> only. An earlier <details>-based version
+   broke the line: <details> is block-level, so the markdown renderer split
+   the paragraph around every term. A hidden checkbox driven by <label>
+   gives click-to-toggle with no block element in the text flow. */
+.m2-term { position: relative; display: inline; }
+.m2-term > input.m2-term-cb { position: absolute; opacity: 0; width: 0; height: 0;
+                              pointer-events: none; }
+.m2-term > label.m2-term-label { display: inline; cursor: help;
+                                 border-bottom: 1.5px dotted #2563EB; color: #1D4ED8;
+                                 font-weight: 600; }
+.m2-term > label.m2-term-label:hover { background: #EFF6FF; }
+.m2-term > input.m2-term-cb:checked ~ label.m2-term-label { background: #DBEAFE; }
+.m2-term .m2-term-pop { display: none; position: absolute; z-index: 40; left: 0; top: 1.7em;
+                        width: min(21rem, 78vw); background: #0F172A; color: #E2E8F0;
+                        border-radius: 8px; padding: 0.7rem 0.85rem;
+                        font-size: 0.82rem; line-height: 1.55; font-weight: 400;
+                        font-style: normal; text-transform: none; letter-spacing: normal;
+                        text-align: left; white-space: normal;
+                        box-shadow: 0 10px 24px rgba(15,23,42,0.28); }
+.m2-term > input.m2-term-cb:checked ~ .m2-term-pop { display: block; }
+.m2-term .m2-term-pop b { color: #7DD3FC; display: block; margin-bottom: 0.2rem; }
+
+/* ---- Clickable flowchart ------------------------------------------- */
+a.flow-link { text-decoration: none; display: block; color: inherit; }
+a.flow-link:hover .flow-box { border-color: #2563EB;
+                              box-shadow: 0 4px 10px rgba(37,99,235,0.18);
+                              transform: translateY(-1px); }
+.flow-box { transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease; }
+.flow-jump { font-size: 0.7rem; font-weight: 700; color: #2563EB; opacity: 0; transition: opacity 0.15s ease; }
+a.flow-link:hover .flow-jump { opacity: 1; }

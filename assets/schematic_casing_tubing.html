@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Production Tubing &amp; Casing Design Schematic</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+
+      /* Component Specific Colors */
+      --color-conductor: #64748b;
+      --color-surface: #0284c7;
+      --color-intermediate: #0d9488;
+      --color-prod-casing: #4f46e5;
+      --color-prod-tubing: #059669;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+    }
+
+    .container {
+      max-width: 1500px;
+      margin: 0 auto;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 18px;
+      flex: 1;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .schematic-card {
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .schematic-container {
+      width: 100%;
+      height: 100%;
+      max-width: 550px;
+      max-height: 100%;
+    }
+
+    /* SVG Interactive Styles */
+    .component-group {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .component-group path,
+    .component-group rect,
+    .component-group line {
+      transition: all 0.2s ease;
+    }
+
+    .component-group:hover path,
+    .component-group:hover rect {
+      filter: brightness(1.15);
+      stroke-width: 3px;
+    }
+
+    .component-group.active path,
+    .component-group.active rect {
+      filter: brightness(1.2);
+      stroke: #000;
+      stroke-width: 3px;
+    }
+
+    /* Side Panel Styles */
+    .panel-header {
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .panel-title-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .info-section {
+      margin-bottom: 20px;
+    }
+
+    .info-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .info-content {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text-main);
+      background-color: var(--bg-color);
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 24px 20px;
+    }
+
+    .empty-state svg {
+      margin-bottom: 16px;
+      stroke: var(--text-muted);
+    }
+
+    /* Component List Legend */
+    .legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+      width: 100%;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .legend-item:hover {
+      background-color: var(--bg-color);
+    }
+
+    .legend-item.active {
+      background-color: var(--primary-light);
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+
+    .legend-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- SVG Schematic Display -->
+    <div class="card schematic-card">
+      <svg class="schematic-container" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background Grid / Axis Line -->
+        <line x1="250" y1="20" x2="250" y2="680" stroke="#cbd5e1" stroke-dasharray="4 4" stroke-width="1.5"/>
+
+        <!-- Ground Line / Surface -->
+        <g id="surface-line">
+          <line x1="40" y1="80" x2="460" y2="80" stroke="#475569" stroke-width="3"/>
+          <path d="M 40 80 L 30 95 M 80 80 L 70 95 M 120 80 L 110 95 M 160 80 L 150 95 M 200 80 L 190 95 M 240 80 L 230 95 M 280 80 L 270 95 M 320 80 L 310 95 M 360 80 L 350 95 M 400 80 L 390 95 M 440 80 L 430 95" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="50" y="70" fill="#64748b" font-size="12" font-weight="bold">SURFACE / GROUND LEVEL</text>
+        </g>
+
+        <!-- 1. CONDUCTOR CASING -->
+        <g class="component-group" id="comp-conductor" onclick="selectComponent('conductor')">
+          <!-- Left String -->
+          <rect x="110" y="80" width="16" height="110" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
+          <!-- Right String -->
+          <rect x="374" y="80" width="16" height="110" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
+          <!-- Left Shoe -->
+          <polygon points="110,190 126,190 110,205" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
+          <!-- Right Shoe -->
+          <polygon points="374,190 390,190 390,205" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
+          <!-- Label Line -->
+          <line x1="110" y1="135" x2="40" y2="135" stroke="var(--color-conductor)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="40" cy="135" r="3" fill="var(--color-conductor)"/>
+        </g>
+
+        <!-- 2. SURFACE CASING -->
+        <g class="component-group" id="comp-surface" onclick="selectComponent('surface')">
+          <!-- Left String -->
+          <rect x="136" y="80" width="14" height="210" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
+          <!-- Right String -->
+          <rect x="350" y="80" width="14" height="210" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
+          <!-- Left Shoe -->
+          <polygon points="136,290 150,290 136,305" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
+          <!-- Right Shoe -->
+          <polygon points="350,290 364,290 364,305" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
+          <!-- Label Line -->
+          <line x1="136" y1="230" x2="40" y2="230" stroke="var(--color-surface)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="40" cy="230" r="3" fill="var(--color-surface)"/>
+        </g>
+
+        <!-- 3. INTERMEDIATE CASING -->
+        <g class="component-group" id="comp-intermediate" onclick="selectComponent('intermediate')">
+          <!-- Left String -->
+          <rect x="160" y="80" width="12" height="230" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
+          <!-- Right String -->
+          <rect x="328" y="80" width="12" height="230" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
+          <!-- Left Shoe -->
+          <polygon points="160,310 172,310 160,325" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
+          <!-- Right Shoe -->
+          <polygon points="328,310 340,310 340,325" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
+          <!-- Label Line -->
+          <line x1="340" y1="310" x2="460" y2="310" stroke="var(--color-intermediate)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="460" cy="310" r="3" fill="var(--color-intermediate)"/>
+        </g>
+
+        <!-- 4. PRODUCTION CASING -->
+        <g class="component-group" id="comp-production_casing" onclick="selectComponent('production_casing')">
+          <!-- Left String -->
+          <rect x="182" y="80" width="10" height="460" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
+          <!-- Right String -->
+          <rect x="308" y="80" width="10" height="460" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
+          <!-- Left Shoe -->
+          <polygon points="182,540 192,540 182,555" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
+          <!-- Right Shoe -->
+          <polygon points="308,540 318,540 318,555" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
+          <!-- Label Line -->
+          <line x1="318" y1="450" x2="460" y2="450" stroke="var(--color-prod-casing)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="460" cy="450" r="3" fill="var(--color-prod-casing)"/>
+        </g>
+
+        <!-- 5. PRODUCTION TUBING -->
+        <g class="component-group" id="comp-production_tubing" onclick="selectComponent('production_tubing')">
+          <!-- Left Tubing String -->
+          <rect x="230" y="40" width="6" height="580" fill="var(--color-prod-tubing)" stroke="#047857" stroke-width="1.5"/>
+          <!-- Right Tubing String -->
+          <rect x="264" y="40" width="6" height="580" fill="var(--color-prod-tubing)" stroke="#047857" stroke-width="1.5"/>
+          <!-- Central Flow Indicator Arrow -->
+          <path d="M 250 600 L 250 100" stroke="var(--color-prod-tubing)" stroke-width="2" stroke-dasharray="6 4"/>
+          <polygon points="250,50 244,65 256,65" fill="var(--color-prod-tubing)"/>
+          <!-- Label Line -->
+          <line x1="270" y1="580" x2="460" y2="580" stroke="var(--color-prod-tubing)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="460" cy="580" r="3" fill="var(--color-prod-tubing)"/>
+        </g>
+
+        <!-- Wellhead Visual Cap -->
+        <rect x="220" y="32" width="60" height="12" fill="#334155" rx="2"/>
+        <rect x="200" y="44" width="100" height="16" fill="#475569" rx="2"/>
+      </svg>
+    </div>
+
+    <!-- Component Info Sidebar Panel -->
+    <div class="card">
+      <div id="info-panel" style="display: none;">
+        <div class="panel-header">
+          <span id="component-badge" class="panel-title-badge">Component</span>
+          <h2 id="component-name" class="panel-title">Name</h2>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Introduction</div>
+          <div id="component-intro" class="info-content">Intro text goes here...</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Primary Function</div>
+          <div id="component-function" class="info-content">Function text goes here...</div>
+        </div>
+      </div>
+
+      <!-- Empty State View -->
+      <div id="empty-panel" class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <h3>No Component Selected</h3>
+        <p style="margin-top: 8px; font-size: 0.9rem;">Click on any pipe string in the schematic or select one from the list below to view detailed specifications.</p>
+      </div>
+
+      <!-- Component Selection Quick List -->
+      <div class="legend-list">
+        <div class="info-label" style="margin-top: 12px;">Well Strings</div>
+
+        <div class="legend-item" id="legend-conductor" onclick="selectComponent('conductor')">
+          <div class="legend-color-dot" style="background-color: var(--color-conductor);"></div>
+          <span>Conductor Casing</span>
+        </div>
+
+        <div class="legend-item" id="legend-surface" onclick="selectComponent('surface')">
+          <div class="legend-color-dot" style="background-color: var(--color-surface);"></div>
+          <span>Surface Casing</span>
+        </div>
+
+        <div class="legend-item" id="legend-intermediate" onclick="selectComponent('intermediate')">
+          <div class="legend-color-dot" style="background-color: var(--color-intermediate);"></div>
+          <span>Intermediate Casing</span>
+        </div>
+
+        <div class="legend-item" id="legend-production_casing" onclick="selectComponent('production_casing')">
+          <div class="legend-color-dot" style="background-color: var(--color-prod-casing);"></div>
+          <span>Production Casing</span>
+        </div>
+
+        <div class="legend-item" id="legend-production_tubing" onclick="selectComponent('production_tubing')">
+          <div class="legend-color-dot" style="background-color: var(--color-prod-tubing);"></div>
+          <span>Production Tubing</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Data definitions for wellbore components
+    const componentsData = {
+      conductor: {
+        name: "Conductor Casing",
+        color: "var(--color-conductor)",
+        badgeBg: "#f1f5f9",
+        badgeColor: "#475569",
+        intro: "The conductor casing is the first and largest casing string installed in the well. It is usually set or driven at very shallow depths prior to primary drilling operations.",
+        function: "Prevents soft surface soils and unconsolidated sediment from caving into the wellbore, prevents washouts during shallow drilling, and provides structural support for the wellhead equipment."
+      },
+      surface: {
+        name: "Surface Casing",
+        color: "var(--color-surface)",
+        badgeBg: "#e0f2fe",
+        badgeColor: "#0369a1",
+        intro: "The surface casing is installed through shallow water-bearing strata and weak rock formations after drilling below the conductor pipe depth.",
+        function: "Isolates and protects freshwater aquifers from contamination by drilling fluids or hydrocarbons. It also acts as the structural foundation for mounting Blowout Preventers (BOPs)."
+      },
+      intermediate: {
+        name: "Intermediate Casing",
+        color: "var(--color-intermediate)",
+        badgeBg: "#ccfbf1",
+        badgeColor: "#0f766e",
+        intro: "An intermediate casing string is set between the surface casing and the final production casing string when challenging subsurface geology is encountered.",
+        function: "Seals off abnormal formation pressure zones, lost circulation zones, unstable shales, or corrosive salt formations, allowing deeper sections to be drilled safely with modified mud weights."
+      },
+      production_casing: {
+        name: "Production Casing",
+        color: "var(--color-prod-casing)",
+        badgeBg: "#e0e7ff",
+        badgeColor: "#3730a3",
+        intro: "The production casing is the innermost structural casing string, extending from the surface wellhead down to or through the target hydrocarbon reservoir.",
+        function: "Provides full zonal isolation between the hydrocarbon reservoir and upper formations, seals against high formation pressures, and provides a structural barrier enclosing the production tubing."
+      },
+      production_tubing: {
+        name: "Production Tubing",
+        color: "var(--color-prod-tubing)",
+        badgeBg: "#d1fae5",
+        badgeColor: "#047857",
+        intro: "Production tubing is the main removable flow conduit placed concentrically inside the production casing, running from the subsurface target zone to the wellhead.",
+        function: "Conveys produced reservoir fluids (oil, gas, water) cleanly to the surface while protecting the outer casing strings from internal pressure, corrosion, erosion, and thermal stress."
+      }
+    };
+
+    function selectComponent(id) {
+      const data = componentsData[id];
+      if (!data) return;
+
+      // Hide empty state & show panel
+      document.getElementById('empty-panel').style.display = 'none';
+      document.getElementById('info-panel').style.display = 'block';
+
+      // Update panel text and styles
+      const badge = document.getElementById('component-badge');
+      badge.innerText = "Selected Component";
+      badge.style.backgroundColor = data.badgeBg;
+      badge.style.color = data.badgeColor;
+
+      document.getElementById('component-name').innerText = data.name;
+      document.getElementById('component-intro').innerText = data.intro;
+      document.getElementById('component-function').innerText = data.function;
+
+      // Highlight SVG schematic elements
+      document.querySelectorAll('.component-group').forEach(el => {
+        el.classList.remove('active');
+      });
+      const activeSvgGroup = document.getElementById('comp-' + id);
+      if (activeSvgGroup) {
+        activeSvgGroup.classList.add('active');
+      }
+
+      // Highlight legend list items
+      document.querySelectorAll('.legend-item').forEach(el => {
+        el.classList.remove('active');
+      });
+      const activeLegendItem = document.getElementById('legend-' + id);
+      if (activeLegendItem) {
+        activeLegendItem.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>
