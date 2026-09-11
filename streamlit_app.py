@@ -4453,22 +4453,22 @@ elif page == "8. Candidate Tubing Specs":
 elif page == "9. Engineering Calculations":
     st.markdown('<div class="main-header">Step 9: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
-
+    
     candidates = active_candidate_df()
     if candidates.empty:
         st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
-
+        
     try:
         res_df = engineering_results(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
-
+        
     st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 8 filter selection.")
-
+    
+    # --- Main Candidate Screening Matrix ---
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
-
     display_df = res_df[[
         'Name', 'ID_in', 'Grade', 'Material', 'Connection', 'Velocity_fts', 'v_late_life_fts', 'v_carrying', 'v_carrying_late', 'v_erosional',
         'dp_total_psi', 'dp_apb_psi', 'cithp_psi', 'f_axial_klbs', 'f_axial_rating_klbs', 'vme_stress_psi', 'triaxial_sf',
@@ -4476,7 +4476,6 @@ elif page == "9. Engineering Calculations":
         'p_test_psi', 'hydro_test_sf',
         'friction_factor', 'cv_solids', 'Z_Factor', 'max_service_temp_c', 'Material_Reason', 'Temp_Reason', 'Overall_Pass'
     ]].copy()
-
     display_df.columns = [
         'Tubing Candidate', 'ID (in)', 'Grade', 'Material', 'Connection', 'Initial Vel (ft/s)', 'Late-Life Vel (ft/s)', 'Min Carrying Vel (ft/s)', 'Late Carrying Vel (ft/s)', 'Erosional Limit (ft/s)',
         'Total dP (psi)', 'APB Pressure (psi)', 'CITHP (psi)', 'Axial Load (klbs)', 'Axial Rating (klbs)', 'von Mises Stress (psi)', 'Triaxial SF',
@@ -4484,19 +4483,24 @@ elif page == "9. Engineering Calculations":
         'Proof Test (psi)', 'Proof Test SF',
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
-
+    
     styled_display_df = display_df.style.apply(highlight_passing_row_matrix, axis=1)
     st.dataframe(
         styled_display_df,
         use_container_width=True,
-        height=450,
+        height=400,
         column_config={
             "Tubing Candidate": st.column_config.TextColumn(pinned=True)
         }
     )
 
-    # Per-gate failure detail so a rejection can be traced to a specific check.
-    st.subheader("Screening Gate Detail")
+    candidate_list = res_df['Name'].tolist()
+
+    # -----------------------------------------------------------------------------
+    # 1. SCREENING GATE DETAIL & REJECTED REASONS (WITH USER INPUT SELECTOR)
+    # -----------------------------------------------------------------------------
+    st.subheader("1. Screening Gate Detail & Failed Reasons")
+    
     gate_cols = [
         ('Casing_Clearance_Pass', 'Casing Clearance'), ('PVT_Pass', 'PVT / Z-Factor'),
         ('Solids_Pass', 'Sand Concentration'), ('Hydraulics_Pass', 'Hydraulics'),
@@ -4510,110 +4514,141 @@ elif page == "9. Engineering Calculations":
     ]
     gate_df = res_df[['Name'] + [col for col, _ in gate_cols]].copy()
     gate_df.columns = ['Tubing Candidate'] + [label for _, label in gate_cols]
-
     styled_gate_df = gate_df.style.apply(highlight_passing_row_gates, axis=1)
-    st.dataframe(
-        styled_gate_df,
-        use_container_width=True,
-        height=350,
-        column_config={
-            "Tubing Candidate": st.column_config.TextColumn(pinned=True)
-        }
+    
+    st.dataframe(styled_gate_df, use_container_width=True, height=250)
+
+    st.markdown("##### 🔍 Inspection: Rejected Reasons for Selected Candidate")
+    selected_gate_cand = st.selectbox(
+        "Select candidate to view failed screening reasons:",
+        options=candidate_list,
+        key="select_gate_cand"
+    )
+    
+    row_gate = res_df[res_df['Name'] == selected_gate_cand].iloc[0]
+    
+    # Gather all explicit failure messages for the chosen candidate
+    rejections = []
+    if not row_gate['Casing_Clearance_Pass']:
+        rejections.append(f"• **Casing Clearance:** Tubing OD ({row_gate['OD_in']}\") ≥ Casing ID ({st.session_state.inputs.get('casing_id')} harvest limit).")
+    if not row_gate['PVT_Pass']:
+        rejections.append(f"• **PVT / Z-Factor:** {row_gate['PVT_Reason']}")
+    if not row_gate['Solids_Pass']:
+        rejections.append(f"• **Sand Concentration:** {row_gate['Solids_Reason']}")
+    if not row_gate['Hydraulics_Pass'] or not row_gate['Friction_Pass']:
+        rejections.append(f"• **Hydraulics & Friction:** {row_gate['Hydraulics_Reason']}")
+    if not row_gate['Velocity_Pass']:
+        rejections.append(f"• **Initial Velocity Window:** Velocity ({row_gate['Velocity_fts']} ft/s) outside window [{row_gate['v_carrying']}–{row_gate['v_erosional']} ft/s].")
+    if not row_gate['Late_Life_Pass']:
+        rejections.append(f"• **Late-Life Velocity:** Velocity ({row_gate['v_late_life_fts']} ft/s) below minimum carrying limit ({row_gate['v_carrying_late']} ft/s).")
+    if not row_gate['Stress_Pass']:
+        rejections.append(f"• **Triaxial Stress:** Safety Factor ({row_gate['triaxial_sf']}) below target ({st.session_state.inputs.get('sf_triaxial', 1.25)}). Peak stress: {row_gate['vme_stress_psi']} psi.")
+    if not row_gate['Axial_Pass']:
+        rejections.append(f"• **Axial Load:** {row_gate['Axial_Reason']}")
+    if not row_gate['Burst_Pass']:
+        rejections.append(f"• **Surface Burst:** Burst Safety Factor ({row_gate['burst_sf']}) below 1.10 target.")
+    if not row_gate['Rupture_Pass']:
+        rejections.append(f"• **Ductile Rupture (5C3 Cl.7):** {row_gate['Rupture_Reason']}")
+    if not row_gate['Collapse_Pass']:
+        rejections.append(f"• **Collapse (5C3 Cl.8):** {row_gate['Collapse_Reason']}")
+    if not row_gate['Hydro_Pass']:
+        rejections.append(f"• **Hydro Proof Test (5CT):** {row_gate['Hydro_Reason']}")
+    if not row_gate['APB_Pass']:
+        rejections.append(f"• **APB Limit:** {row_gate['APB_Reason']}")
+    if not row_gate['Temp_Pass']:
+        rejections.append(f"• **Temperature:** {row_gate['Temp_Reason']}")
+    if not row_gate['Material_Pass']:
+        rejections.append(f"• **NACE Sour Service:** {row_gate['Material_Reason']}")
+    if not row_gate['Connection_Pass']:
+        rejections.append(f"• **Connection:** {row_gate['Connection_Reason']}")
+
+    if rejections:
+        st.error(f"**Rejection Reasons for {selected_gate_cand}:**\n\n" + "\n\n".join(rejections))
+    else:
+        st.success(f"**{selected_gate_cand}** passed all screening gates with zero failures.")
+
+    st.markdown("---")
+
+    # -----------------------------------------------------------------------------
+    # 2. PRODUCT SPECIFICATION ADVISORIES (WITH USER INPUT SELECTOR)
+    # -----------------------------------------------------------------------------
+    st.subheader("2. Product Specification Advisories (API 5CT / ISO 11960)")
+    st.caption("Mill acceptance requirements evaluated per API 5CT. These report factory testing parameters and notes.")
+
+    st.markdown("##### 🔍 Inspection: Product Specification Advisories for Selected Candidate")
+    selected_advisory_cand = st.selectbox(
+        "Select candidate to view product specification advisories:",
+        options=candidate_list,
+        key="select_advisory_cand"
+    )
+    
+    row_adv = res_df[res_df['Name'] == selected_advisory_cand].iloc[0]
+
+    col_a1, col_a2 = st.columns(2)
+    with col_a1:
+        st.markdown(f"**Candidate:** `{row_adv['Name']}` | **Grade:** `{row_adv['Grade']}`")
+        st.markdown(f"• **Minimum Elongation:** {row_adv['Elongation_Note']}")
+        st.markdown(f"• **Charpy V-Notch (CVN) Toughness:** {row_adv['CVN_Note']}")
+    with col_a2:
+        st.markdown(f"• **As-Quenched Hardenability:** {row_adv['Hardenability_Note']}")
+        if row_adv['API_5CT_Flags']:
+            st.warning(f"**API 5CT Specification Flags:** {row_adv['API_5CT_Flags']}")
+        else:
+            st.info("**API 5CT Specification Flags:** None")
+
+    st.markdown("---")
+
+    # -----------------------------------------------------------------------------
+    # 3. PER-CANDIDATE SPECIFICATION DETAIL (WITH USER INPUT SELECTOR)
+    # -----------------------------------------------------------------------------
+    st.subheader("3. Per-Candidate Specification Detail")
+    st.caption("Detailed mechanical, hydrodynamic, and limit-state parameters for individual string evaluation.")
+
+    st.markdown("##### 🔍 Inspection: Specification Detail for Selected Candidate")
+    selected_detail_cand = st.selectbox(
+        "Select candidate to view detailed engineering parameters:",
+        options=candidate_list,
+        key="select_detail_cand"
     )
 
-    failed = res_df[~res_df['Overall_Pass']]
-    if not failed.empty:
-        with st.expander(f"⚠️ Rejection reasons ({len(failed)} candidate(s) failed)"):
-            for _, r in failed.iterrows():
-                reasons = []
-                if not r['Casing_Clearance_Pass']:
-                    reasons.append(f"OD {r['OD_in']}\" does not clear the {st.session_state.inputs.get('casing_id', 8.681)}\" casing ID")
-                if not r['PVT_Pass']:
-                    reasons.append(r['PVT_Reason'])
-                if not r['Solids_Pass']:
-                    reasons.append(r['Solids_Reason'])
-                if not (r['Hydraulics_Pass'] and r['Friction_Pass']):
-                    reasons.append(r['Hydraulics_Reason'])
-                if not r['Velocity_Pass']:
-                    reasons.append(f"Initial velocity {r['Velocity_fts']} ft/s outside window {r['v_carrying']}–{r['v_erosional']} ft/s")
-                if not r['Late_Life_Pass']:
-                    reasons.append(f"Late-life velocity {r['v_late_life_fts']} ft/s below late carrying limit {r['v_carrying_late']} ft/s")
-                if not r['Stress_Pass']:
-                    reasons.append(
-                        f"Triaxial SF {r['triaxial_sf']} below target {st.session_state.inputs.get('sf_triaxial', 1.25)} "
-                        f"(governing point: {r['vme_governing_point']}, {r['vme_n_points']} coordinate(s) evaluated)"
-                    )
-                if not r['Rupture_Pass']:
-                    reasons.append(r['Rupture_Reason'])
-                if not r['Collapse_Pass']:
-                    reasons.append(r['Collapse_Reason'])
-                if not r['Hydro_Pass']:
-                    reasons.append(r['Hydro_Reason'])
-                if not r['Axial_Pass']:
-                    reasons.append(r['Axial_Reason'])
-                if not r['Burst_Pass']:
-                    reasons.append(f"Surface burst SF {r['burst_sf']} below 1.10")
-                if not r['APB_Pass']:
-                    reasons.append(r['APB_Reason'])
-                if not r['Temp_Pass']:
-                    reasons.append(r['Temp_Reason'])
-                if not r['Material_Pass']:
-                    reasons.append(r['Material_Reason'])
-                if not r['Connection_Pass']:
-                    reasons.append(r['Connection_Reason'])
-                st.markdown(f"**{r['Name']}** — " + "; ".join(str(x) for x in reasons))
+    row_det = res_df[res_df['Name'] == selected_detail_cand].iloc[0]
 
-    # API 5CT mill acceptance requirements. Only the proof test above screens a
-    # candidate out; these are the requirements the pipe must have been
-    # manufactured to, reported for the material take-off and QA dossier.
-    st.subheader("API 5CT / ISO 11960 Product Specification Verification")
-    st.caption(
-        "Mill acceptance requirements, not well-load capacities. The hydrostatic proof test is a "
-        "screening gate (above); elongation, Charpy toughness and as-quenched hardenability are "
-        "reported requirements for the purchase specification and mill certificate review."
-    )
+    col_d1, col_d2, col_d3 = st.columns(3)
+    with col_d1:
+        st.markdown("**Mechanical & Hydrodynamic Metrics**")
+        st.markdown(f"• **Candidate Name:** {row_det['Name']}")
+        st.markdown(f"• **Outer Diameter (OD):** {row_det['OD_in']}\"")
+        st.markdown(f"• **Inner Diameter (ID):** {row_det['ID_in']}\"")
+        st.markdown(f"• **Grade / Material:** {row_det['Grade']} ({row_det['Material']})")
+        st.markdown(f"• **Connection:** {row_det['Connection']}")
+        st.markdown(f"• **Flow Velocity (Initial / Late):** {row_det['Velocity_fts']} / {row_det['v_late_life_fts']} ft/s")
+        st.markdown(f"• **Erosional Limit (Salama):** {row_det['v_erosional']} ft/s")
+        st.markdown(f"• **Carrying Velocity (Initial / Late):** {row_det['v_carrying']} / {row_det['v_carrying_late']} ft/s")
+        st.markdown(f"• **Friction Factor (f):** {row_det['friction_factor']}")
+        st.markdown(f"• **Total Pressure Drop:** {row_det['dp_total_psi']} psi")
 
-    spec_df = res_df[[
-        'Name', 'Grade', 'min_elongation_pct', 'elongation_specimen',
-        'cvn_body_trans_j', 'cvn_body_long_j', 'cvn_cplg_trans_j', 'cvn_cplg_long_j',
-        'hrc_min_as_quenched', 'p_test_psi', 'hydro_design_factor', 'API_5CT_Flags'
-    ]].copy()
-    spec_df['elongation_specimen'] = spec_df['elongation_specimen'].str.replace('_', ' ')
-    spec_df.columns = [
-        'Tubing Candidate', 'Grade', 'Min Elongation (%)', 'Elongation Specimen',
-        'CVN Body Trans (J)', 'CVN Body Long (J)', 'CVN Cplg Trans (J)', 'CVN Cplg Long (J)',
-        'As-Quenched HRC (mid-wall)', 'Proof Test (psi)', 'Design Factor f', 'Advisory Flags'
-    ]
-    st.dataframe(
-            spec_df,
-            use_container_width=True,
-            height=350,
-            column_config={
-                "Tubing Candidate": st.column_config.TextColumn(pinned=True)
-            }
-        )
+    with col_d2:
+        st.markdown("**Structural & Limit State Performance**")
+        st.markdown(f"• **Net Axial Load:** {row_det['f_axial_klbs']} klbs (Rating: {row_det['f_axial_rating_klbs']} klbs)")
+        st.markdown(f"• **von Mises Stress:** {row_det['vme_stress_psi']} psi (SF: {row_det['triaxial_sf']})")
+        st.markdown(f"• **vME Governing Point:** {row_det['vme_governing_point']}")
+        st.markdown(f"• **Ductile Rupture Capacity:** {row_det['p_rupture_psi']} psi (SF: {row_det['rupture_sf']})")
+        st.markdown(f"• **Active Rupture Mode:** {row_det['rupture_mode']}")
+        st.markdown(f"• **Collapse Capacity:** {row_det['p_collapse_psi']} psi (SF: {row_det['collapse_sf']})")
+        st.markdown(f"• **Collapse Regime:** {row_det['collapse_regime']}")
+        st.markdown(f"• **Axial Equivalent Yield (Y_pa):** {row_det['y_pa_psi']} psi")
 
-    flagged = res_df[res_df['API_5CT_Flags'].astype(str) != ""]
-    if not flagged.empty:
-        with st.expander(f"📋 Product specification advisories ({len(flagged)} candidate(s) flagged)"):
-            st.markdown(
-                "These do **not** reject a candidate. They record where the standard test regime "
-                "cannot be applied as written, or where a specially agreed test is required."
-            )
-            for _, r in flagged.iterrows():
-                st.markdown(f"**{r['Name']}** — {r['API_5CT_Flags']}")
-
-    with st.expander("🔬 Per-candidate specification detail"):
-        for _, r in res_df.iterrows():
-            st.markdown(
-                f"**{r['Name']}** ({r['Grade']})  \n"
-                f"&nbsp;&nbsp;• Elongation: {r['Elongation_Note']}  \n"
-                f"&nbsp;&nbsp;• Charpy V-notch: {r['CVN_Note']}  \n"
-                f"&nbsp;&nbsp;• Hardenability: {r['Hardenability_Note']}  \n"
-                f"&nbsp;&nbsp;• Hydrostatic proof test: {r['Hydro_Reason']} "
-                f"({round(r['p_test_psi'], 0)} psi at f = {r['hydro_design_factor']})",
-                unsafe_allow_html=True,
-            )
+    with col_d3:
+        st.markdown("**Environmental, APB & Factory Gates**")
+        st.markdown(f"• **Shut-In CITHP Load:** {row_det['cithp_psi']} psi")
+        st.markdown(f"• **Surface Burst Safety Factor:** {row_det['burst_sf']}")
+        st.markdown(f"• **Annular Pressure Build-Up (APB):** {row_det['dp_apb_psi']} psi")
+        st.markdown(f"• **Mill Hydrostatic Proof Test:** {row_det['p_test_psi']} psi (SF: {row_det['hydro_test_sf']})")
+        st.markdown(f"• **Hydro Design Factor (f):** {row_det['hydro_design_factor']}")
+        st.markdown(f"• **Max Service Temp Limit:** {row_det['max_service_temp_c']} °C")
+        st.markdown(f"• **NACE Sour Status:** {row_det['Material_Reason']}")
+        st.markdown(f"• **Connection Status:** {row_det['Connection_Reason']}")
+        st.markdown(f"• **Overall Compliance Status:** {'PASS' if row_det['Overall_Pass'] else 'FAIL'}")
 
 # -----------------------------------------------------------------------------
 # PAGE 10: RECOMMENDATION & SENSITIVITY
