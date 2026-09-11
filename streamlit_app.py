@@ -1216,6 +1216,11 @@ def active_candidate_df():
         return db
     return db[db['OD_in'].isin(selection.get('od', [])) & db['Grade'].isin(selection.get('grade', []))]
 
+def highlight_passes(val):
+    """Highlight True or 'Overall Status' pass values in green."""
+    if val is True or val == True:
+        return 'background-color: #d4edda; color: #155724; font-weight: bold;'
+    return ''
 
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
@@ -4472,7 +4477,17 @@ elif page == "9. Engineering Calculations":
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
 
-    st.dataframe(display_df, use_container_width=True, height=450)
+styled_display_df = display_df.style.map(
+        highlight_passes, subset=['Overall Status']
+    )
+    st.dataframe(
+        styled_display_df,
+        use_container_width=True,
+        height=450,
+        column_config={
+            "Tubing Candidate": st.column_config.TextColumn(pinned=True)
+        }
+    )
 
     # Per-gate failure detail so a rejection can be traced to a specific check.
     st.subheader("Screening Gate Detail")
@@ -4489,7 +4504,19 @@ elif page == "9. Engineering Calculations":
     ]
     gate_df = res_df[['Name'] + [col for col, _ in gate_cols]].copy()
     gate_df.columns = ['Tubing Candidate'] + [label for _, label in gate_cols]
-    st.dataframe(gate_df, use_container_width=True, height=350)
+# Apply green highlighting to all boolean pass columns
+    pass_cols = [c for c in gate_df.columns if c != 'Tubing Candidate']
+    styled_gate_df = gate_df.style.map(
+        highlight_passes, subset=pass_cols
+    )
+    st.dataframe(
+        styled_gate_df,
+        use_container_width=True,
+        height=350,
+        column_config={
+            "Tubing Candidate": st.column_config.TextColumn(pinned=True)
+        }
+    )
 
     failed = res_df[~res_df['Overall_Pass']]
     if not failed.empty:
@@ -4554,7 +4581,14 @@ elif page == "9. Engineering Calculations":
         'CVN Body Trans (J)', 'CVN Body Long (J)', 'CVN Cplg Trans (J)', 'CVN Cplg Long (J)',
         'As-Quenched HRC (mid-wall)', 'Proof Test (psi)', 'Design Factor f', 'Advisory Flags'
     ]
-    st.dataframe(spec_df, use_container_width=True, height=350)
+    st.dataframe(
+            spec_df,
+            use_container_width=True,
+            height=350,
+            column_config={
+                "Tubing Candidate": st.column_config.TextColumn(pinned=True)
+            }
+        )
 
     flagged = res_df[res_df['API_5CT_Flags'].astype(str) != ""]
     if not flagged.empty:
