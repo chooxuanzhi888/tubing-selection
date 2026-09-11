@@ -4651,85 +4651,139 @@ elif page == "9. Engineering Calculations":
         st.markdown(f"• **Overall Compliance Status:** {'PASS' if row_det['Overall_Pass'] else 'FAIL'}")
 
 # -----------------------------------------------------------------------------
-# PAGE 10: RECOMMENDATION & SENSITIVITY
+# PAGE 10: RECOMMENDATIONS & SENSITIVITY
 # -----------------------------------------------------------------------------
 elif page == "10. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 10: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
-
+    
     candidates = active_candidate_df()
     if candidates.empty:
         st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
-
+        
     try:
         res_df = engineering_results(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
-    passed_candidates = res_df[res_df['Overall_Pass'] == True]
+        
+    passed_candidates = res_df[res_df['Overall_Pass'] == True].copy()
     is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
+    
+    # Sort all passed candidates primarily by minimal total pressure drop
+    if not passed_candidates.empty:
+        sorted_passed = passed_candidates.sort_values(
+            by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'], 
+            ascending=[True, True, False]
+        ).reset_index(drop=True)
+    else:
+        sorted_passed = pd.DataFrame()
 
-    col1, col2 = st.columns([1, 2])
-
+    col1, col2 = st.columns([1.2, 1.8], gap="medium")
+    
     with col1:
-        if not passed_candidates.empty:
-            preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-
-            st.success("### Preferred Candidate")
-            st.markdown(f"## **{preferred['Name']}**")
-            st.metric("Total Pressure Drop", f"{preferred['dp_total_psi']} psi")
-            st.metric("Flow Velocity", f"{preferred['Velocity_fts']} ft/s")
-            st.metric("Material Grade", f"{preferred['Grade']}")
-            st.metric("Connection Type", f"{preferred['Connection']}")
-            st.metric("Triaxial Safety Factor", f"{preferred['triaxial_sf']} (SF >= 1.25)")
-            st.metric("Surface Burst SF (CITHP)", f"{preferred['burst_sf']} (SF >= 1.10)")
-            st.metric("APB Pressure Rise", f"{preferred['dp_apb_psi']} psi")
+        st.subheader("Qualified Candidate Ranking")
+        if not sorted_passed.empty:
+            st.markdown(f"**Total Candidates Passed Screening:** `{len(sorted_passed)}` of `{len(res_df)}`")
+            
+            # Highlight top 3 candidates
+            top_3 = sorted_passed.head(3)
+            
+            for idx, candidate in sorted_passed.iterrows():
+                rank = idx + 1
+                is_top3 = rank <= 3
+                
+                # Card styling: Highlight top 3 with distinctive borders
+                if rank == 1:
+                    border_color = "#10B981"  # Emerald for #1
+                    bg_color = "#ECFDF5"
+                    badge = "🏆 Rank 1 (Top Preferred)"
+                elif rank == 2:
+                    border_color = "#3B82F6"  # Blue for #2
+                    bg_color = "#EFF6FF"
+                    badge = "🥈 Rank 2 (Top 3 Preferred)"
+                elif rank == 3:
+                    border_color = "#F59E0B"  # Amber for #3
+                    bg_color = "#FFFBEB"
+                    badge = "🥉 Rank 3 (Top 3 Preferred)"
+                else:
+                    border_color = "#CBD5E1"  # Muted grey for remaining passed candidates
+                    bg_color = "#F8FAFC"
+                    badge = f"Pass (Rank {rank})"
+                
+                st.markdown(f"""
+                <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
+                        <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
+                        <div><b>Total ΔP:</b> {candidate['dp_total_psi']} psi</div>
+                        <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
+                        <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
+                        <div><b>Connection:</b> {candidate['Connection']}</div>
+                        <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
+                        <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
             st.error("### No Candidates Passed All Screenings!")
             st.warning("Consider increasing bottomhole pressure, selecting higher steel grades (e.g., P110/Q125 for CITHP burst), or upgrading to premium connections.")
 
     with col2:
         st.subheader("Engineering Justification Rationale")
-        if not passed_candidates.empty:
-            preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-
+        if not sorted_passed.empty:
+            top_1 = sorted_passed.iloc[0]
             rate_str = (
                 f"**{st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D** gas with **{st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf** condensate"
                 if is_gas else
                 f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
             )
-
+            
+            # Item 3: Specific justification for Rank #1
+            st.markdown(f"""
+            <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Why {top_1['Name']} is Ranked #1</h4>
+                <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
+                    <b>{top_1['Name']}</b> achieves the lowest total pressure drop (<b>{top_1['dp_total_psi']} psi</b>) among all qualified candidates while operating safely within the velocity window (<b>{top_1['Velocity_fts']} ft/s</b>). 
+                    It maintains robust structural margins under Lubinski axial load (Triaxial SF = <b>{top_1['triaxial_sf']}</b> ≥ 1.25) and static closed-in surface burst (Burst SF = <b>{top_1['burst_sf']}</b> ≥ 1.10).
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Item 2: General Rationale applicable to all passing candidates
             st.markdown(rf"""
-            * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
-            * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) sits between the minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**). Late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remains above the depleted-condition carrying limit (**{preferred['v_carrying_late']} ft/s**).
-            * **Shut-In CITHP & Surface Integrity:** Closed-In Tubing Head Pressure of **{preferred['cithp_psi']} psi** yields a static burst safety factor of **{preferred['burst_sf']}** (exceeding $SF \ge 1.10$).
-            * **NACE & Structural Safety:** Grade **{preferred['Grade']}** ({preferred['Material']}) provides a von Mises triaxial SF of **{preferred['triaxial_sf']}** under Lubinski axial tension (**{preferred['f_axial_klbs']} klbs** against a **{preferred['f_axial_rating_klbs']} klbs** pipe body rating) and APB rise (**{preferred['dp_apb_psi']} psi**). Maximum service temperature for this grade is **{preferred['max_service_temp_c']}°C**.
-            * **Connection Validation:** {preferred['Connection_Reason']}
+            ##### General Compliance Rationale (All Qualified Candidates)
+            All candidates listed in the ranking matrix have successfully passed every technical screening gate:
+            
+            * **Hydraulic Validation:** All qualified candidates operate with total pressure drop ($\Delta P_{{\text{{total}}}}$) fully within the available drawdown drive (**{top_1['dp_avail_psi']} psi**). Dynamic Z-factor (**{top_1['Z_Factor']}**) confirms live fluid conditions at a rate of {rate_str}. All candidates have pressure drop within the allowable drawdown limit.
+            * **Velocity Window:** Initial flow velocities sit safely between the minimum sand carrying limit (**{top_1['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{top_1['v_erosional']} ft/s**). Late-life velocities remain above the depleted-condition carrying limit (**{top_1['v_carrying_late']} ft/s**).
+            * **Shut-In CITHP & Surface Integrity:** Static Closed-In Tubing Head Pressure of **{top_1['cithp_psi']} psi** yields static surface burst safety factors meeting or exceeding $SF \ge 1.10$.
+            * **NACE & Structural Safety:** All passed candidates provide a von Mises triaxial SF $\ge 1.25$ under Lubinski net axial tension and APB rise (**{top_1['dp_apb_psi']} psi**). All selected metallurgy classes comply with NACE MR0175 sour service hardness limits and maximum continuous service temperatures.
+            * **Connection Validation:** Threaded connection selections comply with gas-tightness and metal-to-metal sealing requirements.
             """)
         else:
             st.write("Review the calculation matrix on Page 9 to identify specific failure flags (velocity, hydraulics, APB, CITHP burst, temperature, or NACE sour service).")
 
     # -------------------------------------------------------------------------
-    # GEMINI AI EXECUTIVE SUMMARY ENGINE
+    # ITEM 4: GEMINI AI EXECUTIVE SUMMARY ENGINE
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
     st.caption("Generates a dynamic technical narrative grounded strictly on Python calculation outputs.")
-
     if st.button("✨ Generate AI Executive Summary", type="primary"):
         raw_key = st.secrets.get("GEMINI_API_KEY", "")
         api_key = raw_key.strip().replace('"', '').replace("'", "")
-
         if not api_key:
             st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
-        elif passed_candidates.empty:
+        elif sorted_passed.empty:
             st.warning("Cannot generate executive report: No tubing candidates passed all technical screening thresholds.")
         else:
             with st.spinner("Analyzing hydraulics, CITHP burst loads, velocity windows, and NACE compliance via Gemini API..."):
                 try:
-                    pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-
+                    pref = sorted_passed.iloc[0]
                     if is_gas:
                         production_context = f"""
                         - Operating Mode: Gas / Condensate Well
@@ -4744,12 +4798,10 @@ elif page == "10. Recommendation & Sensitivity":
                         - Water Cut: {st.session_state.inputs.get('water_cut', 5.0)} %
                         - Producing GOR: {st.session_state.inputs.get('gor', 800.0)} scf/STB
                         """
-
                     prompt_text = f"""
                     You are a Senior Completion Engineer writing an executive technical recommendation memo for an asset manager.
                     Synthesize the following PRE-CALCULATED Python engineering data into a concise, professional technical assessment.
                     DO NOT re-calculate or alter any numerical values. Rely STRICTLY on these provided facts:
-
                     WELL & OPERATIONAL PARAMETERS:
                     - Well Type: {st.session_state.inputs.get('well_type', 'Oil Well')}
                     {production_context}
@@ -4761,7 +4813,6 @@ elif page == "10. Recommendation & Sensitivity":
                     - Annular Fluid & APB Pressure Rise: {st.session_state.inputs.get('annular_fluid', '')} (Calculated APB Rise: {pref['dp_apb_psi']} psi)
                     - Target Field Life: {st.session_state.inputs.get('field_life_yrs', 20)} Years at {st.session_state.inputs.get('decline_rate', 8.0)}% Annual Decline Rate
                     - CO2 / H2S Concentrations: {st.session_state.inputs.get('co2_mole_pct', 2.5)} mole% CO2, {st.session_state.inputs.get('h2s_ppm', 150.0)} PPM H2S
-
                     SELECTED PREFERRED TUBING CANDIDATE:
                     - Candidate Name: {pref['Name']}
                     - Steel Grade / Material: {pref['Grade']} ({pref['Material']})
@@ -4775,44 +4826,36 @@ elif page == "10. Recommendation & Sensitivity":
                     - Minimum Sand Carrying Limit: {pref['v_carrying']} ft/s
                     - Salama Max Sand Erosional Velocity Limit: {pref['v_erosional']} ft/s
                     - Connection Evaluation Rationale: {pref['Connection_Reason']}
-
                     INSTRUCTIONS:
                     1. Write an executive memo starting with TO, FROM, and SUBJECT lines.
                     2. Paragraph 1: Recommend the candidate size, grade, and connection type, justifying hydraulic performance against available drawdown drive under the given rate profile.
                     3. Paragraph 2: Analyze flow velocities (initial vs late-life) against Rubey sand carrying velocity and Salama sand erosion thresholds.
                     4. Paragraph 3: Detail static shut-in CITHP burst safety factor, Lubinski triaxial safety factor (SF_vme), thermal APB expansion, and justify connection selection (API EUE vs Premium metal seal) considering gas tightness and NACE MR0175 sour service requirements.
-
                     5. Use formal petroleum completion engineering phrasing and bold key numeric values.
                     """
-
                     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
                     payload = {
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
                     }
-
                     headers = {
                         'Content-Type': 'application/json',
                         'x-goog-api-key': api_key
                     }
-
                     req = urllib.request.Request(
                         url,
                         data=json.dumps(payload).encode('utf-8'),
                         headers=headers,
                         method='POST'
                     )
-
                     with urllib.request.urlopen(req) as response:
                         res_data = json.loads(response.read().decode('utf-8'))
                         ai_text = res_data['candidates'][0]['content']['parts'][0]['text']
-
                     st.markdown("""
                     <div style="background-color: #F0F9FF; border: 1px solid #BAE6FD; border-left: 5px solid #0284C7; border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
                     """, unsafe_allow_html=True)
                     st.markdown(ai_text)
                     st.markdown("</div>", unsafe_allow_html=True)
-
                 except urllib.error.HTTPError as http_err:
                     error_body = http_err.read().decode('utf-8')
                     st.error(f"Gemini API HTTP Error {http_err.code}: {error_body}")
@@ -4820,13 +4863,11 @@ elif page == "10. Recommendation & Sensitivity":
                     st.error(f"Error calling Gemini API: {str(e)}")
 
     # -------------------------------------------------------------------------
-    # INTERACTIVE SENSITIVITY PLOTS
+    # ITEM 4: INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("Interactive Sensitivity Plots")
-
     tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
-
     with tab1:
         fig_dp = px.line(
             res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
@@ -4842,19 +4883,15 @@ elif page == "10. Recommendation & Sensitivity":
             annotation_text="Available Drawdown Limit",
             annotation_position="bottom right"
         )
-
         max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
         fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
-
         st.plotly_chart(fig_dp, use_container_width=True)
-
     with tab2:
         fig_v = go.Figure()
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['Velocity_fts'], mode='lines+markers', name='Initial Flow Velocity'))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Salama Sand Erosional Limit (Max)', line=dict(dash='dash', color='red')))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_carrying'], mode='lines', name='Min Sand Carrying Limit', line=dict(dash='dot', color='orange')))
-
         fig_v.update_layout(
             title="Flow Velocity Window vs. Tubing Inner Diameter",
             xaxis_title="Inner Diameter (inches)",
