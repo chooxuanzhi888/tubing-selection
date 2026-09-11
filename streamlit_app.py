@@ -4800,8 +4800,8 @@ elif page == "10. Recommendation & Sensitivity":
             )
             st.plotly_chart(fig_v, use_container_width=True)
 
-    # =========================================================================
-    # TAB 2: TUBING SELECTION ALONG WELL LIFE (NEW FEATURE)
+# =========================================================================
+    # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
     # =========================================================================
     with page10_tab2:
         st.subheader("📈 Tubing Selection & Pressure Drop Trajectory Along Well Life")
@@ -4835,7 +4835,6 @@ elif page == "10. Recommendation & Sensitivity":
         
         p_bhp_0 = float(st.session_state.inputs.get('p_bhp', 4500.0))
         p_wh_0 = float(st.session_state.inputs.get('p_wh', 800.0))
-        dp_available_0 = p_bhp_0 - p_wh_0
         
         # Calculate year-by-year lifecycle trajectory
         years_arr = np.arange(0, life_yrs_sim + 1)
@@ -4847,27 +4846,40 @@ elif page == "10. Recommendation & Sensitivity":
         dp_available_t = p_bhp_t - p_wh_t
         
         # Recalculate Total Pressure Drop along field life
-        # Rates decline with reservoir energy; hydrostatic drops slightly while friction drops significantly with lower rate
         dp_hydro_0 = float(selected_row['dp_hydro_psi'])
         dp_fric_0 = float(selected_row['dp_fric_psi'])
         
-        # Frictional pressure loss scales quadratically with rate ~ Q^1.8
         dp_fric_t = dp_fric_0 * (decline_factor ** 1.8)
-        # Hydrostatic pressure loss scales with live density shifts
         dp_hydro_t = dp_hydro_0 * (0.92 + 0.08 * decline_factor)
         dp_total_t = dp_hydro_t + dp_fric_t
         
-        # Determine drawdown breach year
-        drawdown_breached = dp_total_t > dp_available_t
-        breach_years = years_arr[drawdown_breached]
+        # ---------------------------------------------------------------------
+        # EXACT INTERSECTION CALCULATION (Linear Interpolation Between Steps)
+        # ---------------------------------------------------------------------
+        diff = dp_total_t - dp_available_t
+        exact_intersection_year = None
+        exact_intersection_dp = None
         
-        if len(breach_years) > 0:
-            first_breach_year = int(breach_years[0])
-            breach_status_str = f"⚠️ **Year {first_breach_year}**"
-            breach_alert = f"Drawdown limit reached at **Year {first_breach_year}**. Natural flow ceases as total pressure drop ({dp_total_t[first_breach_year]:.1f} psi) exceeds available drawdown ({dp_available_t[first_breach_year]:.1f} psi)."
+        for i in range(len(years_arr) - 1):
+            if diff[i] == 0:
+                exact_intersection_year = float(years_arr[i])
+                exact_intersection_dp = float(dp_total_t[i])
+                break
+            elif diff[i] < 0 and diff[i+1] > 0:  # Pressure drop exceeds available drawdown
+                # Linear interpolation between Year i and Year i+1
+                y1, y2 = years_arr[i], years_arr[i+1]
+                d1, d2 = diff[i], diff[i+1]
+                exact_intersection_year = float(y1 + (0 - d1) * (y2 - y1) / (d2 - d1))
+                
+                p1, p2 = dp_total_t[i], dp_total_t[i+1]
+                exact_intersection_dp = float(p1 + (exact_intersection_year - y1) * (p2 - p1) / (y2 - y1))
+                break
+
+        if exact_intersection_year is not None:
+            breach_status_str = f"⚠️ **Year {exact_intersection_year:.2f}**"
+            breach_alert = f"Drawdown limit reached at **Year {exact_intersection_year:.2f}**. Natural flow ceases as total pressure drop ({exact_intersection_dp:.1f} psi) exceeds available drawdown."
             breach_pass = False
         else:
-            first_breach_year = None
             breach_status_str = "🟢 **Not Breached (Sustained Natural Flow)**"
             breach_alert = f"Natural flow is successfully sustained across the full **{life_yrs_sim}-year** target well life!"
             breach_pass = True
@@ -4893,31 +4905,31 @@ elif page == "10. Recommendation & Sensitivity":
         # Plot Lifecycle Pressure Drop Trajectory Graph
         fig_life = go.Figure()
         
-        # Total Pressure Drop curve
+        # 1. Total Pressure Drop curve
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_total_t, mode='lines+markers',
-            name=f'Total Tubing Pressure Drop ΔP_total ({selected_life_tubing})',
+            name=f'ΔP_total ({selected_life_tubing})',
             line=dict(color='#1E3A8A', width=3),
             hovertemplate='Year %{x}: ΔP_total = %{y:.1f} psi<extra></extra>'
         ))
         
-        # Available Drawdown Limit curve
+        # 2. Available Drawdown Limit curve
         fig_life.add_trace(go.Scatter(
-            x=years_arr, y=dp_available_t, mode='lines',
-            name='Available Reservoir Drawdown Limit (P_bhp - P_wh)',
+            x=years_arr, y=dp_available_t, mode='lines+markers',
+            name='Available Drawdown Limit (P_bhp - P_wh)',
             line=dict(color='#DC2626', width=2.5, dash='dash'),
             hovertemplate='Year %{x}: Available Drawdown = %{y:.1f} psi<extra></extra>'
         ))
         
-        # Hydrostatic Component
+        # 3. Hydrostatic Component
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_hydro_t, mode='lines',
-            name='Hydrostatic Head Component (ΔP_hydro)',
+            name='Hydrostatic Component (ΔP_hydro)',
             line=dict(color='#2563EB', width=1.5, dash='dot'),
             visible='legendonly'
         ))
         
-        # Frictional Component
+        # 4. Frictional Component
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_fric_t, mode='lines',
             name='Frictional Component (ΔP_fric)',
@@ -4925,27 +4937,46 @@ elif page == "10. Recommendation & Sensitivity":
             visible='legendonly'
         ))
         
-        # Add Vertical Marker for Drawdown Limit Breach Year
-        if first_breach_year is not None:
+        # 5. Exact Intersection Point Marker and Vertical Line
+        if exact_intersection_year is not None:
+            # Vertical dashed line at exact intersection year
             fig_life.add_vline(
-                x=first_breach_year, line_dash="solid", line_color="#DC2626",
-                annotation_text=f"Drawdown Limit Reached: Year {first_breach_year}",
-                annotation_position="top left", annotation_font_color="#DC2626"
+                x=exact_intersection_year, line_dash="dashdot", line_color="#DC2626", line_width=1.5
             )
+            
+            # Exact Intersection Marker at coordinate (X_intersect, Y_intersect)
             fig_life.add_trace(go.Scatter(
-                x=[first_breach_year], y=[dp_total_t[first_breach_year]],
-                mode='markers', marker=dict(size=14, color='#DC2626', symbol='x'),
-                name='Drawdown Limit Breach Point'
+                x=[exact_intersection_year],
+                y=[exact_intersection_dp],
+                mode='markers+text',
+                marker=dict(size=14, color='#DC2626', symbol='x', line=dict(width=2, color='black')),
+                text=[f"  Intersection: Yr {exact_intersection_year:.2f} ({exact_intersection_dp:.0f} psi)"],
+                textposition="top right",
+                textfont=dict(color="#DC2626", size=12, family="Arial Black"),
+                name='Exact Drawdown Limit Breach Point'
             ))
 
+        # Layout styling: Legend repositioned to avoid title overlap
         fig_life.update_layout(
-            title=f"Tubing Pressure Drop Trajectory vs. Target Well Life ({life_yrs_sim} Years)",
+            title=dict(
+                text=f"Tubing Pressure Drop Trajectory vs. Target Well Life ({life_yrs_sim} Years)",
+                font=dict(size=16)
+            ),
             xaxis_title="Well Life Time (Years)",
             yaxis_title="Pressure (psi)",
             hovermode="x unified",
-            height=500,
-            margin=dict(t=50, b=40, l=40, r=40),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            height=530,
+            margin=dict(t=80, b=50, l=50, r=50),
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.98,
+                xanchor="right",
+                x=0.98,
+                bgcolor="rgba(255, 255, 255, 0.85)",
+                bordercolor="CBD5E1",
+                borderwidth=1
+            )
         )
         
         st.plotly_chart(fig_life, use_container_width=True)
