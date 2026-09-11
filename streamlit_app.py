@@ -4477,9 +4477,9 @@ elif page == "9. Engineering Calculations":
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
 
-styled_display_df = display_df.style.map(
-        highlight_passes, subset=['Overall Status']
-    )
+    styled_display_df = display_df.style.map(
+            highlight_passes, subset=['Overall Status']
+        )
     st.dataframe(
         styled_display_df,
         use_container_width=True,
