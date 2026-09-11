@@ -1216,11 +1216,19 @@ def active_candidate_df():
         return db
     return db[db['OD_in'].isin(selection.get('od', [])) & db['Grade'].isin(selection.get('grade', []))]
 
-def highlight_passes(val):
-    """Highlight True or 'Overall Status' pass values in green."""
-    if val is True or val == True:
-        return 'background-color: #d4edda; color: #155724; font-weight: bold;'
-    return ''
+def highlight_passing_row_matrix(row):
+    """Highlight the entire row in soft green if the candidate passed all checks."""
+    if row.get('Overall Status') is True:
+        return ['background-color: #d4edda; color: #155724; font-weight: bold;'] * len(row)
+    return [''] * len(row)
+
+def highlight_passing_row_gates(row):
+    """Highlight the entire gate row in soft green if all individual gate checks passed."""
+    # Check if all gate boolean values (excluding 'Tubing Candidate') are True
+    gate_statuses = [val for col, val in row.items() if col != 'Tubing Candidate']
+    if all(gate_statuses):
+        return ['background-color: #d4edda; color: #155724; font-weight: bold;'] * len(row)
+    return [''] * len(row)
 
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
@@ -4477,9 +4485,7 @@ elif page == "9. Engineering Calculations":
         'Friction f', 'Sand Cv', 'Z-Factor', 'Max Service T (°C)', 'NACE Status', 'Temp Status', 'Overall Status'
     ]
 
-    styled_display_df = display_df.style.map(
-            highlight_passes, subset=['Overall Status']
-        )
+    styled_display_df = display_df.style.apply(highlight_passing_row_matrix, axis=1)
     st.dataframe(
         styled_display_df,
         use_container_width=True,
@@ -4504,11 +4510,8 @@ elif page == "9. Engineering Calculations":
     ]
     gate_df = res_df[['Name'] + [col for col, _ in gate_cols]].copy()
     gate_df.columns = ['Tubing Candidate'] + [label for _, label in gate_cols]
-# Apply green highlighting to all boolean pass columns
-    pass_cols = [c for c in gate_df.columns if c != 'Tubing Candidate']
-    styled_gate_df = gate_df.style.map(
-        highlight_passes, subset=pass_cols
-    )
+
+    styled_gate_df = gate_df.style.apply(highlight_passing_row_gates, axis=1)
     st.dataframe(
         styled_gate_df,
         use_container_width=True,
