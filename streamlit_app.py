@@ -4687,14 +4687,12 @@ elif page == "10. Recommendation & Sensitivity":
         if not sorted_passed.empty:
             st.markdown(f"**Total Candidates Passed Screening:** `{len(sorted_passed)}` of `{len(res_df)}`")
             
-            # Highlight top 3 candidates
+            # 1. Top 3 Candidates displayed as Feature Cards
             top_3 = sorted_passed.head(3)
             
-            for idx, candidate in sorted_passed.iterrows():
+            for idx, candidate in top_3.iterrows():
                 rank = idx + 1
-                is_top3 = rank <= 3
                 
-                # Card styling: Highlight top 3 with distinctive borders
                 if rank == 1:
                     border_color = "#10B981"  # Emerald for #1
                     bg_color = "#ECFDF5"
@@ -4702,15 +4700,11 @@ elif page == "10. Recommendation & Sensitivity":
                 elif rank == 2:
                     border_color = "#3B82F6"  # Blue for #2
                     bg_color = "#EFF6FF"
-                    badge = "🥈 Rank 2 (Top 3 Preferred)"
-                elif rank == 3:
+                    badge = "🥈 Rank 2"
+                else:
                     border_color = "#F59E0B"  # Amber for #3
                     bg_color = "#FFFBEB"
-                    badge = "🥉 Rank 3 (Top 3 Preferred)"
-                else:
-                    border_color = "#CBD5E1"  # Muted grey for remaining passed candidates
-                    bg_color = "#F8FAFC"
-                    badge = f"Pass (Rank {rank})"
+                    badge = "🥉 Rank 3"
                 
                 st.markdown(f"""
                 <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
@@ -4728,6 +4722,27 @@ elif page == "10. Recommendation & Sensitivity":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # 2. Remaining Passing Candidates displayed in Table Form
+            remaining_passed = sorted_passed.iloc[3:]
+            if not remaining_passed.empty:
+                st.markdown("##### Other Qualified Candidates")
+                
+                # Format table dataframe
+                table_df = remaining_passed.copy()
+                table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_passed) + 1)]
+                table_df = table_df[[
+                    'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
+                ]].rename(columns={
+                    'Name': 'Tubing',
+                    'dp_total_psi': 'ΔP (psi)',
+                    'Velocity_fts': 'Vel (ft/s)',
+                    'triaxial_sf': 'Triaxial SF',
+                    'burst_sf': 'Burst SF'
+                })
+                
+                st.dataframe(table_df, use_container_width=True, hide_index=True)
+
         else:
             st.error("### No Candidates Passed All Screenings!")
             st.warning("Consider increasing bottomhole pressure, selecting higher steel grades (e.g., P110/Q125 for CITHP burst), or upgrading to premium connections.")
@@ -4742,7 +4757,7 @@ elif page == "10. Recommendation & Sensitivity":
                 f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
             )
             
-            # Item 3: Specific justification for Rank #1
+            # Specific justification for Rank #1
             st.markdown(f"""
             <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
                 <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Why {top_1['Name']} is Ranked #1</h4>
@@ -4753,7 +4768,7 @@ elif page == "10. Recommendation & Sensitivity":
             </div>
             """, unsafe_allow_html=True)
             
-            # Item 2: General Rationale applicable to all passing candidates
+            # General Rationale applicable to all passing candidates
             st.markdown(rf"""
             ##### General Compliance Rationale (All Qualified Candidates)
             All candidates listed in the ranking matrix have successfully passed every technical screening gate:
@@ -4768,7 +4783,7 @@ elif page == "10. Recommendation & Sensitivity":
             st.write("Review the calculation matrix on Page 9 to identify specific failure flags (velocity, hydraulics, APB, CITHP burst, temperature, or NACE sour service).")
 
     # -------------------------------------------------------------------------
-    # ITEM 4: GEMINI AI EXECUTIVE SUMMARY ENGINE
+    # GEMINI AI EXECUTIVE SUMMARY ENGINE
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("🤖 AI-Powered Executive Completion Memo")
@@ -4863,7 +4878,7 @@ elif page == "10. Recommendation & Sensitivity":
                     st.error(f"Error calling Gemini API: {str(e)}")
 
     # -------------------------------------------------------------------------
-    # ITEM 4: INTERACTIVE SENSITIVITY PLOTS
+    # INTERACTIVE SENSITIVITY PLOTS
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("Interactive Sensitivity Plots")
