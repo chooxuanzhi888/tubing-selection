@@ -4800,7 +4800,7 @@ elif page == "10. Recommendation & Sensitivity":
             )
             st.plotly_chart(fig_v, use_container_width=True)
 
-# =========================================================================
+    # =========================================================================
     # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
     # =========================================================================
     with page10_tab2:
