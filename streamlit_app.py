@@ -5,11 +5,12 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import os
+import io
 import json
 import urllib.request
-import textwrap
 import base64
 import itertools
+from pathlib import Path
 
 from api_5c3 import (
     APIDesignError,
@@ -35,140 +36,73 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# -----------------------------------------------------------------------------
+# STATIC ASSET LOADER
+# -----------------------------------------------------------------------------
+_ASSET_DIR = Path(__file__).resolve().parent / "assets"
+
+
+@st.cache_data(show_spinner=False)
+def load_asset(name):
+    """Return the text of `assets/<name>`, read once per session.
+
+    The stylesheet and the three interactive schematics are static text with no
+    Python interpolation. Holding them as module-level string literals put ~60 KB
+    of inert markup in the source and re-materialized it on every rerun; reading
+    them from disk through cache_data does the I/O once and hands back the same
+    cached string thereafter.
+    """
+    return (_ASSET_DIR / name).read_text(encoding="utf-8")
+
+
+@st.cache_data(show_spinner=False)
+def encode_image_b64(path):
+    """Return an inline data URI for `path`, or None when it is unavailable.
+
+    Cached because the hero image is hundreds of kilobytes; re-encoding it on every
+    rerun would add that much base64 work to each page render.
+    """
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, 'rb') as handle:
+            encoded = base64.b64encode(handle.read()).decode('utf-8')
+    except OSError:
+        return None
+    lowered = path.lower()
+    if lowered.endswith('.png'):
+        mime = 'image/png'
+    elif lowered.endswith('.svg'):
+        mime = 'image/svg+xml'
+    else:
+        mime = 'image/jpeg'
+    return f'data:{mime};base64,{encoded}'
+
+
+def first_existing_image(names):
+    """Return the data URI of the first readable path in `names`."""
+    for name in names:
+        data_uri = encode_image_b64(name)
+        if data_uri:
+            return data_uri
+    return None
+
+
+def figure_block(path, number, caption):
+    """Render a figure inside a framed, captioned plate. Skips missing files."""
+    data_uri = encode_image_b64(path)
+    if not data_uri:
+        return ""
+    return f"""
+    <figure class="p1-figure">
+        <div class="p1-figure-frame"><img src="{data_uri}" alt="{caption}" loading="lazy" /></div>
+        <figcaption class="p1-figure-caption"><span class="p1-figure-number">Figure {number}</span>{caption}</figcaption>
+    </figure>
+    """
+
+
 # Custom CSS styling for presentation-grade UI
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #1E3A8A;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #475569;
-        margin-bottom: 1.5rem;
-    }
-    .card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    .formula-card {
-        background-color: #FFFFFF;
-        border: 1px solid #CBD5E1;
-        border-radius: 8px;
-        padding: 1.1rem 1.3rem;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-    }
-    .purpose-box {
-        background-color: #F1F5F9;
-        border-left: 4px solid #3B82F6;
-        padding: 0.65rem 0.85rem;
-        border-radius: 4px;
-        font-size: 0.88rem;
-        color: #1E293B;
-        margin-top: 0.6rem;
-        margin-bottom: 0.6rem;
-    }
-    .param-key {
-        font-size: 0.84rem;
-        color: #334155;
-        line-height: 1.6;
-        background-color: #FAFAFA;
-        padding: 0.65rem 0.85rem;
-        border-radius: 6px;
-        border: 1px dashed #CBD5E1;
-        margin-bottom: 0.6rem;
-    }
-    .filter-box {
-        background-color: #FEF2F2;
-        border-left: 4px solid #EF4444;
-        padding: 0.6rem 0.85rem;
-        border-radius: 4px;
-        font-size: 0.84rem;
-        color: #991B1B;
-        margin-top: 0.5rem;
-    }
-
-    /* ---- Page 6 methodology layout ------------------------------------- */
-    /* Full-width formula card: heading, then formula, then labelled blocks. */
-    .m2-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-               padding: 1.15rem 1.35rem 1.25rem; margin: 0 0 1.4rem;
-               box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
-    .m2-card-head { display: flex; align-items: baseline; gap: 0.6rem;
-                    padding-bottom: 0.6rem; margin-bottom: 0.9rem;
-                    border-bottom: 1px solid #E2E8F0; }
-    .m2-card-num { flex: none; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em;
-                   padding: 0.16rem 0.5rem; border-radius: 5px; background: #F1F5F9; color: #475569; }
-    .m2-card-title { font-size: 1.06rem; font-weight: 700; margin: 0; line-height: 1.3; }
-    /* Small uppercase label that introduces each block inside a card. */
-    .m2-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
-                text-transform: uppercase; color: #64748B; margin: 1.1rem 0 0.4rem; }
-    .m2-label:first-child { margin-top: 0; }
-    /* Left-aligned on purpose: these paragraphs embed inline glossary terms whose
-       pop-up panels cannot be broken across lines, so justification would stretch
-       the spaces around each term into visible gaps. */
-    .m2-purpose { font-size: 0.9rem; line-height: 1.65; color: #1E293B;
-                  background: #F8FAFC; border-left: 3px solid #3B82F6;
-                  padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
-                  text-align: left; }
-    .m2-gate { font-size: 0.86rem; line-height: 1.6; color: #991B1B;
-               background: #FEF2F2; border-left: 3px solid #EF4444;
-               padding: 0.7rem 0.9rem; border-radius: 0 5px 5px 0;
-               text-align: left; }
-    /* Parameter definition table: symbol | meaning | units. */
-    .m2-param-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .m2-param-table th { text-align: left; font-size: 0.68rem; font-weight: 800;
-                         letter-spacing: 0.07em; text-transform: uppercase; color: #64748B;
-                         padding: 0.4rem 0.6rem; border-bottom: 1.5px solid #CBD5E1;
-                         background: #F8FAFC; }
-    .m2-param-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #EEF2F6;
-                         color: #334155; line-height: 1.5; vertical-align: top;
-                         text-align: left; }
-    .m2-param-table tr:last-child td { border-bottom: none; }
-    .m2-param-table td.m2-sym { white-space: nowrap; font-weight: 700; color: #0F172A;
-                                width: 16%; font-family: "SFMono-Regular", Consolas, monospace; }
-    .m2-param-table td.m2-unit { white-space: nowrap; color: #64748B; width: 24%; font-size: 0.8rem; }
-    /* Caption naming the quantity each formula solves for. */
-    .m2-fx-caption { font-size: 0.82rem; color: #475569; font-weight: 600; margin: 0.55rem 0 -0.35rem; }
-
-    /* ---- Glossary pop-up ------------------------------------------------ */
-    /* Built from inline <span>/<label> only. An earlier <details>-based version
-       broke the line: <details> is block-level, so the markdown renderer split
-       the paragraph around every term. A hidden checkbox driven by <label>
-       gives click-to-toggle with no block element in the text flow. */
-    .m2-term { position: relative; display: inline; }
-    .m2-term > input.m2-term-cb { position: absolute; opacity: 0; width: 0; height: 0;
-                                  pointer-events: none; }
-    .m2-term > label.m2-term-label { display: inline; cursor: help;
-                                     border-bottom: 1.5px dotted #2563EB; color: #1D4ED8;
-                                     font-weight: 600; }
-    .m2-term > label.m2-term-label:hover { background: #EFF6FF; }
-    .m2-term > input.m2-term-cb:checked ~ label.m2-term-label { background: #DBEAFE; }
-    .m2-term .m2-term-pop { display: none; position: absolute; z-index: 40; left: 0; top: 1.7em;
-                            width: min(21rem, 78vw); background: #0F172A; color: #E2E8F0;
-                            border-radius: 8px; padding: 0.7rem 0.85rem;
-                            font-size: 0.82rem; line-height: 1.55; font-weight: 400;
-                            font-style: normal; text-transform: none; letter-spacing: normal;
-                            text-align: left; white-space: normal;
-                            box-shadow: 0 10px 24px rgba(15,23,42,0.28); }
-    .m2-term > input.m2-term-cb:checked ~ .m2-term-pop { display: block; }
-    .m2-term .m2-term-pop b { color: #7DD3FC; display: block; margin-bottom: 0.2rem; }
-
-    /* ---- Clickable flowchart ------------------------------------------- */
-    a.flow-link { text-decoration: none; display: block; color: inherit; }
-    a.flow-link:hover .flow-box { border-color: #2563EB;
-                                  box-shadow: 0 4px 10px rgba(37,99,235,0.18);
-                                  transform: translateY(-1px); }
-    .flow-box { transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease; }
-    .flow-jump { font-size: 0.7rem; font-weight: 700; color: #2563EB; opacity: 0; transition: opacity 0.15s ease; }
-    a.flow-link:hover .flow-jump { opacity: 1; }
-    </style>
-""", unsafe_allow_html=True)
+st.markdown(f"<style>{load_asset('app.css')}</style>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # SESSION STATE INITIALIZATION & CSV LOADER
@@ -237,45 +171,61 @@ ANNULAR_FLUID_PROPS = {
 # HELPER FORMULA FUNCTIONS FOR SLURRY PHYSICS
 # -----------------------------------------------------------------------------
 def calculate_slurry_physics(q_liq_stbd, sand_pptb, sand_sg, sand_d_um, rho_m, mu_m_cp, d_i_in, is_cra=False):
+    """Salama erosional ceiling, Rubey settling and Turner lift for a sand slurry.
+
+    `sand_pptb` may be a scalar or a NumPy array; every branch is expressed with
+    np.where/np.maximum so a whole sand-concentration sweep resolves in one call
+    instead of one Python-level call per point. Scalar inputs return Python floats
+    so callers can still `round()` the results.
+    """
     rho_s = sand_sg * 62.4
     w_s_lb_day = (sand_pptb / 1000.0) * q_liq_stbd
     w_s_lb_s = w_s_lb_day / 86400.0
-    v_sand_ft3s = w_s_lb_s / rho_s if rho_s > 0 else 0.0
+    v_sand_ft3s = w_s_lb_s / rho_s if rho_s > 0 else np.zeros_like(np.asarray(w_s_lb_day, dtype=float))
     v_liq_ft3s = (q_liq_stbd * 5.615) / 86400.0
-    
-    c_v = v_sand_ft3s / (v_liq_ft3s + v_sand_ft3s) if (v_liq_ft3s + v_sand_ft3s) > 0 else 0.0
+
+    v_total_ft3s = v_liq_ft3s + v_sand_ft3s
+    c_v = np.where(v_total_ft3s > 0, v_sand_ft3s / np.where(v_total_ft3s > 0, v_total_ft3s, 1.0), 0.0)
     rho_slurry = (1.0 - c_v) * rho_m + c_v * rho_s
-    
-    if w_s_lb_day > 0.1:
-        c_salama = 450.0 if is_cra else 200.0
-        v_erosional = (c_salama / np.sqrt(rho_slurry)) * np.sqrt(d_i_in / w_s_lb_day)
-    else:
-        v_erosional = 120.0 / np.sqrt(rho_m)
-        
+
+    # Salama's erosional limit needs a positive solids rate; below the 0.1 lb/day
+    # floor the sand-free API 14E form governs instead.
+    c_salama = 450.0 if is_cra else 200.0
+    has_solids = w_s_lb_day > 0.1
+    v_erosional = np.where(
+        has_solids,
+        (c_salama / np.sqrt(rho_slurry)) * np.sqrt(d_i_in / np.where(has_solids, w_s_lb_day, 1.0)),
+        120.0 / np.sqrt(rho_m),
+    )
+
     mu_m_lbfts = mu_m_cp * 0.000672
     d_p_ft = (sand_d_um * 1e-6) * 3.28084
     g_const = 32.174
-    delta_rho = max(rho_s - rho_slurry, 0.1)
-    nu_kinematic = (mu_m_lbfts / rho_slurry) if rho_slurry > 0 else 1e-5
-    
+    delta_rho = np.maximum(rho_s - rho_slurry, 0.1)
+    nu_kinematic = np.where(rho_slurry > 0, mu_m_lbfts / np.where(rho_slurry > 0, rho_slurry, 1.0), 1e-5)
+
     term1 = (2.0 / 3.0) * g_const * d_p_ft * (delta_rho / rho_slurry)
-    term2 = (36.0 * (nu_kinematic ** 2)) / (d_p_ft ** 2) if d_p_ft > 0 else 0.0
-    v_t_rubey = np.sqrt(term1 + term2) - (6.0 * nu_kinematic / d_p_ft) if d_p_ft > 0 else 0.0
-    v_t_rubey = max(v_t_rubey, 0.0)
-    
+    if d_p_ft > 0:
+        term2 = (36.0 * (nu_kinematic ** 2)) / (d_p_ft ** 2)
+        v_t_rubey = np.maximum(np.sqrt(term1 + term2) - (6.0 * nu_kinematic / d_p_ft), 0.0)
+    else:
+        v_t_rubey = np.zeros_like(np.asarray(term1, dtype=float))
+
     sigma_dynes = 20.0
     rho_g = 1.5
     v_turner = (1.3 * (sigma_dynes ** 0.25) * ((62.4 - rho_g) ** 0.25)) / (rho_g ** 0.5)
-    v_carrying = max(v_turner, 1.35 * v_t_rubey)
-    
+    v_carrying = np.maximum(v_turner, 1.35 * v_t_rubey)
+
+    scalar = np.isscalar(sand_pptb) or np.ndim(sand_pptb) == 0
+    cast = float if scalar else np.asarray
     return {
-        "c_v": c_v,
-        "rho_slurry": rho_slurry,
-        "v_erosional": v_erosional,
-        "v_t_rubey": v_t_rubey,
+        "c_v": cast(c_v),
+        "rho_slurry": cast(rho_slurry),
+        "v_erosional": cast(v_erosional),
+        "v_t_rubey": cast(v_t_rubey),
         "v_turner": v_turner,
-        "v_carrying": v_carrying,
-        "w_s_lb_day": w_s_lb_day
+        "v_carrying": cast(v_carrying),
+        "w_s_lb_day": cast(w_s_lb_day)
     }
 
 # Indicative maximum continuous service temperature per steel grade [°C]. These are
@@ -513,1218 +463,14 @@ def formula_card(num, title, colour, formulas, purpose, params, gate):
     )
 
 
-# Interactive upper-completion schematic used in place of a static Figure 2 image.
-# Clicking a hotspot on the diagram renders that component's details in the side panel.
-UPPER_COMPLETION_SCHEMATIC_HTML = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Accurate Upper Completion Schematic - Light Theme</title>
-<style>
-  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-  html, body { height: 100%; }
-  body { margin: 0; padding: 12px; background-color: #f8fafc; color: #0f172a; }
-  .container { display: flex; flex-direction: row; gap: 18px; max-width: 1500px;
-               height: 100%; min-height: 520px; margin: 0 auto; }
-
-  /* Schematic Viewer Card */
-  .diagram-card {
-    flex: 1.15;
-    min-width: 0;
-    min-height: 0;
-    background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 10px;
-    overflow: hidden;
-  }
-  svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
-
-  /* Interactive Hotspot Styles */
-  .hotspot { cursor: pointer; }
-  .hotspot .selection-box {
-    fill: transparent;
-    stroke: transparent;
-    stroke-width: 1.5;
-    transition: all 0.2s ease;
-  }
-  .hotspot:hover .selection-box, .hotspot.active .selection-box {
-    fill: rgba(2, 132, 199, 0.08);
-    stroke: #0284c7;
-    stroke-dasharray: 4 4;
-  }
-  .hotspot:hover .comp-body, .hotspot.active .comp-body {
-    filter: drop-shadow(0 0 6px rgba(2, 132, 199, 0.4));
-  }
-  .pointer-line { stroke: #94a3b8; stroke-width: 1; stroke-dasharray: 2 2; }
-  .label-text { font-size: 11px; font-weight: 600; fill: #475569; pointer-events: none; }
-  .hotspot:hover .label-text, .hotspot.active .label-text { fill: #0284c7; font-weight: 700; }
-
-  /* Info Card */
-  .info-card {
-    flex: 0.85;
-    min-width: 0;
-    min-height: 0;
-    overflow-y: auto;
-    background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    padding: clamp(16px, 2.2vw, 32px);
-    display: flex;
-    flex-direction: column;
-  }
-  .badge {
-    align-self: flex-start;
-    padding: 4px 12px;
-    border-radius: 16px;
-    background: #e0f2fe;
-    color: #0369a1;
-    border: 1px solid #bae6fd;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  .title {
-    font-size: clamp(1.15rem, 1.6vw, 1.6rem);
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 16px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .description { font-size: clamp(0.85rem, 1.05vw, 0.95rem); line-height: 1.7; color: #334155; }
-  .placeholder { color: #94a3b8; font-style: italic; }
-
-  @media (max-width: 900px) {
-    .container { flex-direction: column; height: auto; min-height: 0; }
-    .diagram-card { height: 60vh; min-height: 380px; flex: none; }
-    .info-card { flex: none; overflow-y: visible; }
-  }
-</style>
-</head>
-<body>
-
-<div class="container">
-  <div class="diagram-card">
-    <svg viewBox="0 0 340 740">
-      <defs>
-        <linearGradient id="tubingMetal" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#94a3b8"/>
-          <stop offset="30%" stop-color="#f1f5f9"/>
-          <stop offset="70%" stop-color="#cbd5e1"/>
-          <stop offset="100%" stop-color="#64748b"/>
-        </linearGradient>
-
-        <linearGradient id="steelDark" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#334155"/>
-          <stop offset="50%" stop-color="#64748b"/>
-          <stop offset="100%" stop-color="#1e293b"/>
-        </linearGradient>
-
-        <linearGradient id="brassValve" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#d97706"/>
-          <stop offset="50%" stop-color="#fde047"/>
-          <stop offset="100%" stop-color="#b45309"/>
-        </linearGradient>
-
-        <pattern id="cementPattern" width="8" height="8" patternUnits="userSpaceOnUse">
-          <path d="M 0 8 L 8 0 M 0 0 L 8 8" stroke="#cbd5e1" stroke-width="0.8"/>
-        </pattern>
-        
-        <pattern id="packerRubber" width="6" height="6" patternUnits="userSpaceOnUse">
-          <rect width="6" height="6" fill="#1e293b"/>
-          <circle cx="3" cy="3" r="1" fill="#ef4444"/>
-        </pattern>
-      </defs>
-
-      <rect x="20" y="10" width="220" height="720" fill="url(#cementPattern)"/>
-
-      <rect x="40" y="10" width="180" height="720" fill="#0284c7" fill-opacity="0.05" stroke="#cbd5e1" stroke-width="2"/>
-      <line x1="40" y1="10" x2="40" y2="730" stroke="#475569" stroke-width="4"/>
-      <line x1="220" y1="10" x2="220" y2="730" stroke="#475569" stroke-width="4"/>
-
-      <rect x="120" y="10" width="20" height="720" fill="url(#tubingMetal)" stroke="#475569" stroke-width="1"/>
-
-      <g class="hotspot" id="th" onclick="selectComponent('th')">
-        <rect class="selection-box" x="25" y="15" width="280" height="45"/>
-        <g class="comp-body">
-          <path d="M 35 15 L 225 15 L 200 55 L 60 55 Z" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
-          <circle cx="75" cy="30" r="3" fill="#ef4444"/>
-          <circle cx="185" cy="30" r="3" fill="#ef4444"/>
-          <line x1="85" y1="15" x2="85" y2="55" stroke="#0284c7" stroke-width="1.5"/>
-        </g>
-        <line class="pointer-line" x1="160" y1="35" x2="240" y2="35"/>
-        <text class="label-text" x="245" y="38">Tubing Hanger</text>
-      </g>
-
-      <g class="hotspot" id="fc1" onclick="selectComponent('fc1')">
-        <rect class="selection-box" x="105" y="80" width="200" height="40"/>
-        <rect class="comp-body" x="114" y="82" width="32" height="36" rx="2" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
-        <line class="pointer-line" x1="146" y1="100" x2="240" y2="100"/>
-        <text class="label-text" x="245" y="103">Flow Coupling</text>
-      </g>
-
-      <g class="hotspot" id="trsv" onclick="selectComponent('trsv')">
-        <rect class="selection-box" x="75" y="135" width="230" height="65"/>
-        <g class="comp-body">
-          <rect x="108" y="140" width="44" height="55" rx="3" fill="url(#brassValve)" stroke="#b45309" stroke-width="1.5"/>
-          <path d="M 85 15 L 85 155 L 108 155" fill="none" stroke="#0284c7" stroke-width="2"/>
-          <line x1="122" y1="172" x2="134" y2="162" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"/>
-        </g>
-        <line class="pointer-line" x1="152" y1="168" x2="240" y2="168"/>
-        <text class="label-text" x="245" y="171">TRSSV</text>
-      </g>
-
-      <g class="hotspot" id="fc2" onclick="selectComponent('fc2')">
-        <rect class="selection-box" x="105" y="215" width="200" height="40"/>
-        <rect class="comp-body" x="114" y="217" width="32" height="36" rx="2" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
-        <line class="pointer-line" x1="146" y1="235" x2="240" y2="235"/>
-        <text class="label-text" x="245" y="238">Flow Coupling</text>
-      </g>
-
-      <g class="hotspot" id="spm" onclick="selectComponent('spm')">
-        <rect class="selection-box" x="80" y="270" width="225" height="75"/>
-        <g class="comp-body">
-          <path d="M 120 275 L 162 275 L 168 290 L 168 325 L 162 335 L 120 335 Z" fill="url(#steelDark)" stroke="#65a30d" stroke-width="1.5"/>
-          <rect x="144" y="290" width="16" height="32" rx="2" fill="#eab308" stroke="#ca8a04" stroke-width="1"/>
-          <line x1="152" y1="322" x2="152" y2="338" stroke="#dc2626" stroke-width="1.5"/>
-        </g>
-        <line class="pointer-line" x1="168" y1="308" x2="240" y2="308"/>
-        <text class="label-text" x="245" y="311">Mandrel & Gauge</text>
-      </g>
-
-      <g class="hotspot" id="lp" onclick="selectComponent('lp')">
-        <rect class="selection-box" x="100" y="360" width="205" height="40"/>
-        <g class="comp-body">
-          <rect x="116" y="362" width="28" height="36" fill="url(#steelDark)" stroke="#1e293b" stroke-width="1.5"/>
-          <path d="M 120 370 L 124 370 L 124 378 L 120 378 Z" fill="#0284c7"/>
-          <path d="M 140 370 L 136 370 L 136 378 L 140 378 Z" fill="#0284c7"/>
-        </g>
-        <line class="pointer-line" x1="144" y1="380" x2="240" y2="380"/>
-        <text class="label-text" x="245" y="383">Landing Profile</text>
-      </g>
-
-      <g class="hotspot" id="packer" onclick="selectComponent('packer')">
-        <rect class="selection-box" x="35" y="415" width="270" height="85"/>
-        <g class="comp-body">
-          <rect x="42" y="435" width="76" height="30" fill="url(#packerRubber)" stroke="#dc2626" stroke-width="1.5"/>
-          <rect x="142" y="435" width="76" height="30" fill="url(#packerRubber)" stroke="#dc2626" stroke-width="1.5"/>
-          
-          <path d="M 42 420 L 118 420 L 110 432 L 50 432 Z" fill="#94a3b8" stroke="#475569"/>
-          <path d="M 142 420 L 218 420 L 210 432 L 150 432 Z" fill="#94a3b8" stroke="#475569"/>
-          
-          <path d="M 50 468 L 110 468 L 118 480 L 42 480 Z" fill="#94a3b8" stroke="#475569"/>
-          <path d="M 150 468 L 210 468 L 218 480 L 142 480 Z" fill="#94a3b8" stroke="#475569"/>
-        </g>
-        <line class="pointer-line" x1="218" y1="450" x2="240" y2="450"/>
-        <text class="label-text" x="245" y="453">Production Packer</text>
-      </g>
-
-      <g class="hotspot" id="irsv" onclick="selectComponent('irsv')">
-        <rect class="selection-box" x="90" y="515" width="215" height="55"/>
-        <g class="comp-body">
-          <rect x="112" y="520" width="36" height="45" rx="2" fill="url(#steelDark)" stroke="#9333ea" stroke-width="1.5"/>
-          <circle cx="130" cy="542" r="5" fill="#a855f7"/>
-          <polygon points="130,532 125,538 135,538" fill="#c084fc"/>
-        </g>
-        <line class="pointer-line" x1="148" y1="542" x2="240" y2="542"/>
-        <text class="label-text" x="245" y="545">IRSV Barrier</text>
-      </g>
-
-      <g class="hotspot" id="shoe" onclick="selectComponent('shoe')">
-        <rect class="selection-box" x="90" y="585" width="215" height="65"/>
-        <g class="comp-body">
-          <path d="M 118 590 L 142 590 L 142 630 L 118 610 Z" fill="url(#steelDark)" stroke="#d97706" stroke-width="1.5"/>
-        </g>
-        <line class="pointer-line" x1="142" y1="605" x2="240" y2="605"/>
-        <text class="label-text" x="245" y="608">Guide Shoe</text>
-      </g>
-
-      <text x="48" y="715" fill="#94a3b8" font-size="10" font-weight="700">CASING</text>
-      <text x="122" y="715" fill="#64748b" font-size="10" font-weight="700">TUBING</text>
-    </svg>
-  </div>
-
-  <div class="info-card">
-    <div id="badge-slot"></div>
-    <h2 class="title" id="title-slot">Upper Completion Assembly</h2>
-    <div class="description" id="desc-slot">
-      <p class="placeholder">Click any component or label on the completion schematic to review its mechanical construction, API specifications, and operational function.</p>
-    </div>
-  </div>
-</div>
-
-<script>
-const data = {
-  th: {
-    title: "Tubing Hanger",
-    category: "Wellhead Component",
-    desc: "Landed inside the wellhead housing bowl, the tubing hanger supports the entire weight of the production tubing string. It utilizes dynamic elastomer seal rings to seal off the casing annulus and provides high-pressure feedthrough ports for hydraulic control lines and downhole gauge cables."
-  },
-  fc1: {
-    title: "Flow Coupling (Upper)",
-    category: "Tubular Protection",
-    desc: "A thick-walled joint of heavy-duty tubing installed directly above dynamic flow-constricting safety valves. It is engineered to absorb erosive fluid jetting caused by turbulent flow and localized high velocity."
-  },
-  trsv: {
-    title: "Tubing-Retrievable Safety Valve (TRSSV)",
-    category: "Primary Barrier",
-    desc: "A surface-controlled fail-safe valve held in the open position by hydraulic pressure applied through a control line. Loss of surface pressure allows internal springs to actuate the flapper mechanism shut, isolating reservoir pressure downhole."
-  },
-  fc2: {
-    title: "Flow Coupling (Lower)",
-    category: "Tubular Protection",
-    desc: "Positioned directly beneath flow restrictions to protect the primary production string from wall thinning and washouts caused by turbulent fluid entry."
-  },
-  spm: {
-    title: "Side Pocket Mandrel & Gauge",
-    category: "Monitoring & Artificial Lift",
-    desc: "Features an offset external pocket that houses downhole memory/permanent pressure-temperature gauges. The internal profile allows kick-off, gas-lift, or chemical-injection valves to be set and retrieved via slickline."
-  },
-  lp: {
-    title: "Landing Profile (Nipple)",
-    category: "Flow Control",
-    desc: "A heavy-walled tubular section featuring precision internal locking grooves and polished seal bores. Serves as a landing platform for wireline tools, standing valves, or isolation plugs."
-  },
-  packer: {
-    title: "Production Packer",
-    category: "Zonal Isolation",
-    desc: "Utilizes expandable elastomer elements and opposing bi-directional mechanical slip wickers to anchor inside the casing. Isolates the annular space above the reservoir, containing formation pressure inside the tubing."
-  },
-  irsv: {
-    title: "Injection-Retrievable Safety Valve (IRSV)",
-    category: "Secondary Barrier",
-    desc: "A specialized downhole safety sub designed with an internal check-valve mechanism. Allows controlled fluid injection while preventing uncontained backflow toward upper completion zones."
-  },
-  shoe: {
-    title: "Self-Aligning Guide Shoe",
-    category: "Completion Bottom-Hole Assembly",
-    desc: "Featuring a tapered mule-shoe profile at the base of the tubing string, this component guides wireline or coiled tubing tools smoothly back into the tubing bore during reentry interventions."
-  }
-};
-
-function selectComponent(id) {
-  document.querySelectorAll('.hotspot').forEach(el => el.classList.remove('active'));
-  
-  const target = document.getElementById(id);
-  if (target) target.classList.add('active');
-
-  const comp = data[id];
-  if (comp) {
-    document.getElementById('badge-slot').innerHTML = `<span class="badge">${comp.category}</span>`;
-    document.getElementById('title-slot').innerText = comp.title;
-    document.getElementById('desc-slot').innerHTML = `<p>${comp.desc}</p>`;
-  }
-}
-</script>
-
-</body>
-</html>
-"""
-
-
-# Interactive casing/tubing design schematic used in place of a static Figure 3 image.
-# Clicking a string in the SVG (or the legend list) renders its details in the side panel.
-CASING_TUBING_SCHEMATIC_HTML = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Production Tubing &amp; Casing Design Schematic</title>
-  <style>
-    :root {
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
-      --primary: #2563eb;
-      --primary-light: #eff6ff;
-
-      /* Component Specific Colors */
-      --color-conductor: #64748b;
-      --color-surface: #0284c7;
-      --color-intermediate: #0d9488;
-      --color-prod-casing: #4f46e5;
-      --color-prod-tubing: #059669;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body { height: 100%; }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-      padding: 12px;
-    }
-
-    .container {
-      max-width: 1500px;
-      margin: 0 auto;
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 18px;
-      flex: 1;
-    }
-
-    @media (max-width: 900px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-      overflow-y: auto;
-    }
-
-    .schematic-card {
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .schematic-container {
-      width: 100%;
-      height: 100%;
-      max-width: 550px;
-      max-height: 100%;
-    }
-
-    /* SVG Interactive Styles */
-    .component-group {
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .component-group path,
-    .component-group rect,
-    .component-group line {
-      transition: all 0.2s ease;
-    }
-
-    .component-group:hover path,
-    .component-group:hover rect {
-      filter: brightness(1.15);
-      stroke-width: 3px;
-    }
-
-    .component-group.active path,
-    .component-group.active rect {
-      filter: brightness(1.2);
-      stroke: #000;
-      stroke-width: 3px;
-    }
-
-    /* Side Panel Styles */
-    .panel-header {
-      border-bottom: 2px solid var(--border-color);
-      padding-bottom: 16px;
-      margin-bottom: 20px;
-    }
-
-    .panel-title-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-    }
-
-    .panel-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .info-section {
-      margin-bottom: 20px;
-    }
-
-    .info-label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-    }
-
-    .info-content {
-      font-size: 0.95rem;
-      line-height: 1.5;
-      color: var(--text-main);
-      background-color: var(--bg-color);
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: var(--text-muted);
-      padding: 24px 20px;
-    }
-
-    .empty-state svg {
-      margin-bottom: 16px;
-      stroke: var(--text-muted);
-    }
-
-    /* Component List Legend */
-    .legend-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 16px;
-      width: 100%;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-
-    .legend-item:hover {
-      background-color: var(--bg-color);
-    }
-
-    .legend-item.active {
-      background-color: var(--primary-light);
-      border-color: var(--primary);
-      font-weight: 600;
-    }
-
-    .legend-color-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      margin-right: 12px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <!-- SVG Schematic Display -->
-    <div class="card schematic-card">
-      <svg class="schematic-container" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">
-        <!-- Background Grid / Axis Line -->
-        <line x1="250" y1="20" x2="250" y2="680" stroke="#cbd5e1" stroke-dasharray="4 4" stroke-width="1.5"/>
-
-        <!-- Ground Line / Surface -->
-        <g id="surface-line">
-          <line x1="40" y1="80" x2="460" y2="80" stroke="#475569" stroke-width="3"/>
-          <path d="M 40 80 L 30 95 M 80 80 L 70 95 M 120 80 L 110 95 M 160 80 L 150 95 M 200 80 L 190 95 M 240 80 L 230 95 M 280 80 L 270 95 M 320 80 L 310 95 M 360 80 L 350 95 M 400 80 L 390 95 M 440 80 L 430 95" stroke="#94a3b8" stroke-width="1.5"/>
-          <text x="50" y="70" fill="#64748b" font-size="12" font-weight="bold">SURFACE / GROUND LEVEL</text>
-        </g>
-
-        <!-- 1. CONDUCTOR CASING -->
-        <g class="component-group" id="comp-conductor" onclick="selectComponent('conductor')">
-          <!-- Left String -->
-          <rect x="110" y="80" width="16" height="110" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
-          <!-- Right String -->
-          <rect x="374" y="80" width="16" height="110" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
-          <!-- Left Shoe -->
-          <polygon points="110,190 126,190 110,205" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
-          <!-- Right Shoe -->
-          <polygon points="374,190 390,190 390,205" fill="var(--color-conductor)" stroke="#334155" stroke-width="1.5"/>
-          <!-- Label Line -->
-          <line x1="110" y1="135" x2="40" y2="135" stroke="var(--color-conductor)" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="40" cy="135" r="3" fill="var(--color-conductor)"/>
-        </g>
-
-        <!-- 2. SURFACE CASING -->
-        <g class="component-group" id="comp-surface" onclick="selectComponent('surface')">
-          <!-- Left String -->
-          <rect x="136" y="80" width="14" height="210" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
-          <!-- Right String -->
-          <rect x="350" y="80" width="14" height="210" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
-          <!-- Left Shoe -->
-          <polygon points="136,290 150,290 136,305" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
-          <!-- Right Shoe -->
-          <polygon points="350,290 364,290 364,305" fill="var(--color-surface)" stroke="#0369a1" stroke-width="1.5"/>
-          <!-- Label Line -->
-          <line x1="136" y1="230" x2="40" y2="230" stroke="var(--color-surface)" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="40" cy="230" r="3" fill="var(--color-surface)"/>
-        </g>
-
-        <!-- 3. INTERMEDIATE CASING -->
-        <g class="component-group" id="comp-intermediate" onclick="selectComponent('intermediate')">
-          <!-- Left String -->
-          <rect x="160" y="80" width="12" height="230" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
-          <!-- Right String -->
-          <rect x="328" y="80" width="12" height="230" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
-          <!-- Left Shoe -->
-          <polygon points="160,310 172,310 160,325" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
-          <!-- Right Shoe -->
-          <polygon points="328,310 340,310 340,325" fill="var(--color-intermediate)" stroke="#0f766e" stroke-width="1.5"/>
-          <!-- Label Line -->
-          <line x1="340" y1="310" x2="460" y2="310" stroke="var(--color-intermediate)" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="460" cy="310" r="3" fill="var(--color-intermediate)"/>
-        </g>
-
-        <!-- 4. PRODUCTION CASING -->
-        <g class="component-group" id="comp-production_casing" onclick="selectComponent('production_casing')">
-          <!-- Left String -->
-          <rect x="182" y="80" width="10" height="460" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
-          <!-- Right String -->
-          <rect x="308" y="80" width="10" height="460" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
-          <!-- Left Shoe -->
-          <polygon points="182,540 192,540 182,555" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
-          <!-- Right Shoe -->
-          <polygon points="308,540 318,540 318,555" fill="var(--color-prod-casing)" stroke="#3730a3" stroke-width="1.5"/>
-          <!-- Label Line -->
-          <line x1="318" y1="450" x2="460" y2="450" stroke="var(--color-prod-casing)" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="460" cy="450" r="3" fill="var(--color-prod-casing)"/>
-        </g>
-
-        <!-- 5. PRODUCTION TUBING -->
-        <g class="component-group" id="comp-production_tubing" onclick="selectComponent('production_tubing')">
-          <!-- Left Tubing String -->
-          <rect x="230" y="40" width="6" height="580" fill="var(--color-prod-tubing)" stroke="#047857" stroke-width="1.5"/>
-          <!-- Right Tubing String -->
-          <rect x="264" y="40" width="6" height="580" fill="var(--color-prod-tubing)" stroke="#047857" stroke-width="1.5"/>
-          <!-- Central Flow Indicator Arrow -->
-          <path d="M 250 600 L 250 100" stroke="var(--color-prod-tubing)" stroke-width="2" stroke-dasharray="6 4"/>
-          <polygon points="250,50 244,65 256,65" fill="var(--color-prod-tubing)"/>
-          <!-- Label Line -->
-          <line x1="270" y1="580" x2="460" y2="580" stroke="var(--color-prod-tubing)" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="460" cy="580" r="3" fill="var(--color-prod-tubing)"/>
-        </g>
-
-        <!-- Wellhead Visual Cap -->
-        <rect x="220" y="32" width="60" height="12" fill="#334155" rx="2"/>
-        <rect x="200" y="44" width="100" height="16" fill="#475569" rx="2"/>
-      </svg>
-    </div>
-
-    <!-- Component Info Sidebar Panel -->
-    <div class="card">
-      <div id="info-panel" style="display: none;">
-        <div class="panel-header">
-          <span id="component-badge" class="panel-title-badge">Component</span>
-          <h2 id="component-name" class="panel-title">Name</h2>
-        </div>
-
-        <div class="info-section">
-          <div class="info-label">Introduction</div>
-          <div id="component-intro" class="info-content">Intro text goes here...</div>
-        </div>
-
-        <div class="info-section">
-          <div class="info-label">Primary Function</div>
-          <div id="component-function" class="info-content">Function text goes here...</div>
-        </div>
-      </div>
-
-      <!-- Empty State View -->
-      <div id="empty-panel" class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <h3>No Component Selected</h3>
-        <p style="margin-top: 8px; font-size: 0.9rem;">Click on any pipe string in the schematic or select one from the list below to view detailed specifications.</p>
-      </div>
-
-      <!-- Component Selection Quick List -->
-      <div class="legend-list">
-        <div class="info-label" style="margin-top: 12px;">Well Strings</div>
-
-        <div class="legend-item" id="legend-conductor" onclick="selectComponent('conductor')">
-          <div class="legend-color-dot" style="background-color: var(--color-conductor);"></div>
-          <span>Conductor Casing</span>
-        </div>
-
-        <div class="legend-item" id="legend-surface" onclick="selectComponent('surface')">
-          <div class="legend-color-dot" style="background-color: var(--color-surface);"></div>
-          <span>Surface Casing</span>
-        </div>
-
-        <div class="legend-item" id="legend-intermediate" onclick="selectComponent('intermediate')">
-          <div class="legend-color-dot" style="background-color: var(--color-intermediate);"></div>
-          <span>Intermediate Casing</span>
-        </div>
-
-        <div class="legend-item" id="legend-production_casing" onclick="selectComponent('production_casing')">
-          <div class="legend-color-dot" style="background-color: var(--color-prod-casing);"></div>
-          <span>Production Casing</span>
-        </div>
-
-        <div class="legend-item" id="legend-production_tubing" onclick="selectComponent('production_tubing')">
-          <div class="legend-color-dot" style="background-color: var(--color-prod-tubing);"></div>
-          <span>Production Tubing</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Data definitions for wellbore components
-    const componentsData = {
-      conductor: {
-        name: "Conductor Casing",
-        color: "var(--color-conductor)",
-        badgeBg: "#f1f5f9",
-        badgeColor: "#475569",
-        intro: "The conductor casing is the first and largest casing string installed in the well. It is usually set or driven at very shallow depths prior to primary drilling operations.",
-        function: "Prevents soft surface soils and unconsolidated sediment from caving into the wellbore, prevents washouts during shallow drilling, and provides structural support for the wellhead equipment."
-      },
-      surface: {
-        name: "Surface Casing",
-        color: "var(--color-surface)",
-        badgeBg: "#e0f2fe",
-        badgeColor: "#0369a1",
-        intro: "The surface casing is installed through shallow water-bearing strata and weak rock formations after drilling below the conductor pipe depth.",
-        function: "Isolates and protects freshwater aquifers from contamination by drilling fluids or hydrocarbons. It also acts as the structural foundation for mounting Blowout Preventers (BOPs)."
-      },
-      intermediate: {
-        name: "Intermediate Casing",
-        color: "var(--color-intermediate)",
-        badgeBg: "#ccfbf1",
-        badgeColor: "#0f766e",
-        intro: "An intermediate casing string is set between the surface casing and the final production casing string when challenging subsurface geology is encountered.",
-        function: "Seals off abnormal formation pressure zones, lost circulation zones, unstable shales, or corrosive salt formations, allowing deeper sections to be drilled safely with modified mud weights."
-      },
-      production_casing: {
-        name: "Production Casing",
-        color: "var(--color-prod-casing)",
-        badgeBg: "#e0e7ff",
-        badgeColor: "#3730a3",
-        intro: "The production casing is the innermost structural casing string, extending from the surface wellhead down to or through the target hydrocarbon reservoir.",
-        function: "Provides full zonal isolation between the hydrocarbon reservoir and upper formations, seals against high formation pressures, and provides a structural barrier enclosing the production tubing."
-      },
-      production_tubing: {
-        name: "Production Tubing",
-        color: "var(--color-prod-tubing)",
-        badgeBg: "#d1fae5",
-        badgeColor: "#047857",
-        intro: "Production tubing is the main removable flow conduit placed concentrically inside the production casing, running from the subsurface target zone to the wellhead.",
-        function: "Conveys produced reservoir fluids (oil, gas, water) cleanly to the surface while protecting the outer casing strings from internal pressure, corrosion, erosion, and thermal stress."
-      }
-    };
-
-    function selectComponent(id) {
-      const data = componentsData[id];
-      if (!data) return;
-
-      // Hide empty state & show panel
-      document.getElementById('empty-panel').style.display = 'none';
-      document.getElementById('info-panel').style.display = 'block';
-
-      // Update panel text and styles
-      const badge = document.getElementById('component-badge');
-      badge.innerText = "Selected Component";
-      badge.style.backgroundColor = data.badgeBg;
-      badge.style.color = data.badgeColor;
-
-      document.getElementById('component-name').innerText = data.name;
-      document.getElementById('component-intro').innerText = data.intro;
-      document.getElementById('component-function').innerText = data.function;
-
-      // Highlight SVG schematic elements
-      document.querySelectorAll('.component-group').forEach(el => {
-        el.classList.remove('active');
-      });
-      const activeSvgGroup = document.getElementById('comp-' + id);
-      if (activeSvgGroup) {
-        activeSvgGroup.classList.add('active');
-      }
-
-      // Highlight legend list items
-      document.querySelectorAll('.legend-item').forEach(el => {
-        el.classList.remove('active');
-      });
-      const activeLegendItem = document.getElementById('legend-' + id);
-      if (activeLegendItem) {
-        activeLegendItem.classList.add('active');
-      }
-    }
-  </script>
-</body>
-</html>
-"""
-
-
-# Interactive tubing cross-section schematic used in place of a static Figure 4 image.
-# Clicking a dimension in the SVG (or the legend list) renders its introduction in the panel.
-TUBING_CROSS_SECTION_HTML = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Production Tubing Cross-Section Schematic</title>
-  <style>
-    :root {
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #cbd5e1;
-      --primary: #2563eb;
-      --primary-light: #eff6ff;
-
-      /* Dimension Color Coding */
-      --color-nominal: #2563eb;  /* Blue */
-      --color-id: #0d9488;       /* Teal */
-      --color-drift: #d97706;    /* Amber/Orange */
-      --color-steel: #94a3b8;    /* Steel Pipe Wall */
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    header {
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      width: 100%;
-    }
-
-    header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    header p {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 24px;
-      flex: 1;
-    }
-
-    @media (max-width: 900px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .schematic-card {
-      align-items: center;
-      justify-content: center;
-      background-color: #ffffff;
-    }
-
-    .schematic-container {
-      width: 100%;
-      max-width: 540px;
-      height: auto;
-    }
-
-    /* SVG Interactive Components */
-    .detail-group {
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .detail-group circle,
-    .detail-group line,
-    .detail-group path,
-    .detail-group text {
-      transition: all 0.2s ease;
-    }
-
-    .detail-group:hover circle.interactive-target {
-      stroke-width: 3.5px;
-      filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.3));
-    }
-
-    .detail-group:hover text {
-      font-weight: 700;
-    }
-
-    .detail-group.active circle.interactive-target {
-      stroke-width: 4px;
-      stroke: #0f172a !important;
-      filter: drop-shadow(0 0 6px rgba(15, 23, 42, 0.25));
-    }
-
-    .detail-group.active text {
-      font-weight: 800;
-      fill: #0f172a;
-    }
-
-    /* Side Panel Styling */
-    .panel-header {
-      border-bottom: 2px solid var(--border-color);
-      padding-bottom: 14px;
-      margin-bottom: 18px;
-    }
-
-    .panel-title-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 16px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-    }
-
-    .panel-title {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .info-section {
-      margin-bottom: 18px;
-    }
-
-    .info-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-    }
-
-    .info-content {
-      font-size: 0.92rem;
-      line-height: 1.5;
-      color: var(--text-main);
-      background-color: var(--bg-color);
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      text-align: center;
-      color: var(--text-muted);
-      padding: 40px 20px;
-    }
-
-    .empty-state svg {
-      margin-bottom: 12px;
-      stroke: var(--text-muted);
-    }
-
-    /* Selection Legend Items */
-    .legend-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 16px;
-      width: 100%;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-
-    .legend-item:hover {
-      background-color: var(--bg-color);
-    }
-
-    .legend-item.active {
-      background-color: var(--primary-light);
-      border-color: var(--primary);
-      font-weight: 600;
-    }
-
-    .legend-left {
-      display: flex;
-      align-items: center;
-    }
-
-    .legend-color-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 10px;
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <h1>Production Tubing Cross-Section Design</h1>
-    <p>Click on any dimension feature on the circular cross-section or list below to view its introduction.</p>
-  </header>
-
-  <div class="container">
-    <!-- SVG Circular End-on Cross Section -->
-    <div class="card schematic-card">
-      <svg class="schematic-container" viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <!-- Hatching Pattern for Steel Pipe Wall Cross-Section -->
-          <pattern id="steel-hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#cbd5e1" stroke-width="2.5" />
-          </pattern>
-
-          <!-- Arrow Heads for Dimension Lines -->
-          <marker id="arrow-nominal" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-nominal)"/>
-          </marker>
-          <marker id="arrow-id" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-id)"/>
-          </marker>
-          <marker id="arrow-drift" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-drift)"/>
-          </marker>
-        </defs>
-
-        <!-- Center Crosshair Centerlines -->
-        <g stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 4">
-          <line x1="260" y1="20" x2="260" y2="500"/>
-          <line x1="20" y1="260" x2="500" y2="260"/>
-        </g>
-
-        <!-- TUBING STEEL WALL (BASE GEOMETRY) -->
-        <path d="M 260 80 A 180 180 0 1 0 260 440 A 180 180 0 1 0 260 80 Z M 260 130 A 130 130 0 1 1 260 390 A 130 130 0 1 1 260 130 Z"
-              fill="url(#steel-hatch)" stroke="#64748b" stroke-width="1.5" fill-rule="evenodd"/>
-
-        <!-- DETAIL 1: NOMINAL SIZE (OUTER DIAMETER / OD) -->
-        <g class="detail-group" id="detail-nominal" onclick="selectDetail('nominal')">
-          <circle cx="260" cy="260" r="180" fill="none" stroke="var(--color-nominal)" stroke-width="2.5" class="interactive-target"/>
-
-          <line x1="80" y1="60" x2="440" y2="60" stroke="var(--color-nominal)" stroke-width="1.5" marker-start="url(#arrow-nominal)" marker-end="url(#arrow-nominal)"/>
-          <line x1="80" y1="60" x2="80" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
-          <line x1="440" y1="60" x2="440" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
-
-          <rect x="180" y="42" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-nominal)" stroke-width="1"/>
-          <text x="260" y="58" fill="var(--color-nominal)" font-size="12" font-weight="bold" text-anchor="middle">NOMINAL SIZE (OD)</text>
-        </g>
-
-        <!-- DETAIL 2: INTERNAL DIAMETER (ID) -->
-        <g class="detail-group" id="detail-id" onclick="selectDetail('id')">
-          <circle cx="260" cy="260" r="130" fill="none" stroke="var(--color-id)" stroke-width="2.5" stroke-dasharray="6 3" class="interactive-target"/>
-
-          <line x1="168" y1="352" x2="352" y2="168" stroke="var(--color-id)" stroke-width="1.5" marker-start="url(#arrow-id)" marker-end="url(#arrow-id)"/>
-
-          <rect x="290" y="210" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-id)" stroke-width="1"/>
-          <text x="370" y="226" fill="var(--color-id)" font-size="12" font-weight="bold" text-anchor="middle">INTERNAL DIA. (ID)</text>
-        </g>
-
-        <!-- DETAIL 3: DRIFT INTERNAL DIAMETER (DRIFT ID) -->
-        <g class="detail-group" id="detail-drift" onclick="selectDetail('drift')">
-          <circle cx="260" cy="260" r="105" fill="rgba(217, 119, 6, 0.06)" stroke="var(--color-drift)" stroke-width="2" stroke-dasharray="4 4" class="interactive-target"/>
-
-          <line x1="155" y1="260" x2="365" y2="260" stroke="var(--color-drift)" stroke-width="1.5" marker-start="url(#arrow-drift)" marker-end="url(#arrow-drift)"/>
-
-          <rect x="180" y="275" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-drift)" stroke-width="1"/>
-          <text x="260" y="291" fill="var(--color-drift)" font-size="12" font-weight="bold" text-anchor="middle">DRIFT ID CLEARANCE</text>
-        </g>
-
-        <!-- Center Point -->
-        <circle cx="260" cy="260" r="3" fill="#0f172a"/>
-      </svg>
-    </div>
-
-    <!-- Details Sidebar Panel -->
-    <div class="card">
-      <div id="info-panel" style="display: none;">
-        <div class="panel-header">
-          <span id="detail-badge" class="panel-title-badge">Tubing Parameter</span>
-          <h2 id="detail-name" class="panel-title">Name</h2>
-        </div>
-
-        <div class="info-section">
-          <div class="info-label">Introduction</div>
-          <div id="detail-intro" class="info-content">Intro text goes here...</div>
-        </div>
-      </div>
-
-      <!-- Empty State View -->
-      <div id="empty-panel" class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <h3>No Parameter Selected</h3>
-        <p style="margin-top: 8px; font-size: 0.88rem;">Click on any dimension line in the cross-section diagram or select one from the list below to view details.</p>
-      </div>
-
-      <!-- Quick Selection List -->
-      <div class="legend-list">
-        <div class="info-label" style="margin-top: 10px;">Tubing Cross-Section Parameters</div>
-
-        <div class="legend-item" id="legend-nominal" onclick="selectDetail('nominal')">
-          <div class="legend-left">
-            <div class="legend-color-dot" style="background-color: var(--color-nominal);"></div>
-            <span>Nominal Size (OD)</span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Outer Limit</span>
-        </div>
-
-        <div class="legend-item" id="legend-id" onclick="selectDetail('id')">
-          <div class="legend-left">
-            <div class="legend-color-dot" style="background-color: var(--color-id);"></div>
-            <span>Internal Diameter (ID)</span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Bore Size</span>
-        </div>
-
-        <div class="legend-item" id="legend-drift" onclick="selectDetail('drift')">
-          <div class="legend-left">
-            <div class="legend-color-dot" style="background-color: var(--color-drift);"></div>
-            <span>Drift Internal Diameter</span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Tool Clearance</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Data definitions for tubing cross-section parameters
-    const detailsData = {
-      nominal: {
-        name: "Nominal Size (Outer Diameter / OD)",
-        badgeBg: "#eff6ff",
-        badgeColor: "#2563eb",
-        intro: "The Nominal Size represents the standardized outer diameter (OD) of the production tubing pipe body as specified by API Spec 5CT standards."
-      },
-      id: {
-        name: "Internal Diameter (ID)",
-        badgeBg: "#ccfbf1",
-        badgeColor: "#0f766e",
-        intro: "The Internal Diameter (ID) is the calculated inner wall dimension of the tubing joint, determined by subtracting twice the nominal wall thickness from the outer diameter (ID = OD - 2t)."
-      },
-      drift: {
-        name: "Drift Internal Diameter (Drift ID)",
-        badgeBg: "#fef3c7",
-        badgeColor: "#d97706",
-        intro: "The Drift ID is the minimum guaranteed clear diameter through the tubing joint, verified in the field by physically passing a standard API cylindrical drift mandrel through the entire length of the pipe."
-      }
-    };
-
-    function selectDetail(id) {
-      const data = detailsData[id];
-      if (!data) return;
-
-      // Show info panel & hide empty state
-      document.getElementById('empty-panel').style.display = 'none';
-      document.getElementById('info-panel').style.display = 'block';
-
-      // Update panel content
-      const badge = document.getElementById('detail-badge');
-      badge.innerText = "Selected Feature";
-      badge.style.backgroundColor = data.badgeBg;
-      badge.style.color = data.badgeColor;
-
-      document.getElementById('detail-name').innerText = data.name;
-      document.getElementById('detail-intro').innerText = data.intro;
-
-      // Highlight active SVG element
-      document.querySelectorAll('.detail-group').forEach(el => {
-        el.classList.remove('active');
-      });
-      const activeSvgGroup = document.getElementById('detail-' + id);
-      if (activeSvgGroup) {
-        activeSvgGroup.classList.add('active');
-      }
-
-      // Highlight active legend list item
-      document.querySelectorAll('.legend-item').forEach(el => {
-        el.classList.remove('active');
-      });
-      const activeLegendItem = document.getElementById('legend-' + id);
-      if (activeLegendItem) {
-        activeLegendItem.classList.add('active');
-      }
-    }
-  </script>
-</body>
-</html>
-"""
+def haaland_friction_factor(reynolds, relative_roughness):
+    """Darcy friction factor from the Haaland explicit approximation.
+
+    Haaland is a closed-form approximation to Colebrook-White, so it needs no
+    iteration; an earlier fixed-point loop around this expression recomputed an
+    identical value up to 20 times per call. Accepts scalars or arrays.
+    """
+    return 1.0 / (-1.8 * np.log10((relative_roughness / 3.7) ** 1.11 + 6.9 / reynolds)) ** 2
 
 
 def normalize_grade(grade):
@@ -1849,38 +595,38 @@ def validate_engineering_inputs(inputs, candidate_df):
 def run_engineering_calculations(inputs, candidate_df):
     validate_engineering_inputs(inputs, candidate_df)
     results = []
-    
+
     is_gas_well = "Gas Well" in inputs.get('well_type', 'Oil Well')
     p_wh_val = inputs.get('p_wh', 800.0)
     p_bhp_val = inputs.get('p_bhp', 4500.0)
     # UI pressures are gauge pressures; PVT correlations require absolute pressure.
     p_avg_psia = (p_wh_val + p_bhp_val) / 2.0 + 14.7
-    
+
     t_wh_val = inputs.get('t_wh', 150.0)
     t_bht_val = inputs.get('t_bht', 210.0)
     t_avg_f = (t_wh_val + t_bht_val) / 2.0
     t_avg_r = t_avg_f + 459.67
     t_bht_c = (t_bht_val - 32.0) * (5.0 / 9.0)
-    
+
     casing_id_val = inputs.get('casing_id', 8.681)
-    
+
     api_val = inputs.get('api_gravity', 35.0)
     gas_sg_val = inputs.get('gas_sg', 0.65)
     water_sg_val = inputs.get('water_sg', 1.05)
-    
+
     gamma_o = 141.5 / (131.5 + api_val)
-    
+
     if is_gas_well:
         q_g_scf_d = inputs.get('q_gas_mmscfd', 15.0) * 1e6
         q_cond_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('cgr_stb_mmscf', 25.0)
         q_wat_stbd = inputs.get('q_gas_mmscfd', 15.0) * inputs.get('wgr_bbl_mmscf', 5.0)
         q_liq_stbd = q_cond_stbd + q_wat_stbd
-        
+
         rs_scf_stb = 0.0
         bo_rb_stb = 1.05
         rho_o_live = 62.4 * gamma_o
         rho_w = water_sg_val * 62.4
-        
+
         q_l_ft3s = (q_liq_stbd * 5.615) / 86400.0
         wc_frac = q_wat_stbd / q_liq_stbd if q_liq_stbd > 0 else 0.0
         rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w if q_liq_stbd > 0 else rho_o_live
@@ -1889,17 +635,17 @@ def run_engineering_calculations(inputs, candidate_df):
         q_liq_val = inputs.get('q_liquid', 5000.0)
         q_liq_stbd = q_liq_val
         wc_val = inputs.get('water_cut', 5.0)
-        
+
         rs_scf_stb = gas_sg_val * (((p_avg_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_val - 0.00091 * t_avg_f))) ** 1.2048
         rs_scf_stb = min(rs_scf_stb, gor_val)
-        
+
         bo_rb_stb = 0.9759 + 0.000120 * ((rs_scf_stb * ((gas_sg_val / gamma_o) ** 0.5) + 1.25 * t_avg_f) ** 1.2)
         rho_o_live = (62.4 * gamma_o + 0.0136 * rs_scf_stb * gas_sg_val) / bo_rb_stb
         rho_w = water_sg_val * 62.4
-        
+
         wc_frac = wc_val / 100.0
         rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
-        
+
         q_l_ft3s = (q_liq_val * 5.615) / 86400.0
         q_o_stb = q_liq_val * (1.0 - wc_frac)
         free_gas_gor = max(gor_val - rs_scf_stb, 0.0)
@@ -1910,46 +656,45 @@ def run_engineering_calculations(inputs, candidate_df):
     bo_valid = bo_rb_stb > 0.0
     rho_g = (2.7 * gas_sg_val * p_avg_psia) / (z_factor * t_avg_r)
     rho_g = max(rho_g, 0.05)
-    
+
     q_g_ft3s = (q_g_scf_d * 14.7 * t_avg_r * z_factor) / (p_avg_psia * 520.0 * 86400.0)
     q_m_ft3s = max(q_l_ft3s + q_g_ft3s, 1e-6)
-    
+
     lambda_l = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 1.0
     rho_m = lambda_l * rho_l + (1.0 - lambda_l) * rho_g
-    
+
     sand_pptb_val = inputs.get('sand_rate_pptb', 0.0)
     sand_d_um = inputs.get('sand_size_microns', 150.0)
     sand_sg_val = inputs.get('sand_sg', 2.65)
     rho_s_lbft3 = sand_sg_val * 62.4
-    
+
     w_s_lb_day = (sand_pptb_val / 1000.0) * q_liq_stbd
     v_sand_ft3d = w_s_lb_day / rho_s_lbft3 if rho_s_lbft3 > 0 else 0.0
     v_liq_ft3d = q_liq_stbd * 5.615
     c_v_solids = v_sand_ft3d / (v_liq_ft3d + v_sand_ft3d) if (v_liq_ft3d + v_sand_ft3d) > 0 else 0.0
     cv_in_range = c_v_solids <= CV_SOLIDS_MAX
     rho_slurry = (1.0 - c_v_solids) * rho_m + c_v_solids * rho_s_lbft3
-    
+
     mu_w_cp = 0.5
     mu_l_cp = (1.0 - wc_frac) * inputs.get('oil_visc', 1.5) + wc_frac * mu_w_cp
     mu_m_cp = lambda_l * mu_l_cp + (1.0 - lambda_l) * 0.018
     mu_m_lbfts = mu_m_cp * 0.000672
-    
+
     d_p_ft = (sand_d_um * 1e-6) * 3.28084
     g_const = 32.174
     delta_rho = max(rho_s_lbft3 - rho_slurry, 0.1)
     nu_kinematic = (mu_m_lbfts / rho_slurry) if rho_slurry > 0 else 1e-5
-    
+
     term1 = (2.0 / 3.0) * g_const * d_p_ft * (delta_rho / rho_slurry)
     term2 = (36.0 * (nu_kinematic ** 2)) / (d_p_ft ** 2) if d_p_ft > 0 else 0.0
     v_t_rubey = np.sqrt(term1 + term2) - (6.0 * nu_kinematic / d_p_ft) if d_p_ft > 0 else 0.0
     v_t_rubey = max(v_t_rubey, 0.0)
-    
+
     h2s_ppm_val = inputs.get('h2s_ppm', 150.0)
     co2_pct_val = inputs.get('co2_mole_pct', 2.5)
     p_h2s_psia = p_bhp_val * (h2s_ppm_val / 1e6)
-    p_co2_psia = p_bhp_val * (co2_pct_val / 100.0)
     is_sour_service = p_h2s_psia >= 0.05
-    
+
     # Calculate Late-Life volumetric rate using stored Late-Life parameters
     p_bhp_late = inputs.get('p_bhp_late', p_bhp_val * 0.5)
     p_wh_late = inputs.get('p_wh_late', p_wh_val * 0.4)
@@ -1957,7 +702,7 @@ def run_engineering_calculations(inputs, candidate_df):
     t_bht_late = inputs.get('bht_late', t_bht_val)
     t_avg_late_r = (t_wh_val + t_bht_late) / 2.0 + 459.67
     z_late = compute_dynamic_z_factor(p_avg_late_psia, t_avg_late_r, gas_sg_val)
-    
+
     if is_gas_well:
         q_g_scf_d_late = inputs.get('q_gas_late', inputs.get('q_gas_mmscfd', 15.0) * 0.5) * 1e6
         q_cond_late = inputs.get('q_gas_late', 15.0) * inputs.get('cgr_late', inputs.get('cgr_stb_mmscf', 25.0))
@@ -1973,7 +718,7 @@ def run_engineering_calculations(inputs, candidate_df):
         free_gas_late = max(gor_late_val - rs_late, 0.0)
         q_g_scf_d_late = q_liq_late_val * (1.0 - wc_late_frac) * free_gas_late
         q_g_ft3s_late = (q_g_scf_d_late * 14.7 * t_avg_late_r * z_late) / (p_avg_late_psia * 520.0 * 86400.0)
-        
+
     q_m_late = max(q_l_ft3s_late + q_g_ft3s_late, 1e-6)
 
     # Late-life in-situ densities: the minimum-carrying-velocity check has to be
@@ -2018,31 +763,31 @@ def run_engineering_calculations(inputs, candidate_df):
         area_id_ft2 = (np.pi / 4.0) * (id_ft ** 2)
         area_od_ft2 = (np.pi / 4.0) * (od_ft ** 2)
         area_steel_in2 = (np.pi / 4.0) * (row['OD_in']**2 - row['ID_in']**2)
-        
+
         casing_clearance_pass = row['OD_in'] < casing_id_val
         v_m = q_m_ft3s / area_id_ft2
         v_m_late = q_m_late / area_id_ft2
-        
+
         reynolds = (rho_slurry * v_m * id_ft) / mu_m_lbfts if mu_m_lbfts > 0 else 10000
         relative_roughness = (0.0006 / row['ID_in'])
-        
+
         if reynolds > 2300:
-            f = 1.0 / (-1.8 * np.log10((relative_roughness / 3.7) ** 1.11 + 6.9 / reynolds)) ** 2
+            f = haaland_friction_factor(reynolds, relative_roughness)
         else:
             f = 64.0 / reynolds if reynolds > 0 else 0.04
-            
+
         tvd_val = inputs.get('tvd', 10000.0)
         md_val = inputs.get('md', 11500.0)
         dls_val = inputs.get('dls', 2.0)
-        
+
         dp_hydro = (rho_slurry * tvd_val) / 144.0
         dp_fric = (f * md_val * rho_slurry * (v_m ** 2)) / (2.0 * 32.174 * id_ft * 144.0)
         dp_total = dp_hydro + dp_fric
-        
+
         c_factor = 120.0 if "Sandstone" in inputs.get('lithology', 'Sandstone') else 150.0
         if is_gas_well:
             c_factor -= 20.0
-            
+
         sigma_dynes = 20.0
         v_critical_loading = (1.3 * (sigma_dynes ** 0.25) * ((rho_l - rho_g) ** 0.25)) / (rho_g ** 0.5)
         v_carrying = max(v_critical_loading, 1.35 * v_t_rubey)
@@ -2265,18 +1010,18 @@ def run_engineering_calculations(inputs, candidate_df):
         if dp_apb_psi > 1500:
             needs_premium = True
             conn_reasons.append(f"High APB ({round(dp_apb_psi,1)} psi) - Thread Dope Washout Risk")
-            
+
         if "13CR" in grade_str or "22CR" in grade_str or "25CR" in grade_str:
             needs_premium = True
             conn_reasons.append("CRA Metallurgy (High Galling Risk on API Threads)")
-            
+
         if tvd_val > 10000 or f_axial_total_klbs > 150.0:
             needs_premium = True
             conn_reasons.append("High Depth / Axial Load")
 
         connection_pass = True
         conn_status_msg = "Compatible API Thread"
-        
+
         if needs_premium and row['Connection'] == 'API EUE':
             connection_pass = False
             conn_status_msg = "Premium Connection Required (" + "; ".join(conn_reasons) + ")"
@@ -2404,8 +1149,60 @@ def run_engineering_calculations(inputs, candidate_df):
             "Solids_Reason": solids_reason,
             "Overall_Pass": overall_pass
         })
-        
+
     return pd.DataFrame(results)
+
+
+@st.cache_data(show_spinner=False, max_entries=32)
+def _cached_engineering_calculations(inputs_key, candidates_json):
+    """Memoized engine call keyed on immutable snapshots of its two inputs.
+
+    Pages 9 and 10 both need the same result set, and Streamlit reruns the whole
+    script on every widget interaction — without this, each rerun re-solved the
+    DAK Z-factor iteration and the full 5C3/5CT limit-state suite for every
+    candidate, which is what made the pages stutter. `inputs_key` is a sorted
+    tuple of (key, value) pairs and `candidates_json` is the candidate frame
+    serialized to JSON, so both hash cheaply and cannot carry stale mutable
+    state. max_entries bounds the cache so long sessions cannot grow it without
+    limit.
+    """
+    return run_engineering_calculations(dict(inputs_key), pd.read_json(io.StringIO(candidates_json), orient='split'))
+
+
+def engineering_results(inputs, candidate_df):
+    """Return the screening result frame, reusing the cached value when possible."""
+    # Every value must be hashable and part of the key: silently dropping an
+    # unhashable one would return a result cached under different inputs.
+    unhashable = sorted(k for k, v in inputs.items() if isinstance(v, (list, dict, set)))
+    if unhashable:
+        raise ValueError(
+            "Engine inputs must be scalars so they can key the result cache; "
+            f"got container value(s) for: {', '.join(unhashable)}"
+        )
+    inputs_key = tuple(sorted(inputs.items()))
+    return _cached_engineering_calculations(inputs_key, candidate_df.to_json(orient='split'))
+
+
+@st.cache_data(show_spinner=False, max_entries=8)
+def widest_window_candidate(tubing_db_json, q_liq_ref):
+    """Return (ID_in, is_cra) for the candidate with the widest velocity window.
+
+    The reference slurry conditions are fixed, so this depends only on the tubing
+    database and the liquid rate. It previously re-scanned every row on each Page 3
+    rerun — i.e. on every slider drag — for a result that could not change.
+    """
+    db = pd.read_json(io.StringIO(tubing_db_json), orient='split')
+    grade_up = db['Grade'].astype(str).str.upper()
+    material_up = db['Material'].astype(str).str.upper()
+    cra_flags = grade_up.str.contains("13CR") | material_up.str.contains("CRA")
+    best_id, best_cra, max_window = None, False, -np.inf
+    for cand_id, cand_cra in zip(db['ID_in'], cra_flags):
+        res = calculate_slurry_physics(q_liq_ref, 25.0, 2.65, 150.0, 52.0, 1.5, cand_id, bool(cand_cra))
+        window = res['v_erosional'] - res['v_carrying']
+        if window > max_window:
+            max_window, best_id, best_cra = window, cand_id, bool(cand_cra)
+    return best_id, best_cra
+
 
 def active_candidate_df():
     """Return the candidate set the screening pages should evaluate.
@@ -2460,49 +1257,13 @@ page = st.sidebar.radio(
 # PAGE 1: INTRODUCTION & OVERVIEW
 # -----------------------------------------------------------------------------
 if page == "1. Introduction & Overview":
-    @st.cache_data(show_spinner=False)
-    def encode_image_b64(path):
-        """Return an inline data URI for `path`, or None when it is unavailable.
-
-        Cached because cover.jpg is several megabytes; re-encoding it on every
-        rerun would add that much base64 to each page render.
-        """
-        if not os.path.exists(path):
-            return None
-        try:
-            with open(path, 'rb') as handle:
-                encoded = base64.b64encode(handle.read()).decode('utf-8')
-        except OSError:
-            return None
-        lowered = path.lower()
-        if lowered.endswith('.png'):
-            mime = 'image/png'
-        elif lowered.endswith('.svg'):
-            mime = 'image/svg+xml'
-        else:
-            mime = 'image/jpeg'
-        return f'data:{mime};base64,{encoded}'
-
-    def first_existing_image(names):
-        for name in names:
-            data_uri = encode_image_b64(name)
-            if data_uri:
-                return data_uri
-        return None
-
-    def figure_block(path, number, caption):
-        """Render a figure inside a framed, captioned plate. Skips missing files."""
-        data_uri = encode_image_b64(path)
-        if not data_uri:
-            return ""
-        return f"""
-        <figure class="p1-figure">
-            <div class="p1-figure-frame"><img src="{data_uri}" alt="{caption}" loading="lazy" /></div>
-            <figcaption class="p1-figure-caption"><span class="p1-figure-number">Figure {number}</span>{caption}</figcaption>
-        </figure>
-        """
-
-    cover_b64 = first_existing_image(['cover.jpg', 'cover.png', 'cover.jpeg'])
+    # assets/cover_web.jpg is a 1600 px re-encode of cover.jpg. The full-resolution
+    # original is ~6.6 MB, which becomes ~8.8 MB of base64 inlined into the hero's
+    # background-image on every Page 1 render; the web copy is ~220 KB for the same
+    # on-screen result. cover.jpg stays in the fallback chain.
+    cover_b64 = first_existing_image([
+        'assets/cover_web.jpg', 'cover.jpg', 'cover.png', 'cover.jpeg',
+    ])
 
     st.markdown("""
     <style>
@@ -2736,7 +1497,9 @@ if page == "1. Introduction & Overview":
         </p>
     </div>
     """, unsafe_allow_html=True)
-    components.html(UPPER_COMPLETION_SCHEMATIC_HTML, height=720, scrolling=False)
+    # Interactive schematic in place of a static Figure 2 image. Clicking a hotspot
+    # on the diagram renders that component's details in the side panel.
+    components.html(load_asset('schematic_upper_completion.html'), height=720, scrolling=False)
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 2</span>'
@@ -2765,7 +1528,9 @@ if page == "1. Introduction & Overview":
     </section>
     """, unsafe_allow_html=True)
 
-    components.html(CASING_TUBING_SCHEMATIC_HTML, height=760, scrolling=False)
+    # Interactive schematic in place of a static Figure 3 image. Clicking a string in
+    # the SVG (or the legend list) renders its details in the side panel.
+    components.html(load_asset('schematic_casing_tubing.html'), height=760, scrolling=False)
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 3</span>'
@@ -2787,7 +1552,9 @@ if page == "1. Introduction & Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    components.html(TUBING_CROSS_SECTION_HTML, height=700, scrolling=False)
+    # Interactive schematic in place of a static Figure 4 image. Clicking a dimension
+    # in the SVG (or the legend list) renders its introduction in the panel.
+    components.html(load_asset('schematic_cross_section.html'), height=700, scrolling=False)
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 4</span>'
@@ -2837,10 +1604,10 @@ elif page == "2. Wellbore Geometry & PVT":
     # -------------------------------------------------------------------------
     with tab_pvt:
         inputs = st.session_state.inputs
-        
+
         with st.expander("⚙️ Interactive Controls & Fluid Parameters", expanded=True):
             col_m1, col_m2, col_m3 = st.columns(3)
-            
+
             with col_m1:
                 well_mode = st.radio(
                     "Select Well Operating Mode:",
@@ -2860,7 +1627,7 @@ elif page == "2. Wellbore Geometry & PVT":
                 api_in = st.number_input("Oil Gravity (°API)", min_value=10.0, max_value=60.0, value=float(inputs.get('api_gravity', 35.0)), step=0.5)
                 gas_sg_in = st.number_input("Gas Specific Gravity (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01)
                 water_sg_in = st.number_input("Water Specific Gravity", min_value=1.00, max_value=1.30, value=float(inputs.get('water_sg', 1.05)), step=0.01)
-                
+
                 if "Oil" in well_mode:
                     gor_in = st.number_input("Producing GOR (scf/STB)", min_value=0.0, max_value=10000.0, value=float(inputs.get('gor', 800.0)), step=50.0)
                     wc_in = st.number_input("Water Cut (%)", min_value=0.0, max_value=100.0, value=float(inputs.get('water_cut', 5.0)), step=1.0)
@@ -2872,15 +1639,15 @@ elif page == "2. Wellbore Geometry & PVT":
         if "Oil" in well_mode:
             st.info(
                 "💡 **Oil Well Mode Explanation:** Uses **Standing's Empirical PVT Correlations** to model "
-                "dissolved gas in oil ($R_s$), downhole oil volumetric swelling ($B_o$), live-oil density ($\rho_{o,live}$), "
-                "and combined total liquid density ($\rho_l$). As pressure drops toward the surface, gas breaks out of solution, "
+                r"dissolved gas in oil ($R_s$), downhole oil volumetric swelling ($B_o$), live-oil density ($\rho_{o,live}$), "
+                r"and combined total liquid density ($\rho_l$). As pressure drops toward the surface, gas breaks out of solution, "
                 "shrinking the liquid volume and increasing live-oil density."
             )
         else:
             st.info(
                 "💡 **Gas Well Mode Explanation:** Uses the **Dranchuk-Abou-Kassem (DAK) Equation of State** to calculate "
-                "gas compressibility ($Z$-factor), in-situ gas density ($\rho_g$), gas formation volume factor ($B_g$), and "
-                "condensate/water holdup density ($\rho_l$). Demonstrates how high pressure at depth heavily compresses gas, "
+                r"gas compressibility ($Z$-factor), in-situ gas density ($\rho_g$), gas formation volume factor ($B_g$), and "
+                r"condensate/water holdup density ($\rho_l$). Demonstrates how high pressure at depth heavily compresses gas, "
                 "significantly increasing downhole gas density compared to surface conditions."
             )
 
@@ -2891,63 +1658,54 @@ elif page == "2. Wellbore Geometry & PVT":
         gamma_o = 141.5 / (131.5 + api_in)
         rho_w = water_sg_in * 62.4
 
-        rs_list, bo_list, bg_list = [], [], []
-        rho_o_live_list, rho_l_list, rho_g_list = [], [], []
-        p_psia_list, t_deg_r_list = [], []
+        # Vectorized depth profile: pressure and temperature ramp linearly with TVD,
+        # so the whole column is built with NumPy instead of a per-depth Python loop
+        # that re-tested the well mode on every iteration.
+        depth_frac = tvd_array / max_tvd if max_tvd > 0 else np.zeros_like(tvd_array)
+        p_psia_arr = p_wh_in + (p_bhp_in - p_wh_in) * depth_frac + 14.7
+        t_deg_f_arr = t_wh_in + (t_bht_in - t_wh_in) * depth_frac
+        t_deg_r_arr = t_deg_f_arr + 459.67
+        zeros = np.zeros_like(tvd_array)
 
-        for depth in tvd_array:
-            p_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (depth / max_tvd)
-            p_psia = p_gauge + 14.7
-            t_deg_f = t_wh_in + (t_bht_in - t_wh_in) * (depth / max_tvd)
-            t_deg_r = t_deg_f + 459.67
+        if "Oil" in well_mode:
+            rs_arr = np.minimum(
+                gas_sg_in * (((p_psia_arr / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_deg_f_arr))) ** 1.2048,
+                gor_in,
+            )
+            bo_arr = 0.9759 + 0.000120 * ((rs_arr * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_deg_f_arr) ** 1.2)
+            rho_o_live_arr = (62.4 * gamma_o + 0.0136 * rs_arr * gas_sg_in) / bo_arr
+            wc_frac = wc_in / 100.0
+            rho_l_arr = (1.0 - wc_frac) * rho_o_live_arr + wc_frac * rho_w
+            bg_arr, rho_g_arr = zeros, zeros
+        else:
+            # The DAK Z-factor is an implicit fixed point, so it stays a per-point
+            # solve; everything derived from it is vectorized.
+            z_arr = np.array([
+                compute_dynamic_z_factor(p, t, gas_sg_in) for p, t in zip(p_psia_arr, t_deg_r_arr)
+            ])
+            rho_g_arr = (2.7 * gas_sg_in * p_psia_arr) / (z_arr * t_deg_r_arr)
+            bg_arr = 0.02829 * z_arr * t_deg_r_arr / p_psia_arr
 
-            p_psia_list.append(p_psia)
-            t_deg_r_list.append(t_deg_r)
-
-            if "Oil" in well_mode:
-                rs = gas_sg_in * (((p_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_deg_f))) ** 1.2048
-                rs = min(rs, gor_in)
-                bo = 0.9759 + 0.000120 * ((rs * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_deg_f) ** 1.2)
-                rho_o_live = (62.4 * gamma_o + 0.0136 * rs * gas_sg_in) / bo
-                wc_frac = wc_in / 100.0
-                rho_l = (1.0 - wc_frac) * rho_o_live + wc_frac * rho_w
-
-                rs_list.append(rs)
-                bo_list.append(bo)
-                rho_o_live_list.append(rho_o_live)
-                rho_l_list.append(rho_l)
-                bg_list.append(0.0)
-                rho_g_list.append(0.0)
-
+            total_liq_bbl = cgr_in + wgr_in
+            rho_cond = 62.4 * gamma_o
+            if total_liq_bbl > 0:
+                wc_frac = wgr_in / total_liq_bbl
+                rho_l_scalar = (1.0 - wc_frac) * rho_cond + wc_frac * rho_w
             else:
-                z_factor = compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg_in)
-                rho_g = (2.7 * gas_sg_in * p_psia) / (z_factor * t_deg_r)
-                bg = 0.02829 * z_factor * t_deg_r / p_psia
-
-                total_liq_bbl = cgr_in + wgr_in
-                if total_liq_bbl > 0:
-                    wc_frac = wgr_in / total_liq_bbl
-                    rho_cond = 62.4 * gamma_o
-                    rho_l = (1.0 - wc_frac) * rho_cond + wc_frac * rho_w
-                else:
-                    rho_l = 62.4 * gamma_o
-
-                bo_list.append(1.0)
-                bg_list.append(bg)
-                rho_g_list.append(rho_g)
-                rho_l_list.append(rho_l)
-                rs_list.append(0.0)
-                rho_o_live_list.append(0.0)
+                rho_l_scalar = rho_cond
+            rho_l_arr = np.full_like(tvd_array, rho_l_scalar)
+            rs_arr, rho_o_live_arr = zeros, zeros
+            bo_arr = np.ones_like(tvd_array)
 
         df_pvt = pd.DataFrame({
             'TVD_ft': tvd_array,
-            'P_psia': p_psia_list,
-            'Rs_scf_stb': rs_list,
-            'Bo_rb_stb': bo_list,
-            'Bg_cuft_scf': bg_list,
-            'rho_o_live': rho_o_live_list,
-            'rho_l': rho_l_list,
-            'rho_g': rho_g_list
+            'P_psia': p_psia_arr,
+            'Rs_scf_stb': rs_arr,
+            'Bo_rb_stb': bo_arr,
+            'Bg_cuft_scf': bg_arr,
+            'rho_o_live': rho_o_live_arr,
+            'rho_l': rho_l_arr,
+            'rho_g': rho_g_arr
         })
 
         st.markdown("### 📊 Live Liquid Density & Volumetric Expansion vs. True Vertical Depth")
@@ -3018,11 +1776,11 @@ elif page == "2. Wellbore Geometry & PVT":
         st.markdown("---")
         st.markdown("### 🔍 Depth Spot-Inspection Panel")
         inspect_tvd = st.slider("Select Depth to Inspect (ft)", min_value=0.0, max_value=max_tvd, value=max_tvd / 2.0, step=100.0)
-        
+
         p_ins_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (inspect_tvd / max_tvd)
         p_ins_psia = p_ins_gauge + 14.7
         t_ins_f = t_wh_in + (t_bht_in - t_wh_in) * (inspect_tvd / max_tvd)
-        
+
         col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
         col_k1.metric("Local Pressure", f"{p_ins_gauge:.1f} psig")
         col_k2.metric("Local Temperature", f"{t_ins_f:.1f} °F")
@@ -3050,10 +1808,10 @@ elif page == "2. Wellbore Geometry & PVT":
     # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
     # -------------------------------------------------------------------------
     with tab_geo:
-        st.markdown("### 🧪 Gas PVT, Compressibility ($Z$) & Mixture Density ($\rho_m$)")
-        
+        st.markdown(r"### 🧪 Gas PVT, Compressibility ($Z$) & Mixture Density ($\rho_m$)")
+
         # Explanatory Box Focusing on Mode Differences
-        st.markdown("""
+        st.markdown(r"""
         <div style="background-color: #F8FAFC; border-left: 4px solid #0284C7; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem;">
             <b style="color: #0369A1; font-size: 1.0rem;">🔥 Fundamental Differences: Oil PVT vs. Gas Well Thermodynamics</b>
             <ul style="margin-top: 0.4rem; margin-bottom: 0rem; font-size: 0.88rem; color: #334155; line-height: 1.5;">
@@ -3110,36 +1868,27 @@ elif page == "2. Wellbore Geometry & PVT":
         else:
             rho_l_g = 62.4 * gamma_o_g
 
-        z_list_g, rho_g_list_g, q_g_ft3s_list, lambda_l_list, rho_m_list = [], [], [], [], []
+        # Vectorized gas column; only the implicit DAK Z-factor solve stays per-point.
+        depth_frac_g = tvd_array_g / tvd_gas if tvd_gas > 0 else np.zeros_like(tvd_array_g)
+        p_psia_g = p_wh_g + (p_bhp_g - p_wh_g) * depth_frac_g + 14.7
+        t_deg_r_g = t_wh_g + (t_bht_g - t_wh_g) * depth_frac_g + 459.67
 
-        for depth in tvd_array_g:
-            p_gauge = p_wh_g + (p_bhp_g - p_wh_g) * (depth / tvd_gas)
-            p_psia = p_gauge + 14.7
-            t_deg_f = t_wh_g + (t_bht_g - t_wh_g) * (depth / tvd_gas)
-            t_deg_r = t_deg_f + 459.67
-
-            z_val = compute_dynamic_z_factor(p_psia, t_deg_r, gas_sg_g)
-            rho_g_val = (2.7 * gas_sg_g * p_psia) / (z_val * t_deg_r)
-            
-            q_g_ft3s = (q_g_scf_d * 14.7 * t_deg_r * z_val) / (p_psia * 520.0 * 86400.0)
-            
-            q_m_ft3s = q_l_ft3s + q_g_ft3s
-            lambda_l_val = q_l_ft3s / q_m_ft3s if q_m_ft3s > 0 else 0.0
-            rho_m_val = lambda_l_val * rho_l_g + (1.0 - lambda_l_val) * rho_g_val
-
-            z_list_g.append(z_val)
-            rho_g_list_g.append(rho_g_val)
-            q_g_ft3s_list.append(q_g_ft3s)
-            lambda_l_list.append(lambda_l_val)
-            rho_m_list.append(rho_m_val)
+        z_arr_g = np.array([
+            compute_dynamic_z_factor(p, t, gas_sg_g) for p, t in zip(p_psia_g, t_deg_r_g)
+        ])
+        rho_g_arr_g = (2.7 * gas_sg_g * p_psia_g) / (z_arr_g * t_deg_r_g)
+        q_g_ft3s_arr = (q_g_scf_d * 14.7 * t_deg_r_g * z_arr_g) / (p_psia_g * 520.0 * 86400.0)
+        q_m_ft3s_arr = q_l_ft3s + q_g_ft3s_arr
+        lambda_l_arr = np.where(q_m_ft3s_arr > 0, q_l_ft3s / q_m_ft3s_arr, 0.0)
+        rho_m_arr = lambda_l_arr * rho_l_g + (1.0 - lambda_l_arr) * rho_g_arr_g
 
         df_gas_pvt = pd.DataFrame({
             'TVD_ft': tvd_array_g,
-            'Z_Factor': z_list_g,
-            'rho_g': rho_g_list_g,
-            'q_g_ft3s': q_g_ft3s_list,
-            'lambda_l': lambda_l_list,
-            'rho_m': rho_m_list
+            'Z_Factor': z_arr_g,
+            'rho_g': rho_g_arr_g,
+            'q_g_ft3s': q_g_ft3s_arr,
+            'lambda_l': lambda_l_arr,
+            'rho_m': rho_m_arr
         })
 
         # -------------------------------------------------------------------------
@@ -3160,7 +1909,7 @@ elif page == "2. Wellbore Geometry & PVT":
             hovertemplate='Depth: %{y:.1f} ft<br>q_g: %{x:.3f} ft³/s<extra></extra>'
         ))
         fig_gas_b.update_layout(
-            title='Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth',
+            title=r'Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth',
             xaxis=dict(title='Multiphase Mixture Density ρ_m (lb/ft³)', title_font=dict(color='#1E3A8A')),
             xaxis2=dict(
                 title='Downhole Gas Volumetric Rate q_g (ft³/s)',
@@ -3212,13 +1961,13 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
     # =========================================================================
     with tab1:
         st.markdown("### 🧪 Solid Particle Slurry Integration & Physics Mechanics")
-        
+
         # Introduction to Solid Particles
         st.markdown("""
         <div class="m2-purpose" style="margin-bottom: 1.2rem;">
             <b>What are solid particles, and where do they come from?</b><br/>
-            In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), <b>frac proppant flowback</b>, or <b>corrosion scale</b>. 
-            They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well. 
+            In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), <b>frac proppant flowback</b>, or <b>corrosion scale</b>.
+            They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well.
             When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a <b>slurry mixture</b> that alters fluid density and causes aggressive pipe wear.
         </div>
         """, unsafe_allow_html=True)
@@ -3232,11 +1981,11 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose">
-                Sand is much heavier than oil, water, or gas. When sand particles mix into the production stream, they increase the total weight of the fluid column. 
+                Sand is much heavier than oil, water, or gas. When sand particles mix into the production stream, they increase the total weight of the fluid column.
                 This heavier column pushes down harder on the reservoir, requiring higher reservoir pressure just to lift the fluid to surface.
             </div>
         </div>
-        
+
         <div class="m2-card">
             <div class="m2-card-head">
                 <span class="m2-card-num">CALLOUT 2</span>
@@ -3244,7 +1993,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-gate">
-                At high speeds, sand grains act like tiny sandblasters against the inside of the metal tubing. 
+                At high speeds, sand grains act like tiny sandblasters against the inside of the metal tubing.
                 Because sand causes severe physical erosion, fluid must travel at much lower speeds to protect the pipe walls from washing out prematurely.
             </div>
         </div>
@@ -3256,7 +2005,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             </div>
             <div class="m2-label">How solid particles affect this</div>
             <div class="m2-purpose" style="border-left-color: #D97706;">
-                Because sand is dense, gravity constantly tries to pull the grains downward. 
+                Because sand is dense, gravity constantly tries to pull the grains downward.
                 If the produced fluid flows too slowly, sand grains drop out of the stream, accumulate at the bottom of the well, and form sand dunes that choke off fluid flow completely.
             </div>
         </div>
@@ -3268,21 +2017,9 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 
         # Determine candidate with largest operable velocity window
         q_liq_ref = float(st.session_state.inputs.get('q_liquid', 5000.0))
-        best_pipe = None
-        max_window = -1.0
-
-        for _, candidate in st.session_state.tubing_db.iterrows():
-            cand_id = candidate['ID_in']
-            cand_cra = "13CR" in str(candidate['Grade']).upper() or "CRA" in str(candidate['Material']).upper()
-            cand_res = calculate_slurry_physics(q_liq_ref, 25.0, 2.65, 150.0, 52.0, 1.5, cand_id, cand_cra)
-            window_size = cand_res['v_erosional'] - cand_res['v_carrying']
-            
-            if window_size > max_window:
-                max_window = window_size
-                best_pipe = candidate
-
-        sb_d_i = best_pipe['ID_in']
-        is_cra = "13CR" in str(best_pipe['Grade']).upper() or "CRA" in str(best_pipe['Material']).upper()
+        sb_d_i, is_cra = widest_window_candidate(
+            st.session_state.tubing_db.to_json(orient='split'), q_liq_ref
+        )
 
         col_sb1, col_sb2 = st.columns([1, 1.2])
 
@@ -3315,16 +2052,15 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 
         st.markdown("---")
         st.markdown("#### 📈 Operating Envelope Compression vs. Sand Concentration")
-        
-        pptb_range = np.linspace(0.1, 500.0, 100)
-        v_eros_list, v_carrying_list, v_rubey_list, v_turner_list = [], [], [], []
 
-        for p_val in pptb_range:
-            s_out = calculate_slurry_physics(q_liq_ref, p_val, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
-            v_eros_list.append(s_out['v_erosional'])
-            v_carrying_list.append(s_out['v_carrying'])
-            v_rubey_list.append(1.35 * s_out['v_t_rubey'])
-            v_turner_list.append(s_out['v_turner'])
+        pptb_range = np.linspace(0.1, 500.0, 100)
+        # One vectorized call across the whole sand-concentration sweep; this used to be
+        # 100 scalar calls rebuilt on every slider drag.
+        sweep = calculate_slurry_physics(q_liq_ref, pptb_range, sb_sand_sg, sb_sand_d_um, 52.0, 1.5, sb_d_i, is_cra)
+        v_eros_list = sweep['v_erosional']
+        v_carrying_list = sweep['v_carrying']
+        v_rubey_list = 1.35 * sweep['v_t_rubey']
+        v_turner_list = np.full_like(pptb_range, sweep['v_turner'])
 
         fig_env = go.Figure()
         fig_env.add_trace(go.Scatter(x=pptb_range, y=v_eros_list, mode='lines', name='Salama Sand Erosion Limit (v_erosional)', line=dict(color='#DC2626', width=3)))
@@ -3352,7 +2088,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
     # =========================================================================
     with tab2:
         st.markdown("### 📊 Total Slurry Pressure Drop (ΔP_total) & Hydraulics Sandbox")
-        
+
         # Explanation of Pressure Drop in Tubing Selection
         st.markdown("""
         <div class="m2-purpose" style="margin-bottom: 1.2rem;">
@@ -3377,7 +2113,7 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
             t2_rho_slurry_override = st.slider("Slurry Mixture Density (ρ_slurry - lb/ft³)", 45.0, 90.0, 55.0, 1.0)
             t2_id = st.slider("Tubing Inner Diameter (d_i - in)", 1.500, 6.000, 2.992, 0.050)
             t2_tvd = st.slider("True Vertical Depth (TVD - ft)", 1000.0, 25000.0, float(st.session_state.inputs.get('tvd', 10000.0)), 500.0)
-            
+
         with col_t2_ctrl2:
             st.markdown("##### 🛠️ Fluid & Trajectory Drag Controls")
             t2_md = st.slider("Measured Depth / Trajectory (MD/VD - ft)", t2_tvd, t2_tvd * 1.5, max(float(st.session_state.inputs.get('md', 11500.0)), t2_tvd), 500.0)
@@ -3386,33 +2122,27 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 
         # Core Hydraulic Calculations (Using Sandbox Slurry Density Input)
         rho_slurry_val = t2_rho_slurry_override
-        
+
         d_i_ft = t2_id / 12.0
         area_ft2 = (np.pi / 4.0) * (d_i_ft ** 2)
         q_m_ft3s = (t2_q_liq * 5.615) / 86400.0
         v_m_val = q_m_ft3s / area_ft2
-        
+
         mu_lbfts = t2_visc * 0.000672
         re_slurry = (rho_slurry_val * v_m_val * d_i_ft) / mu_lbfts if mu_lbfts > 0 else 10000.0
         rel_roughness = t2_roughness / t2_id
 
-        # Colebrook-White Friction Factor Iteration
+        # Haaland explicit friction factor (no iteration required).
         if re_slurry <= 2100:
             regime_str = "Laminar Flow"
             f_factor = 64.0 / re_slurry if re_slurry > 0 else 0.04
         elif re_slurry > 4000:
             regime_str = "Turbulent Flow"
-            f_guess = 0.02
-            for _ in range(20):
-                f_next = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_slurry)) ** 2
-                if abs(f_next - f_guess) < 1e-7:
-                    break
-                f_guess = f_next
-            f_factor = f_next
+            f_factor = haaland_friction_factor(re_slurry, rel_roughness)
         else:
             regime_str = "Transitional Flow"
             f_lam = 64.0 / 2100.0
-            f_turb = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / 4000.0)) ** 2
+            f_turb = haaland_friction_factor(4000.0, rel_roughness)
             f_factor = f_lam + (f_turb - f_lam) * ((re_slurry - 2100.0) / 1900.0)
 
         # Pressure Drops
@@ -3443,9 +2173,9 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         # Dynamic Flow Regime Visualizer
         with col_regime_disp:
             st.markdown("##### 🌊 Dynamic Flow Regime Visualizer")
-            
+
             re_tier = int(re_slurry // 5000)
-            
+
             if re_slurry <= 2100:
                 arrow_color = "#2563EB"
                 anim_speed = "7.0s"
@@ -3546,17 +2276,16 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         # Plot 1: Total ΔP vs Depth driven directly by the sandbox's Slurry Density slider
         with chart_tab1:
             md_range = np.linspace(0.0, max(t2_md, 15000.0), 50)
-            
+
             # Single dynamic line calculated directly from t2_rho_slurry_override
             re_p = (rho_slurry_val * v_m_val * d_i_ft) / mu_lbfts
-            f_p = 1.0 / (-1.8 * np.log10((rel_roughness / 3.7) ** 1.11 + 6.9 / re_p)) ** 2 if re_p > 4000 else 64.0 / re_p
-            
-            dp_curve = []
-            for md_i in md_range:
-                tvd_i = md_i * (t2_tvd / t2_md) if t2_md > 0 else md_i
-                dp_h = (rho_slurry_val * tvd_i) / 144.0
-                dp_f = (f_p * md_i * rho_slurry_val * (v_m_val ** 2)) / (2.0 * 32.174 * d_i_ft * 144.0)
-                dp_curve.append(dp_h + dp_f)
+            f_p = haaland_friction_factor(re_p, rel_roughness) if re_p > 4000 else 64.0 / re_p
+
+            # Vectorized: the profile is linear in MD, so NumPy replaces the per-point loop.
+            tvd_curve = md_range * (t2_tvd / t2_md) if t2_md > 0 else md_range
+            dp_curve = (rho_slurry_val * tvd_curve) / 144.0 + (
+                f_p * md_range * rho_slurry_val * (v_m_val ** 2)
+            ) / (2.0 * 32.174 * d_i_ft * 144.0)
 
             fig_dp_md = go.Figure()
             fig_dp_md.add_trace(go.Scatter(
@@ -3580,27 +2309,21 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
         # Plot 2: Continuous Stacked Area Plot across Tubing IDs
         with chart_tab2:
             id_continuous_range = np.linspace(1.5, 6.0, 100)
-            dp_hydro_cont = []
-            dp_fric_cont = []
 
-            for id_val in id_continuous_range:
-                d_ft = id_val / 12.0
-                a_ft2 = (np.pi / 4.0) * (d_ft ** 2)
-                v_m_c = q_m_ft3s / a_ft2
-                
-                re_c = (rho_slurry_val * v_m_c * d_ft) / mu_lbfts
-                rel_r_c = t2_roughness / id_val
-                
-                if re_c <= 2100:
-                    f_c = 64.0 / re_c
-                else:
-                    f_c = 1.0 / (-1.8 * np.log10((rel_r_c / 3.7) ** 1.11 + 6.9 / re_c)) ** 2
-                    
-                dp_h_c = (rho_slurry_val * t2_tvd) / 144.0
-                dp_f_c = (f_c * t2_md * rho_slurry_val * (v_m_c ** 2)) / (2.0 * 32.174 * d_ft * 144.0)
-                
-                dp_hydro_cont.append(dp_h_c)
-                dp_fric_cont.append(dp_f_c)
+            # Vectorized sweep across the ID range; np.where keeps the laminar branch.
+            d_ft_arr = id_continuous_range / 12.0
+            v_m_c_arr = q_m_ft3s / ((np.pi / 4.0) * d_ft_arr ** 2)
+            re_c_arr = (rho_slurry_val * v_m_c_arr * d_ft_arr) / mu_lbfts
+            rel_r_c_arr = t2_roughness / id_continuous_range
+            f_c_arr = np.where(
+                re_c_arr <= 2100,
+                64.0 / re_c_arr,
+                haaland_friction_factor(re_c_arr, rel_r_c_arr),
+            )
+            dp_hydro_cont = np.full_like(id_continuous_range, (rho_slurry_val * t2_tvd) / 144.0)
+            dp_fric_cont = (f_c_arr * t2_md * rho_slurry_val * v_m_c_arr ** 2) / (
+                2.0 * 32.174 * d_ft_arr * 144.0
+            )
 
             fig_area = go.Figure()
 
@@ -3640,7 +2363,7 @@ elif page == "4. Tubing Stress Analysis":
     st.markdown('<div class="sub-header">Comprehensive tubing load balance, trapped APB, Lamé stress distributions, shut-in burst, NACE sour service, and connection selection.</div>', unsafe_allow_html=True)
 
     tab1, tab2, tab3 = st.tabs([
-        "📊 Tab 1: Real-Time Structural Analysis & APB Balance", 
+        "📊 Tab 1: Real-Time Structural Analysis & APB Balance",
         "🔬 Tab 2: Advanced Stress Distribution & API TR 5C3 Limit States",
         "🛡️ Tab 3: Environmental Integrity, Shut-In Burst & Connection Logic"
     ])
@@ -3653,12 +2376,12 @@ elif page == "4. Tubing Stress Analysis":
         <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #1E3A8A; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
             <h4 style="color: #1E3A8A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 700;">📘 Engineering Context & Stress Analysis Principles</h4>
             <p style="font-size: 0.9rem; color: #334155; line-height: 1.6; margin-bottom: 0.5rem;">
-                When a tubing string is locked into a production packer, changes in temperature, internal pressure, and fluid motion induce severe mechanical loads along the pipe body. 
-                This module evaluates <b>Lubinski's 5 Net Axial Forces</b> (Gravity, Restrained Thermal Expansion, Packer Piston End-Load, Radial Ballooning, and Fluid Drag) 
+                When a tubing string is locked into a production packer, changes in temperature, internal pressure, and fluid motion induce severe mechanical loads along the pipe body.
+                This module evaluates <b>Lubinski's 5 Net Axial Forces</b> (Gravity, Restrained Thermal Expansion, Packer Piston End-Load, Radial Ballooning, and Fluid Drag)
                 alongside <b>Trapped Annular Pressure Build-up (APB)</b>.
             </p>
             <p style="font-size: 0.9rem; color: #334155; line-height: 1.6; margin: 0;">
-                <b>Failure Envelope Gates:</b> String integrity fails if total axial force exceeds the pipe body yield strength (|F_axial| > SMYS * A_steel) 
+                <b>Failure Envelope Gates:</b> String integrity fails if total axial force exceeds the pipe body yield strength (|F_axial| > SMYS * A_steel)
                 or if the trapped APB rise exceeds the Maximum Allowable Annular Surface Pressure (ΔP_APB > MAASP_collapse).
             </p>
         </div>
@@ -3668,7 +2391,7 @@ elif page == "4. Tubing Stress Analysis":
 
         with col_input:
             st.markdown("### 🛠️ 1. Tubing Specification Controls")
-            
+
             db_candidates = st.session_state.tubing_db['Name'].tolist() if 'tubing_db' in st.session_state else []
             options = ["Custom Input"] + db_candidates
             selected_cand = st.selectbox("Select Candidate / Input Mode:", options, index=1 if len(options) > 1 else 0, key="t1_cand_select")
@@ -3728,12 +2451,12 @@ elif page == "4. Tubing Stress Analysis":
         rho_slurry_lbft3 = annular_mw_ppg * 7.48052
         f_gravity_lbs = weight_lbft * packer_depth_ft * (1.0 - (rho_slurry_lbft3 / 490.0))
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular_f
-        
+
         p_annular_total = (packer_depth_ft * annular_gradient_psi_ft) + dp_apb_psi
         f_piston_lbs = (p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * area_od_ft2 * 144.0))
         f_drag_lbs = 2500.0
-        
+
         f_axial_net_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs + f_overpull
 
         apb_failed = dp_apb_psi > maasp_psi
@@ -3749,7 +2472,7 @@ elif page == "4. Tubing Stress Analysis":
                     failure_reasons.append(f"• APB Rise ({dp_apb_psi:.1f} psi) > Tubing Collapse MAASP ({maasp_psi:.1f} psi) [COLLAPSE RISK]")
                 if axial_failed:
                     failure_reasons.append(f"• Net Axial Load ({f_axial_net_lbs/1000:.1f} klbs) > Tensile Rating ({pipe_tensile_rating_lbs/1000:.1f} klbs) [STRING BROKEN / YIELDED]")
-                
+
                 st.error("🔴 **STRING FAILURE / BUCKLED / PIPE BROKEN**\n\n" + "\n".join(failure_reasons))
             else:
                 st.success("🟢 **STRING OK / STABLE OPERATING ENVELOPE**\n\nNet Axial Tension and Annular Pressure Build-Up are within allowable design limits.")
@@ -3770,13 +2493,13 @@ elif page == "4. Tubing Stress Analysis":
 
             status_text = "❌ FAILED / BUCKLED" if string_failed else "✅ STRING SAFE"
             fig.add_annotation(
-                x=0, y=-packer_depth_ft * 0.5, 
-                text=f"<b>{status_text}</b><br>Net Axial Load = {f_axial_net_lbs/1000:.1f} klbs<br>APB Rise = {dp_apb_psi:.1f} psi", 
-                showarrow=False, 
-                font=dict(size=14, color=main_color), 
-                bgcolor="white", 
-                bordercolor=main_color, 
-                borderwidth=2, 
+                x=0, y=-packer_depth_ft * 0.5,
+                text=f"<b>{status_text}</b><br>Net Axial Load = {f_axial_net_lbs/1000:.1f} klbs<br>APB Rise = {dp_apb_psi:.1f} psi",
+                showarrow=False,
+                font=dict(size=14, color=main_color),
+                bgcolor="white",
+                bordercolor=main_color,
+                borderwidth=2,
                 opacity=0.9
             )
 
@@ -3855,7 +2578,7 @@ elif page == "4. Tubing Stress Analysis":
         st.caption("Click any preset button below to automatically load scenario parameters into session state and examine real-time structural responses.")
 
         col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-        
+
         if col_p1.button("💥 Severe APB Collapse", use_container_width=True, key="preset_apb"):
             st.session_state.t2_pi = 500.0
             st.session_state.t2_pe = 9200.0
@@ -3930,21 +2653,20 @@ elif page == "4. Tubing Stress Analysis":
         t2_sigma_z_outer = (t2_fa_lbs / t2_area_nom) + t2_sigma_bending
 
         r_points = np.linspace(t2_r_iw, t2_r_o, 50)
-        sigma_r_profile = []
-        sigma_theta_profile = []
-        vme_profile = []
 
-        for r in r_points:
-            s_r = ((t2_pi * t2_r_iw**2 - t2_pe * t2_r_o**2) / (t2_r_o**2 - t2_r_iw**2)) - (((t2_pi - t2_pe) * t2_r_iw**2 * t2_r_o**2) / (r**2 * (t2_r_o**2 - t2_r_iw**2)))
-            s_t = ((t2_pi * t2_r_iw**2 - t2_pe * t2_r_o**2) / (t2_r_o**2 - t2_r_iw**2)) + (((t2_pi - t2_pe) * t2_r_iw**2 * t2_r_o**2) / (r**2 * (t2_r_o**2 - t2_r_iw**2)))
-            s_z = t2_sigma_z_outer
-            vme = np.sqrt(0.5 * ((s_r - s_t)**2 + (s_t - s_z)**2 + (s_z - s_r)**2))
-            
-            sigma_r_profile.append(s_r)
-            sigma_theta_profile.append(s_t)
-            vme_profile.append(vme)
+        # Lame thick-wall solution, evaluated across the wall in one array pass.
+        # The mean and the r-dependent deviator are both constant in r apart from
+        # the 1/r^2 factor, so they are hoisted out of the sweep.
+        lame_mean = (t2_pi * t2_r_iw**2 - t2_pe * t2_r_o**2) / (t2_r_o**2 - t2_r_iw**2)
+        lame_dev = ((t2_pi - t2_pe) * t2_r_iw**2 * t2_r_o**2) / (r_points**2 * (t2_r_o**2 - t2_r_iw**2))
+        sigma_r_profile = lame_mean - lame_dev
+        sigma_theta_profile = lame_mean + lame_dev
+        s_z = t2_sigma_z_outer
+        vme_profile = np.sqrt(0.5 * ((sigma_r_profile - sigma_theta_profile)**2
+                                     + (sigma_theta_profile - s_z)**2
+                                     + (s_z - sigma_r_profile)**2))
 
-        vme_max_psi = max(vme_profile)
+        vme_max_psi = vme_profile.max()
         triaxial_sf_t2 = t2_smys / vme_max_psi if vme_max_psi > 0 else 99.0
 
         st.markdown("---")
@@ -3952,7 +2674,7 @@ elif page == "4. Tubing Stress Analysis":
 
         with col_c1:
             st.markdown("##### 📈 Chart A: Lamé Wall Stress Profile (r_iw → r_o)")
-            
+
             fig_lame = go.Figure()
             fig_lame.add_trace(go.Scatter(x=r_points, y=sigma_theta_profile, mode='lines', name='Hoop Stress (σ_θ)', line=dict(color='#2563EB', width=2.5)))
             fig_lame.add_trace(go.Scatter(x=r_points, y=sigma_r_profile, mode='lines', name='Radial Stress (σ_r)', line=dict(color='#D97706', width=2.5)))
@@ -3974,22 +2696,15 @@ elif page == "4. Tubing Stress Analysis":
             st.markdown("##### 🎯 Chart B: von Mises Triaxial Yield Ellipse")
 
             dp_range = np.linspace(-12000, 12000, 100)
-            fa_upper_klbs = []
-            fa_lower_klbs = []
 
-            for dp in dp_range:
-                s_h = (dp * (t2_od / 2.0)) / t2_wall_nom
-                discriminant = s_h**2 - 4.0 * (s_h**2 - t2_smys**2)
-                
-                if discriminant >= 0:
-                    sz_max = (s_h + np.sqrt(discriminant)) / 2.0
-                    sz_min = (s_h - np.sqrt(discriminant)) / 2.0
-                    
-                    fa_upper_klbs.append((sz_max * t2_area_nom) / 1000.0)
-                    fa_lower_klbs.append((sz_min * t2_area_nom) / 1000.0)
-                else:
-                    fa_upper_klbs.append(np.nan)
-                    fa_lower_klbs.append(np.nan)
+            # Vectorized yield envelope. Points where the von Mises quadratic has no
+            # real root fall outside the envelope and stay NaN, which is what breaks
+            # the plotted boundary exactly as the per-point version did.
+            s_h_arr = (dp_range * (t2_od / 2.0)) / t2_wall_nom
+            discriminant = s_h_arr**2 - 4.0 * (s_h_arr**2 - t2_smys**2)
+            root = np.sqrt(np.where(discriminant >= 0, discriminant, np.nan))
+            fa_upper_klbs = ((s_h_arr + root) / 2.0) * t2_area_nom / 1000.0
+            fa_lower_klbs = ((s_h_arr - root) / 2.0) * t2_area_nom / 1000.0
 
             delta_p_current = t2_pi - t2_pe
             point_color = "#DC2626" if triaxial_sf_t2 < 1.25 else "#059669"
@@ -3997,12 +2712,12 @@ elif page == "4. Tubing Stress Analysis":
             fig_ellipse = go.Figure()
             fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_upper_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), name='Yield Envelope Boundary', showlegend=True))
             fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_lower_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), showlegend=False))
-            
+
             fig_ellipse.add_trace(go.Scatter(
-                x=[delta_p_current], y=[t2_fa], 
-                mode='markers+text', 
+                x=[delta_p_current], y=[t2_fa],
+                mode='markers+text',
                 marker=dict(size=14, color=point_color, symbol='diamond'),
-                text=[f"  SF = {triaxial_sf_t2:.2f}"], 
+                text=[f"  SF = {triaxial_sf_t2:.2f}"],
                 textposition="top right",
                 name='Current Operating Point'
             ))
@@ -4039,7 +2754,7 @@ elif page == "4. Tubing Stress Analysis":
             <h5 style="color: #1E3A8A; margin: 0 0 0.4rem 0; font-weight: 700;">📘 Static Shut-In CITHP & Surface Burst Principles</h5>
             <p style="font-size: 0.85rem; color: #334155; line-height: 1.5; margin: 0;">
                 <b>Purpose:</b> Models static shut-in closed-in tubing head pressure (CITHP) using gas-column barometric equilibrium.<br>
-                <b>Why it matters:</b> Dry gas columns exert minimal hydrostatic head, transferring nearly the full reservoir bottomhole pressure directly to surface equipment. 
+                <b>Why it matters:</b> Dry gas columns exert minimal hydrostatic head, transferring nearly the full reservoir bottomhole pressure directly to surface equipment.
                 The tubing string must maintain a minimum surface burst safety factor (<b>SF_burst ≥ 1.10</b>) and remain within the API 5CT hydrostatic proof-test limit.
             </p>
         </div>
@@ -4080,7 +2795,7 @@ elif page == "4. Tubing Stress Analysis":
         t_bht_f = 210.0
         t_avg_r = ((t_wh_f + t_bht_f) / 2.0) + 459.67
         p_avg_psia = (t3_pbhp / 2.0) + 14.7
-        
+
         # Z-factor estimate
         z_fact = 0.88 + 0.00002 * (p_avg_psia - 3000.0)
         z_fact = max(0.65, min(1.25, z_fact))
@@ -4179,7 +2894,7 @@ elif page == "5. Material Selection":
 
     # Top-Level Tabs for Page 5
     page5_tab1, page5_tab2 = st.tabs([
-        "🧪 Tab 1: Sour Service & Premium Connection Lab", 
+        "🧪 Tab 1: Sour Service & Premium Connection Lab",
         "🔬 Tab 2: API 5CT Material QA & Concept Simulator"
     ])
 
@@ -4191,7 +2906,7 @@ elif page == "5. Material Selection":
         with st.expander("💡 Quick Primer: Sour Service & Connection Physics", expanded=True):
             col_i1, col_i2 = st.columns(2)
             with col_i1:
-                st.markdown("""
+                st.markdown(r"""
                 **🧪 Sour Service (H₂S Risk)**
                 * **Sulfide Stress Cracking (SSC):** Invisible H₂S gas breaks down in water, forcing atomic hydrogen into steel. This causes high-strength pipe to shatter without warning.
                 * **NACE MR0175 Standard:** If $p_{\mathrm{H}_2\text{S}} \ge 0.05 \text{ psia}$, standard steels (**J55, N80, P110, Q125**) are **rejected**. Softened steel (**L80-1**) or Alloys (**13Cr, 22Cr, 25Cr**) are required.
@@ -4254,7 +2969,7 @@ elif page == "5. Material Selection":
         # 4. SCENARIO PRESETS
         st.markdown("### 🎯 Quick Scenario Presets")
         col_p1, col_p2, col_p3 = st.columns(3)
-        
+
         if col_p1.button("🔥 High-Pressure Deep Gas Well", use_container_width=True):
             st.session_state.lab_p_bhp = 9500.0
             st.session_state.lab_h2s_ppm = 10.0
@@ -4306,7 +3021,7 @@ elif page == "5. Material Selection":
             st.session_state.lab_tvd = st.slider("True Vertical Depth - TVD (ft)", 1000.0, 25000.0, float(st.session_state.lab_tvd), 500.0)
             st.session_state.lab_axial = st.slider("Net Axial Tension Load (klbs)", 0.0, 400.0, float(st.session_state.lab_axial), 10.0)
             st.session_state.lab_gor = st.slider("Producing Gas-Oil Ratio - GOR (scf/STB)", 0.0, 15000.0, float(st.session_state.lab_gor), 100.0)
-            
+
             col_c1, col_c2 = st.columns(2)
             with col_c1:
                 st.session_state.lab_is_gas = st.checkbox("Gas Well Fluid Stream", value=bool(st.session_state.lab_is_gas))
@@ -4331,14 +3046,14 @@ elif page == "5. Material Selection":
 
         with diag_col:
             st.markdown("**Live Diagnostic Lightbulb Indicators:**")
-            
+
             if is_sour:
                 st.markdown(f"""
                     <div class="status-card-sour">
                         <h4 style="color:#991B1B; margin:0; font-size:1.05rem;">🔴 SOUR SERVICE ACTIVE (NACE MR0175)</h4>
                         <p style="margin-top:5px; font-size:0.88rem; color:#7F1D1D; line-height:1.4;">
                             <b>pH₂S Partial Pressure:</b> <span style="font-size:1.05rem; font-weight:bold;">{p_h2s_psia:.4f} psia</span> (≥ 0.05 psia Limit)<br/>
-                            <b>Status:</b> Standard steels (J55, N80, P110, Q125) are <b>REJECTED</b> due to Sulfide Stress Cracking (SSC). 
+                            <b>Status:</b> Standard steels (J55, N80, P110, Q125) are <b>REJECTED</b> due to Sulfide Stress Cracking (SSC).
                             Must use <b>L80-1 (26 HRC Max)</b> or <b>CRAs</b>.
                         </p>
                     </div>
@@ -4426,12 +3141,12 @@ elif page == "5. Material Selection":
         # SUB-TAB 1: DUCTILITY (MINIMUM ELONGATION)
         # ---------------------------------------------------------------------
         with qa_sub1:
-            st.markdown("""
+            st.markdown(r"""
             <div class="lab-card" style="border-left: 5px solid #3B82F6;">
                 <h4 style="margin:0; color:#1E3A8A;">Purpose of the Ductility Specification</h4>
                 <p style="font-size:0.88rem; color:#334155; margin-top:5px;">
-                    Minimum elongation verifies that steel deforms plastically rather than fracturing brittlely under tensile overload. 
-                    API 5CT calculates minimum percentage elongation $e = C \cdot \frac{A^{0.2}}{U^{0.9}}$, capping specimen area at $0.75\text{ in}^2$ ($490\text{ mm}^2$). 
+                    Minimum elongation verifies that steel deforms plastically rather than fracturing brittlely under tensile overload.
+                    API 5CT calculates minimum percentage elongation $e = C \cdot \frac{A^{0.2}}{U^{0.9}}$, capping specimen area at $0.75\text{ in}^2$ ($490\text{ mm}^2$).
                     Higher tensile strength $U$ reduces the required elongation percentage.
                 </p>
             </div>
@@ -4443,10 +3158,10 @@ elif page == "5. Material Selection":
                 st.markdown("**Interactive Ductility Controls:**")
                 qa_wall_d = st.slider("Nominal Wall Thickness - t (in)", 0.150, 0.750, 0.254, 0.010, key="qa_wall_d")
                 qa_grade_d = st.selectbox("API 5CT Grade", ["J55", "L80-1", "N80", "P110", "Q125"], index=1, key="qa_grade_d")
-                
+
                 grade_utms = {"J55": 75000.0, "L80-1": 95000.0, "N80": 100000.0, "P110": 125000.0, "Q125": 135000.0}
                 utm_psi = grade_utms[qa_grade_d]
-                
+
                 st.info(f"Grade **{qa_grade_d}** Specified Min Tensile Strength ($U$): **{utm_psi:,.0f} psi**")
 
             with col_d2:
@@ -4461,7 +3176,7 @@ elif page == "5. Material Selection":
                     area_physical = 0.20
 
                 area_effective = min(area_physical, 0.75) # Capped at 0.75 in2
-                
+
                 # Formula: e = 625,000 * (A^0.2) / (U^0.9)
                 elongation_pct = 625000.0 * (area_effective ** 0.2) / (utm_psi ** 0.9)
 
@@ -4474,12 +3189,12 @@ elif page == "5. Material Selection":
         # SUB-TAB 2: PROOF-TEST PRESSURE VS. CITHP GATE
         # ---------------------------------------------------------------------
         with qa_sub2:
-            st.markdown("""
+            st.markdown(r"""
             <div class="lab-card" style="border-left: 5px solid #10B981;">
                 <h4 style="margin:0; color:#065F46;">Purpose of the Proof-Test Pressure Gate</h4>
                 <p style="font-size:0.88rem; color:#334155; margin-top:5px;">
-                    Every joint of tubing is hydrostatically proof-tested in the mill to a pressure $P = \frac{2 \cdot Y_S \cdot f \cdot t}{D}$. 
-                    Operating a well above the joint's factory proof pressure is a severe safety defect. 
+                    Every joint of tubing is hydrostatically proof-tested in the mill to a pressure $P = \frac{2 \cdot Y_S \cdot f \cdot t}{D}$.
+                    Operating a well above the joint's factory proof pressure is a severe safety defect.
                     This simulator compares factory proof pressure directly against closed-in surface pressure (CITHP) as a <b>hard screening gate</b>.
                 </p>
             </div>
@@ -4492,7 +3207,7 @@ elif page == "5. Material Selection":
                 qa_od_p = st.slider("Outer Diameter - OD (in)", 2.375, 9.625, 3.500, 0.125, key="qa_od_p")
                 qa_wall_p = st.slider("Wall Thickness - t (in)", 0.150, 0.750, 0.254, 0.010, key="qa_wall_p")
                 qa_grade_p = st.selectbox("Tubing Grade", ["J55", "L80-1", "P110", "Q125"], index=1, key="qa_grade_p")
-                
+
                 grade_yields = {"J55": 55000.0, "L80-1": 80000.0, "P110": 110000.0, "Q125": 125000.0}
                 ys_psi = grade_yields[qa_grade_p]
 
@@ -4537,11 +3252,11 @@ elif page == "5. Material Selection":
         # SUB-TAB 3: TOUGHNESS (CHARPY V-NOTCH)
         # ---------------------------------------------------------------------
         with qa_sub3:
-            st.markdown("""
+            st.markdown(r"""
             <div class="lab-card" style="border-left: 5px solid #F59E0B;">
                 <h4 style="margin:0; color:#92400E;">Purpose of the Toughness Specification</h4>
                 <p style="font-size:0.88rem; color:#334155; margin-top:5px;">
-                    Charpy V-notch (CVN) absorbed energy measures resistance to brittle fracture from notches or flaws. 
+                    Charpy V-notch (CVN) absorbed energy measures resistance to brittle fracture from notches or flaws.
                     <b>Couplings are evaluated using Specified MAXIMUM Yield Strength ($Y_{S,\max}$)</b> because the hardest permitted coupling is the most brittle location, whereas the pipe body uses Specified Minimum Yield Strength ($Y_S$).
                 </p>
             </div>
@@ -4583,12 +3298,12 @@ elif page == "5. Material Selection":
         # SUB-TAB 4: MARTENSITE FRACTION & HARDNESS
         # ---------------------------------------------------------------------
         with qa_sub4:
-            st.markdown("""
+            st.markdown(r"""
             <div class="lab-card" style="border-left: 5px solid #8B5CF6;">
                 <h4 style="margin:0; color:#5B21B6;">Purpose of the As-Quenched Hardness Requirement</h4>
                 <p style="font-size:0.88rem; color:#334155; margin-top:5px;">
-                    As-quenched mid-wall hardness $HRC_{\min}$ verifies that quenching achieved the required martensite fraction before tempering. 
-                    Evaluation is performed at mid-wall (slowest cooling point). 
+                    As-quenched mid-wall hardness $HRC_{\min}$ verifies that quenching achieved the required martensite fraction before tempering.
+                    Evaluation is performed at mid-wall (slowest cooling point).
                     <b>Corrosion Resistant Alloys (13Cr, 22Cr, 25Cr) automatically override to Not Applicable</b> as they are solution-annealed.
                 </p>
             </div>
@@ -4599,8 +3314,8 @@ elif page == "5. Material Selection":
             with col_m1:
                 st.markdown("**Grade & Carbon Content Inputs:**")
                 qa_grade_m = st.selectbox(
-                    "Steel / CRA Grade", 
-                    ["L80-1", "C90", "T95", "C110", "P110", "Q125", "L80-13Cr", "22Cr-Duplex"], 
+                    "Steel / CRA Grade",
+                    ["L80-1", "C90", "T95", "C110", "P110", "Q125", "L80-13Cr", "22Cr-Duplex"],
                     index=0, key="qa_grade_m"
                 )
                 qa_carbon_wt = st.slider("Carbon Content (wt %)", 0.15, 0.50, 0.25, 0.01, key="qa_carbon_wt")
@@ -4613,7 +3328,7 @@ elif page == "5. Material Selection":
                         <div class="status-card-api">
                             <h4 style="color:#1E40AF; margin:0;">ℹ️ NOT APPLICABLE (CRA METALLURGY)</h4>
                             <p style="margin-top:5px; font-size:0.88rem; color:#1E3A8A;">
-                                <b>Override Active:</b> {qa_grade_m} is a Corrosion Resistant Alloy. 
+                                <b>Override Active:</b> {qa_grade_m} is a Corrosion Resistant Alloy.
                                 CRAs undergo solution annealing and do not have an as-quenched carbon-martensite hardness requirement.
                             </p>
                         </div>
@@ -5322,41 +4037,41 @@ elif page == METHODOLOGY_PAGE:
             unsafe_allow_html=True,
         )
 
-# ----------------------------------------------------------------------------- 
+# -----------------------------------------------------------------------------
 # 7: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
 # -----------------------------------------------------------------------------
 elif page == "7. Well & Fluid Inputs":
     st.markdown('<div class="main-header">Step 7: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True) 
+    st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True)
 
     current_inputs = st.session_state.inputs
     well_type = current_inputs.get('well_type', 'Oil Well (Liquid Dominated)')
     is_gas_type = "Gas" in well_type
 
-    tab_geo, tab_early, tab_late = st.tabs([ 
-        "📐 1. Architecture, PVT & Shut-In CITHP",  
-        "🚀 2. Early-Life (Initial Production)",  
+    tab_geo, tab_early, tab_late = st.tabs([
+        "📐 1. Architecture, PVT & Shut-In CITHP",
+        "🚀 2. Early-Life (Initial Production)",
         "📉 3. Late-Life (Depleted Envelopes)"
-    ]) 
+    ])
 
-    # ------------------------------------------------------------------------- 
+    # -------------------------------------------------------------------------
     # TAB 1: ARCHITECTURE, PVT, CORROSIVITY & COMPLETION TARGETS
-    # ------------------------------------------------------------------------- 
-    with tab_geo: 
-        st.markdown("#### 📐 Subsurface Geometry & Dynamic Well Mode") 
-        col_g1, col_g2, col_g3 = st.columns(3) 
-         
-        with col_g1: 
+    # -------------------------------------------------------------------------
+    with tab_geo:
+        st.markdown("#### 📐 Subsurface Geometry & Dynamic Well Mode")
+        col_g1, col_g2, col_g3 = st.columns(3)
+
+        with col_g1:
             well_type = st.selectbox(
-                "Well Type Category", 
+                "Well Type Category",
                 ["Oil Well (Liquid Dominated)", "Gas Well (Gas / Condensate)"],
                 index=1 if is_gas_type else 0
             )
-            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.0, max_value=30000.0, value=float(current_inputs.get('tvd', 10000.0)), step=100.0, format="%.3f") 
-        
+            tvd = st.number_input("True Vertical Depth - TVD (ft)", min_value=1000.0, max_value=30000.0, value=float(current_inputs.get('tvd', 10000.0)), step=100.0, format="%.3f")
+
         with col_g2:
-            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.0, max_value=35000.0, value=float(current_inputs.get('md', 11500.0)), step=100.0, format="%.3f") 
-            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, value=float(current_inputs.get('dls', 2.0)), step=0.1, format="%.3f") 
+            md = st.number_input("Measured Depth - MD (ft)", min_value=1000.0, max_value=35000.0, value=float(current_inputs.get('md', 11500.0)), step=100.0, format="%.3f")
+            dls = st.number_input("Max Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, value=float(current_inputs.get('dls', 2.0)), step=0.1, format="%.3f")
 
         with col_g3:
             casing_id = st.number_input("Production Casing Inner Diameter - ID (in)", min_value=4.0, max_value=13.375, value=float(current_inputs.get('casing_id', 8.681)), step=0.001, format="%.3f")
@@ -5396,7 +4111,7 @@ elif page == "7. Well & Fluid Inputs":
             curr_annular = current_inputs.get('annular_fluid', annular_options[0])
             annular_idx = annular_options.index(curr_annular) if curr_annular in annular_options else 0
             annular_fluid = st.selectbox(
-                "Trapped Annular Packer Fluid Type", 
+                "Trapped Annular Packer Fluid Type",
                 annular_options,
                 index=annular_idx
             )
@@ -5426,46 +4141,46 @@ elif page == "7. Well & Fluid Inputs":
                                      index=lith_options.index(curr_lith) if curr_lith in lith_options else 0)
             sand_sg = st.number_input("Solid Particle Density (SG)", min_value=1.5, max_value=5.0, value=float(current_inputs.get('sand_sg', 2.65)), step=0.05, format="%.3f")
 
-    # ------------------------------------------------------------------------- 
+    # -------------------------------------------------------------------------
     # TAB 2: EARLY-LIFE (INITIAL PRODUCTION ENVELOPE)
-    # ------------------------------------------------------------------------- 
-    with tab_early: 
-        st.markdown("#### Early-Life Operating Conditions (Peak Rates & Thermal Loads)") 
-        col_e1, col_e2, col_e3 = st.columns(3) 
+    # -------------------------------------------------------------------------
+    with tab_early:
+        st.markdown("#### Early-Life Operating Conditions (Peak Rates & Thermal Loads)")
+        col_e1, col_e2, col_e3 = st.columns(3)
 
-        with col_e1: 
-            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.0, max_value=20000.0, value=float(current_inputs.get('p_bhp', 4500.0)), step=50.0, format="%.3f") 
-            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.0, max_value=5000.0, value=float(current_inputs.get('p_wh', 800.0)), step=20.0, format="%.3f") 
+        with col_e1:
+            p_bhp_early = st.number_input("Early BHP (psi)", min_value=500.0, max_value=20000.0, value=float(current_inputs.get('p_bhp', 4500.0)), step=50.0, format="%.3f")
+            p_wh_early = st.number_input("Early Wellhead Pressure (psi)", min_value=50.0, max_value=5000.0, value=float(current_inputs.get('p_wh', 800.0)), step=20.0, format="%.3f")
 
-        with col_e2: 
+        with col_e2:
             if "Gas" in well_type:
                 q_gas_early = st.number_input("Early Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(current_inputs.get('q_gas_mmscfd', 15.0)), step=0.5, format="%.3f")
                 cgr_early = st.number_input("Early Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(current_inputs.get('cgr_stb_mmscf', 25.0)), step=1.0, format="%.3f")
                 q_liq_early, wc_early, gor_early = 0.0, 0.0, 0.0
             else:
-                q_liq_early = st.number_input("Early Liquid Rate (STB/D)", min_value=100.0, max_value=50000.0, value=float(current_inputs.get('q_liquid', 5000.0)), step=100.0, format="%.3f") 
-                wc_early = st.number_input("Early Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('water_cut', 5.0)), step=0.5, format="%.3f") 
+                q_liq_early = st.number_input("Early Liquid Rate (STB/D)", min_value=100.0, max_value=50000.0, value=float(current_inputs.get('q_liquid', 5000.0)), step=100.0, format="%.3f")
+                wc_early = st.number_input("Early Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('water_cut', 5.0)), step=0.5, format="%.3f")
                 q_gas_early, cgr_early, wgr_early = 0.0, 0.0, 0.0
 
-        with col_e3: 
+        with col_e3:
             if "Gas" in well_type:
                 wgr_early = st.number_input("Early Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(current_inputs.get('wgr_bbl_mmscf', 5.0)), step=0.5, format="%.3f")
             else:
-                gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor', 800.0)), step=50.0, format="%.3f") 
-            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('t_bht', 210.0)), step=1.0, format="%.3f") 
+                gor_early = st.number_input("Early Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor', 800.0)), step=50.0, format="%.3f")
+            bht_early = st.number_input("Early Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('t_bht', 210.0)), step=1.0, format="%.3f")
 
-    # ------------------------------------------------------------------------- 
+    # -------------------------------------------------------------------------
     # TAB 3: LATE-LIFE (DEPLETED / HIGH WATER CUT ENVELOPES)
-    # ------------------------------------------------------------------------- 
-    with tab_late: 
-        st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)") 
+    # -------------------------------------------------------------------------
+    with tab_late:
+        st.markdown("#### Late-Life Operating Conditions (Depletion & High Water Cut)")
 
-        manual_override = st.checkbox("🛠️ Enable Manual Override for Late-Life Parameters", value=False) 
+        manual_override = st.checkbox("🛠️ Enable Manual Override for Late-Life Parameters", value=False)
 
         # Auto-Predictive Calculation Logic
-        pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3)) 
-        pred_p_wh_late = float(round(p_wh_early * 0.40, 3)) 
-        pred_bht_late = float(round(max(80.0, bht_early - 30.0), 3)) 
+        pred_p_bhp_late = float(round(p_bhp_early * 0.50, 3))
+        pred_p_wh_late = float(round(p_wh_early * 0.40, 3))
+        pred_bht_late = float(round(max(80.0, bht_early - 30.0), 3))
 
         if "Gas" in well_type:
             pred_q_gas_late = float(round(q_gas_early * ((1.0 - decline_rate / 100.0) ** field_life), 3))
@@ -5476,61 +4191,61 @@ elif page == "7. Well & Fluid Inputs":
             pred_wc_late = 75.0 if wc_early < 20.0 else float(round(min(95.0, wc_early + 30.0), 3))
             pred_gor_late = float(round(gor_early * 0.60, 3))
 
-        col_l1, col_l2, col_l3 = st.columns(3) 
+        col_l1, col_l2, col_l3 = st.columns(3)
 
-        if not manual_override: 
-            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using annual field decline rates and reservoir depletion rules. Check above to adjust manually.") 
+        if not manual_override:
+            st.info("💡 **Auto-Predictive Engine Active:** Late-Life parameters are estimated using annual field decline rates and reservoir depletion rules. Check above to adjust manually.")
 
-            with col_l1: 
-                p_bhp_late = st.number_input("Late BHP (psi)", value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), disabled=True, format="%.3f") 
-                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), disabled=True, format="%.3f") 
+            with col_l1:
+                p_bhp_late = st.number_input("Late BHP (psi)", value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), disabled=True, format="%.3f")
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), disabled=True, format="%.3f")
 
-            with col_l2: 
+            with col_l2:
                 if "Gas" in well_type:
                     q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), disabled=True, format="%.3f")
                     cgr_late = st.number_input("Late CGR (STB/MMscf)", value=float(current_inputs.get('cgr_late', pred_cgr_late)), disabled=True, format="%.3f")
                     q_liq_late, wc_late, gor_late = 0.0, 0.0, 0.0
                 else:
-                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), disabled=True, format="%.3f") 
-                    wc_late = st.number_input("Late Water Cut (%)", value=float(current_inputs.get('wc_late', pred_wc_late)), disabled=True, format="%.3f") 
+                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), disabled=True, format="%.3f")
+                    wc_late = st.number_input("Late Water Cut (%)", value=float(current_inputs.get('wc_late', pred_wc_late)), disabled=True, format="%.3f")
                     q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
 
-            with col_l3: 
+            with col_l3:
                 if "Gas" in well_type:
                     wgr_late = st.number_input("Late WGR (bbl/MMscf)", value=float(current_inputs.get('wgr_late', pred_wgr_late)), disabled=True, format="%.3f")
                 else:
-                    gor_late = st.number_input("Late Producing GOR (scf/STB)", value=float(current_inputs.get('gor_late', pred_gor_late)), disabled=True, format="%.3f") 
-                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", value=float(current_inputs.get('bht_late', pred_bht_late)), disabled=True, format="%.3f") 
+                    gor_late = st.number_input("Late Producing GOR (scf/STB)", value=float(current_inputs.get('gor_late', pred_gor_late)), disabled=True, format="%.3f")
+                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", value=float(current_inputs.get('bht_late', pred_bht_late)), disabled=True, format="%.3f")
 
-        else: 
-            with col_l1: 
-                p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.0, max_value=20000.0, value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), step=50.0, format="%.3f") 
-                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.0, max_value=5000.0, value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), step=20.0, format="%.3f") 
+        else:
+            with col_l1:
+                p_bhp_late = st.number_input("Late BHP (psi)", min_value=100.0, max_value=20000.0, value=float(current_inputs.get('p_bhp_late', pred_p_bhp_late)), step=50.0, format="%.3f")
+                p_wh_late = st.number_input("Late Wellhead Pressure (psi)", min_value=20.0, max_value=5000.0, value=float(current_inputs.get('p_wh_late', pred_p_wh_late)), step=20.0, format="%.3f")
 
-            with col_l2: 
+            with col_l2:
                 if "Gas" in well_type:
                     q_gas_late = st.number_input("Late Gas Rate (MMscf/D)", min_value=0.1, max_value=200.0, value=float(current_inputs.get('q_gas_late', pred_q_gas_late)), step=0.5, format="%.3f")
                     cgr_late = st.number_input("Late CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(current_inputs.get('cgr_late', pred_cgr_late)), step=1.0, format="%.3f")
                     q_liq_late, wc_late, gor_late = 0.0, 0.0, 0.0
                 else:
-                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.0, max_value=50000.0, value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), step=100.0, format="%.3f") 
-                    wc_late = st.number_input("Late Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('wc_late', pred_wc_late)), step=0.5, format="%.3f") 
+                    q_liq_late = st.number_input("Late Liquid Rate (STB/D)", min_value=50.0, max_value=50000.0, value=float(current_inputs.get('q_liq_late', pred_q_liq_late)), step=100.0, format="%.3f")
+                    wc_late = st.number_input("Late Water Cut (%)", min_value=0.0, max_value=100.0, value=float(current_inputs.get('wc_late', pred_wc_late)), step=0.5, format="%.3f")
                     q_gas_late, cgr_late, wgr_late = 0.0, 0.0, 0.0
 
-            with col_l3: 
+            with col_l3:
                 if "Gas" in well_type:
                     wgr_late = st.number_input("Late WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(current_inputs.get('wgr_late', pred_wgr_late)), step=0.5, format="%.3f")
                 else:
-                    gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor_late', pred_gor_late)), step=50.0, format="%.3f") 
-                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('bht_late', pred_bht_late)), step=1.0, format="%.3f") 
+                    gor_late = st.number_input("Late Producing GOR (scf/STB)", min_value=0.0, max_value=20000.0, value=float(current_inputs.get('gor_late', pred_gor_late)), step=50.0, format="%.3f")
+                bht_late = st.number_input("Late Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=400.0, value=float(current_inputs.get('bht_late', pred_bht_late)), step=1.0, format="%.3f")
 
     st.markdown("---")
-    
-    # ------------------------------------------------------------------------- 
+
+    # -------------------------------------------------------------------------
     # DUAL OPERATIONAL ENVELOPE SUMMARY MATRIX
-    # ------------------------------------------------------------------------- 
+    # -------------------------------------------------------------------------
     st.markdown("### 📊 Dual Operational Envelope Summary")
-    
+
     if "Gas" in well_type:
         rate_summary_early = f"{q_gas_early:.2f} MMscf/D ({cgr_early:.1f} CGR)"
         rate_summary_late = f"{q_gas_late:.2f} MMscf/D ({cgr_late:.1f} CGR)"
@@ -5544,62 +4259,62 @@ elif page == "7. Well & Fluid Inputs":
         ratio_summary_late = f"{gor_late:.1f} scf/STB GOR"
         governing_msg = "Peak production velocity (Early) vs. Hydrostatic head drawdown (Late)"
 
-    summary_html = f""" 
-    <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.88rem;"> 
-        <thead> 
-            <tr style="background-color: #1E3A8A; color: white; text-align: left;"> 
-                <th style="padding: 10px; border-radius: 4px 0 0 0;">Parameter</th> 
-                <th style="padding: 10px;">🚀 Early-Life Baseline</th> 
-                <th style="padding: 10px;">📉 Late-Life Baseline</th> 
-                <th style="padding: 10px; border-radius: 0 4px 0 0;">Governing Design Challenge</th> 
-            </tr> 
-        </thead> 
-        <tbody> 
-            <tr style="border-bottom: 1px solid #E2E8F0;"> 
-                <td style="padding: 10px; font-weight: 600;">Bottomhole Pressure (P<sub>bhp</sub>)</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_bhp_late:.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Drawdown head limit (Late)</td> 
-            </tr> 
-            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
-                <td style="padding: 10px; font-weight: 600;">Wellhead Pressure (P<sub>wh</sub>)</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_wh_early:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_wh_late:.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">High tubing pressure safety (Early) vs. Minimum surface arrival pressure (Late)</td> 
-            </tr> 
-            <tr style="border-bottom: 1px solid #E2E8F0;"> 
-                <td style="padding: 10px; font-weight: 600;">Flow Rate & Sand PPTB</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early} | Sand: {sand_rate_pptb} PPTB</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{rate_summary_late}</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">{governing_msg}</td> 
-            </tr> 
-            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;"> 
-                <td style="padding: 10px; font-weight: 600;">Producing Ratios</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{ratio_summary_early}</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{ratio_summary_late}</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Multiphase fluid density homogenization (&rho;<sub>m</sub>)</td> 
-            </tr> 
-            <tr style="border-bottom: 1px solid #E2E8F0;"> 
-                <td style="padding: 10px; font-weight: 600;">Bottomhole Temp (BHT)</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{bht_early:.1f} °F</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{bht_late:.1f} °F</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Thermal expansion & APB load (Early) vs. Tubing cooling contraction (Late)</td> 
-            </tr> 
-            <tr style="background-color: #F8FAFC;"> 
-                <td style="padding: 10px; font-weight: 600;">Shut-In CITHP</td> 
-                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{cithp_input:.1f} psi</td> 
-                <td style="padding: 10px; color: #B45309; font-weight: 600;">{(cithp_input * 0.7):.1f} psi</td> 
-                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Static surface pipe burst safety factor (SF_burst &ge; 1.10)</td> 
-            </tr> 
-        </tbody> 
-    </table> 
-    """ 
+    summary_html = f"""
+    <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.88rem;">
+        <thead>
+            <tr style="background-color: #1E3A8A; color: white; text-align: left;">
+                <th style="padding: 10px; border-radius: 4px 0 0 0;">Parameter</th>
+                <th style="padding: 10px;">🚀 Early-Life Baseline</th>
+                <th style="padding: 10px;">📉 Late-Life Baseline</th>
+                <th style="padding: 10px; border-radius: 0 4px 0 0;">Governing Design Challenge</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Pressure (P<sub>bhp</sub>)</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_bhp_early:.1f} psi</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_bhp_late:.1f} psi</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Peak H₂S partial pressure (Early) vs. Drawdown head limit (Late)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                <td style="padding: 10px; font-weight: 600;">Wellhead Pressure (P<sub>wh</sub>)</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{p_wh_early:.1f} psi</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{p_wh_late:.1f} psi</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">High tubing pressure safety (Early) vs. Minimum surface arrival pressure (Late)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+                <td style="padding: 10px; font-weight: 600;">Flow Rate & Sand PPTB</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{rate_summary_early} | Sand: {sand_rate_pptb} PPTB</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{rate_summary_late}</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">{governing_msg}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                <td style="padding: 10px; font-weight: 600;">Producing Ratios</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{ratio_summary_early}</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{ratio_summary_late}</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Multiphase fluid density homogenization (&rho;<sub>m</sub>)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+                <td style="padding: 10px; font-weight: 600;">Bottomhole Temp (BHT)</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{bht_early:.1f} °F</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{bht_late:.1f} °F</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Thermal expansion & APB load (Early) vs. Tubing cooling contraction (Late)</td>
+            </tr>
+            <tr style="background-color: #F8FAFC;">
+                <td style="padding: 10px; font-weight: 600;">Shut-In CITHP</td>
+                <td style="padding: 10px; color: #1E3A8A; font-weight: 600;">{cithp_input:.1f} psi</td>
+                <td style="padding: 10px; color: #B45309; font-weight: 600;">{(cithp_input * 0.7):.1f} psi</td>
+                <td style="padding: 10px; font-size: 0.82rem; color: #475569;">Static surface pipe burst safety factor (SF_burst &ge; 1.10)</td>
+            </tr>
+        </tbody>
+    </table>
+    """
 
-    st.markdown(summary_html, unsafe_allow_html=True) 
-    st.markdown("<br/>", unsafe_allow_html=True) 
+    st.markdown(summary_html, unsafe_allow_html=True)
+    st.markdown("<br/>", unsafe_allow_html=True)
 
     # Automatically persist all inputs to session state on render
-    st.session_state.inputs.update({ 
+    st.session_state.inputs.update({
         "well_type": well_type,
         "tvd": tvd, "md": md, "dls": dls, "casing_id": casing_id,
         "t_wh": t_wh, "t_ambient": t_ambient,
@@ -5609,7 +4324,7 @@ elif page == "7. Well & Fluid Inputs":
         "api_gravity": api_gravity, "gas_sg": gas_sg, "water_sg": water_sg, "oil_visc": oil_visc,
         "h2s_ppm": h2s_ppm, "co2_mole_pct": co2_pct, "ph_val": ph_val, "chlorides_ppm": chlorides_ppm,
         "sand_rate_pptb": sand_rate_pptb, "sand_size_microns": sand_size_microns, "sand_sg": sand_sg,
-        "lithology": lithology, 
+        "lithology": lithology,
         "p_bhp": p_bhp_early, "p_wh": p_wh_early, "t_bht": bht_early,
         "p_bhp_late": p_bhp_late, "p_wh_late": p_wh_late, "bht_late": bht_late,
         "manual_override_late": manual_override
@@ -5625,12 +4340,12 @@ elif page == "7. Well & Fluid Inputs":
             "q_liq_late": q_liq_late, "wc_late": wc_late, "gor_late": gor_late
         })
 
-    # ------------------------------------------------------------------------- 
+    # -------------------------------------------------------------------------
     # ACTION BUTTON: SAVE & RUN MODEL
-    # ------------------------------------------------------------------------- 
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1]) 
-    with col_btn2: 
-        if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True): 
+    # -------------------------------------------------------------------------
+    _, col_btn_mid, _ = st.columns([1, 2, 1])
+    with col_btn_mid:
+        if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True):
             st.success("✅ Operational inputs saved! Proceed to Page 9 to view candidate screening calculations.")
 
 # -----------------------------------------------------------------------------
@@ -5639,18 +4354,18 @@ elif page == "7. Well & Fluid Inputs":
 elif page == "8. Candidate Tubing Specs":
     st.markdown('<div class="main-header">Step 8: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
-    
+
     st.subheader("🔍 Database Filter Controls")
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         selected_sizes = st.multiselect(
-            "Filter by Outer Diameter (OD):", 
+            "Filter by Outer Diameter (OD):",
             options=sorted(st.session_state.tubing_db['OD_in'].unique()),
             default=sorted(st.session_state.tubing_db['OD_in'].unique())
         )
     with col_f2:
         selected_grades = st.multiselect(
-            "Filter by Steel Grade:", 
+            "Filter by Steel Grade:",
             options=sorted(st.session_state.tubing_db['Grade'].unique()),
             default=sorted(st.session_state.tubing_db['Grade'].unique())
         )
@@ -5669,7 +4384,7 @@ elif page == "8. Candidate Tubing Specs":
         st.caption(f"**{len(filtered_db)}** of {len(st.session_state.tubing_db)} candidates selected — Pages 9 and 10 screen exactly this filtered set.")
 
     st.dataframe(filtered_db, use_container_width=True, height=450)
-    
+
     with st.expander("➕ Add Custom Tubing Candidate"):
         with st.form("add_candidate_form"):
             col1, col2, col3 = st.columns(3)
@@ -5686,7 +4401,7 @@ elif page == "8. Candidate Tubing Specs":
                 c_mat = st.selectbox("Material Class", ["Carbon Steel", "NACE Carbon Steel", "Martensitic Stainless", "Super Martensitic CRA", "Enhanced Martensitic CRA", "Duplex Stainless", "Super Duplex CRA", "High-Strength Alloy"])
                 c_conn = st.selectbox("Connection Profile", ["API EUE", "API NUE", "Premium (VAM Top)", "Premium (TenarisHydril)"])
                 c_uns = st.text_input("UNS Designation Code", value="K01100")
-                                
+
             add_sub = st.form_submit_button("Add Candidate to Database")
             if add_sub:
                 if c_id >= c_od:
@@ -5694,7 +4409,7 @@ elif page == "8. Candidate Tubing Specs":
                 else:
                     new_row = pd.DataFrame([{
                         "Name": c_name, "OD_in": c_od, "ID_in": c_id, "Weight_lbft": c_weight,
-                        "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn, 
+                        "Grade": c_grade, "UNS_Code": c_uns, "Material": c_mat, "Connection": c_conn,
                         "Yield_psi": c_yield, "Burst_psi": c_burst
                     }])
                     st.session_state.tubing_db = pd.concat([st.session_state.tubing_db, new_row], ignore_index=True)
@@ -5707,14 +4422,14 @@ elif page == "8. Candidate Tubing Specs":
 elif page == "9. Engineering Calculations":
     st.markdown('<div class="main-header">Step 9: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
-    
+
     candidates = active_candidate_df()
     if candidates.empty:
         st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
 
     try:
-        res_df = run_engineering_calculations(st.session_state.inputs, candidates)
+        res_df = engineering_results(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
@@ -5851,26 +4566,26 @@ elif page == "9. Engineering Calculations":
 elif page == "10. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 10: Recommendations & Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Final candidate ranking, automated engineering rationale, structural/burst checks, and interactive comparative charts.</div>', unsafe_allow_html=True)
-    
+
     candidates = active_candidate_df()
     if candidates.empty:
         st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
         st.stop()
 
     try:
-        res_df = run_engineering_calculations(st.session_state.inputs, candidates)
+        res_df = engineering_results(st.session_state.inputs, candidates)
     except ValueError as error:
         st.error(f"Input validation failed: {error}")
         st.stop()
     passed_candidates = res_df[res_df['Overall_Pass'] == True]
     is_gas = "Gas" in st.session_state.inputs.get('well_type', 'Oil')
-    
+
     col1, col2 = st.columns([1, 2])
-    
+
     with col1:
         if not passed_candidates.empty:
             preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-            
+
             st.success("### Preferred Candidate")
             st.markdown(f"## **{preferred['Name']}**")
             st.metric("Total Pressure Drop", f"{preferred['dp_total_psi']} psi")
@@ -5888,13 +4603,13 @@ elif page == "10. Recommendation & Sensitivity":
         st.subheader("Engineering Justification Rationale")
         if not passed_candidates.empty:
             preferred = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-            
+
             rate_str = (
                 f"**{st.session_state.inputs.get('q_gas_mmscfd', 15.0)} MMscf/D** gas with **{st.session_state.inputs.get('cgr_stb_mmscf', 25.0)} STB/MMscf** condensate"
                 if is_gas else
                 f"**{st.session_state.inputs.get('q_liquid', 5000.0)} STB/D** liquid with **{st.session_state.inputs.get('water_cut', 5.0)}%** water cut"
             )
-            
+
             st.markdown(rf"""
             * **Hydraulic Validation:** Total pressure drop (**{preferred['dp_total_psi']} psi**) is fully within available drawdown drive (**{preferred['dp_avail_psi']} psi**). Dynamic Z-factor (**{preferred['Z_Factor']}**) confirms live fluid conditions at rate of {rate_str}.
             * **Velocity Window:** Initial flow velocity (**{preferred['Velocity_fts']} ft/s**) sits between the minimum sand carrying limit (**{preferred['v_carrying']} ft/s**) and the Salama sand erosion threshold (**{preferred['v_erosional']} ft/s**). Late-life velocity (**{preferred['v_late_life_fts']} ft/s**) remains above the depleted-condition carrying limit (**{preferred['v_carrying_late']} ft/s**).
@@ -5915,7 +4630,7 @@ elif page == "10. Recommendation & Sensitivity":
     if st.button("✨ Generate AI Executive Summary", type="primary"):
         raw_key = st.secrets.get("GEMINI_API_KEY", "")
         api_key = raw_key.strip().replace('"', '').replace("'", "")
-        
+
         if not api_key:
             st.error("⚠️ GEMINI_API_KEY not found in Streamlit Secrets! Please add it in App Settings -> Secrets.")
         elif passed_candidates.empty:
@@ -5924,7 +4639,7 @@ elif page == "10. Recommendation & Sensitivity":
             with st.spinner("Analyzing hydraulics, CITHP burst loads, velocity windows, and NACE compliance via Gemini API..."):
                 try:
                     pref = passed_candidates.sort_values(by='dp_total_psi').iloc[0]
-                    
+
                     if is_gas:
                         production_context = f"""
                         - Operating Mode: Gas / Condensate Well
@@ -5985,12 +4700,12 @@ elif page == "10. Recommendation & Sensitivity":
                         "contents": [{"parts": [{"text": prompt_text}]}],
                         "generationConfig": {"temperature": 0.2}
                     }
-                    
+
                     headers = {
                         'Content-Type': 'application/json',
                         'x-goog-api-key': api_key
                     }
-                    
+
                     req = urllib.request.Request(
                         url,
                         data=json.dumps(payload).encode('utf-8'),
@@ -6019,9 +4734,9 @@ elif page == "10. Recommendation & Sensitivity":
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.subheader("Interactive Sensitivity Plots")
-    
+
     tab1, tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
-    
+
     with tab1:
         fig_dp = px.line(
             res_df, x="ID_in", y="dp_total_psi", color="Grade", markers=True,
@@ -6031,16 +4746,16 @@ elif page == "10. Recommendation & Sensitivity":
         )
         fig_dp.update_traces(marker=dict(size=10))
         fig_dp.add_hline(
-            y=res_df['dp_avail_psi'].iloc[0], 
-            line_dash="dash", 
-            line_color="red", 
+            y=res_df['dp_avail_psi'].iloc[0],
+            line_dash="dash",
+            line_color="red",
             annotation_text="Available Drawdown Limit",
             annotation_position="bottom right"
         )
-        
+
         max_dp = max(res_df['dp_total_psi'].max(), res_df['dp_avail_psi'].iloc[0])
         fig_dp.update_layout(yaxis=dict(range=[0, max_dp * 1.15]), margin=dict(t=50, b=40))
-        
+
         st.plotly_chart(fig_dp, use_container_width=True)
 
     with tab2:
@@ -6049,7 +4764,7 @@ elif page == "10. Recommendation & Sensitivity":
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_late_life_fts'], mode='lines+markers', name='Late-Life Flow Velocity', line=dict(dash='dash', color='purple')))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_erosional'], mode='lines', name='Salama Sand Erosional Limit (Max)', line=dict(dash='dash', color='red')))
         fig_v.add_trace(go.Scatter(x=res_df['ID_in'], y=res_df['v_carrying'], mode='lines', name='Min Sand Carrying Limit', line=dict(dash='dot', color='orange')))
-        
+
         fig_v.update_layout(
             title="Flow Velocity Window vs. Tubing Inner Diameter",
             xaxis_title="Inner Diameter (inches)",
