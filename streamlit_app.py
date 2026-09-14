@@ -2456,11 +2456,13 @@ elif page == "3. Wellbore Hydraulics & Velocity Limits":
 elif page == "4. Tubing Stress Analysis":
     st.markdown('<div class="main-header">Step 4: Tubing Stress & Structural Load Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Comprehensive tubing load balance, trapped APB, Lamé stress distributions, shut-in burst, NACE sour service, and connection selection.</div>', unsafe_allow_html=True)
+    
     tab1, tab2, tab3 = st.tabs([
         "📊 Tab 1: Real-Time Structural Analysis & APB Balance",
         "🔬 Tab 2: Advanced Stress Distribution & API TR 5C3 Limit States",
         "🛡️ Tab 3: Environmental Integrity, Shut-In Burst & Connection Logic"
     ])
+    
     # =========================================================================
     # TAB 1: REAL-TIME STRUCTURAL ANALYSIS & APB BALANCE
     # =========================================================================
@@ -2479,12 +2481,15 @@ elif page == "4. Tubing Stress Analysis":
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
         col_input, col_viz = st.columns([1.05, 1.35], gap="medium")
+        
         with col_input:
             st.markdown("### 🛠️ 1. Tubing Specification Controls")
             db_candidates = st.session_state.tubing_db['Name'].tolist() if 'tubing_db' in st.session_state else []
             options = ["Custom Input"] + db_candidates
             selected_cand = st.selectbox("Select Candidate / Input Mode:", options, index=1 if len(options) > 1 else 0, key="t1_cand_select")
+            
             if selected_cand != "Custom Input" and 'tubing_db' in st.session_state:
                 row = st.session_state.tubing_db[st.session_state.tubing_db['Name'] == selected_cand].iloc[0]
                 default_od = float(row['OD_in'])
@@ -2498,48 +2503,59 @@ elif page == "4. Tubing Stress Analysis":
                 default_wt = 9.20
                 default_yield = 80000.0
                 default_burst = 10160.0
+                
             col_t1, col_t2 = st.columns(2)
             with col_t1:
                 od_in = st.number_input("Outer Diameter - OD (in)", min_value=1.0, max_value=12.0, value=default_od, step=0.125, format="%.3f", key="t1_od")
                 id_in = st.number_input("Inner Diameter - ID (in)", min_value=0.5, max_value=11.0, value=default_id, step=0.125, format="%.3f", key="t1_id")
                 weight_lbft = st.number_input("Nominal Weight (lb/ft)", min_value=1.0, max_value=100.0, value=default_wt, step=0.1, format="%.2f", key="t1_wt")
             with col_t2:
-                yield_psi = st.number_input(f"{term('smys', 'Yield Strength - SMYS')} (psi)", min_value=30000.0, max_value=180000.0, value=default_yield, step=5000.0, format="%.0f", key="t1_ys")
-                collapse_rating_psi = st.number_input(f"{term('tubing-collapse-rating', 'Tubing Collapse Rating')} (psi)", min_value=1000.0, max_value=25000.0, value=default_burst * 0.85, step=500.0, format="%.0f", key="t1_col")
-                sf_collapse = st.number_input(f"{term('collapse-safety-factor', 'Collapse Safety Factor')}", min_value=0.8, max_value=2.0, value=1.0, step=0.05, format="%.2f", key="t1_sf")
+                yield_psi = st.number_input("Yield Strength - SMYS (psi)", min_value=30000.0, max_value=180000.0, value=default_yield, step=5000.0, format="%.0f", key="t1_ys")
+                collapse_rating_psi = st.number_input("Tubing Collapse Rating (psi)", min_value=1000.0, max_value=25000.0, value=default_burst * 0.85, step=500.0, format="%.0f", key="t1_col")
+                sf_collapse = st.number_input("Collapse Safety Factor", min_value=0.8, max_value=2.0, value=1.0, step=0.05, format="%.2f", key="t1_sf")
+                
             st.markdown("---")
             st.markdown("### ⚡ 2. Dynamic Operational Inputs (Sliders)")
             inputs = st.session_state.get('inputs', {})
             tvd_val = float(inputs.get('tvd', 10000.0))
             p_bhp_val = float(inputs.get('p_bhp', 4500.0))
+            
             f_overpull = st.slider("Applied Overpull / Tension Force (lbs)", min_value=0, max_value=200000, value=15000, step=5000, key="t1_overpull")
             delta_t_annular_f = st.slider("Annular Thermal Rise ΔT (°F)", min_value=0.0, max_value=250.0, value=75.0, step=5.0, key="t1_dt")
             p_bhp_slider = st.slider("Bottomhole Pressure P_bhp (psi)", min_value=500.0, max_value=15000.0, value=p_bhp_val, step=250.0, key="t1_pbhp")
             packer_depth_ft = st.slider("Packer Setting TVD Depth (ft)", min_value=1000.0, max_value=25000.0, value=tvd_val, step=500.0, key="t1_packer_tvd")
             annular_mw_ppg = st.slider("Annular Fluid Density (ppg)", min_value=8.33, max_value=18.0, value=9.5, step=0.1, key="t1_mw")
+
         # Computations Tab 1
         area_steel_in2 = (np.pi / 4.0) * (od_in**2 - id_in**2)
         area_id_ft2 = (np.pi / 4.0) * ((id_in / 12.0)**2)
         area_od_ft2 = (np.pi / 4.0) * ((od_in / 12.0)**2)
         pipe_tensile_rating_lbs = yield_psi * area_steel_in2
+        
         alpha_v = 2.1e-4
         kappa_t = 3.0e-6
         delta_t_c = delta_t_annular_f * (5.0 / 9.0)
         dp_apb_psi = (alpha_v / kappa_t) * delta_t_c
+        
         annular_gradient_psi_ft = 0.052 * annular_mw_ppg
         maasp_psi = (collapse_rating_psi / sf_collapse) - (packer_depth_ft * annular_gradient_psi_ft)
         maasp_psi = max(maasp_psi, 0.0)
+        
         rho_slurry_lbft3 = annular_mw_ppg * 7.48052
         f_gravity_lbs = weight_lbft * packer_depth_ft * (1.0 - (rho_slurry_lbft3 / 490.0))
         f_thermal_lbs = 30e6 * area_steel_in2 * 6.9e-6 * delta_t_annular_f
+        
         p_annular_total = (packer_depth_ft * annular_gradient_psi_ft) + dp_apb_psi
         f_piston_lbs = (p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * (area_od_ft2 - area_id_ft2) * 144.0)
         f_ballooning_lbs = 2.0 * 0.3 * ((p_bhp_slider * area_id_ft2 * 144.0) - (p_annular_total * area_od_ft2 * 144.0))
         f_drag_lbs = 2500.0
+        
         f_axial_net_lbs = f_gravity_lbs + f_thermal_lbs + f_piston_lbs + f_ballooning_lbs + f_drag_lbs + f_overpull
+        
         apb_failed = dp_apb_psi > maasp_psi
         axial_failed = abs(f_axial_net_lbs) > pipe_tensile_rating_lbs
         string_failed = apb_failed or axial_failed
+        
         with col_viz:
             st.markdown("### 📊 3. Structural Integrity Visualizer")
             if string_failed:
@@ -2551,10 +2567,12 @@ elif page == "4. Tubing Stress Analysis":
                 st.error("🔴 **STRING FAILURE / BUCKLED / PIPE BROKEN**\n\n" + "\n".join(failure_reasons))
             else:
                 st.success("🟢 **STRING OK / STABLE OPERATING ENVELOPE**\n\nNet Axial Tension and Annular Pressure Build-Up are within allowable design limits.")
+                
             fig = go.Figure()
             main_color = "#DC2626" if string_failed else "#2563EB"
             fill_color = "rgba(220, 38, 38, 0.15)" if string_failed else "rgba(37, 99, 235, 0.15)"
             line_style = "dash" if string_failed else "solid"
+            
             fig.add_trace(go.Scatter(x=[-5, -5, -4.5, -4.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='#94A3B8', line=dict(color='#475569'), name='Outer Casing Wall', hoverinfo='skip'))
             fig.add_trace(go.Scatter(x=[5, 5, 4.5, 4.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='#94A3B8', line=dict(color='#475569'), name='Outer Casing Wall', showlegend=False, hoverinfo='skip'))
             fig.add_trace(go.Scatter(x=[-4.5, -4.5, -2, -2], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor='rgba(234, 179, 8, 0.25)', line=dict(width=0), name='Trapped APB Zone'))
@@ -2563,6 +2581,7 @@ elif page == "4. Tubing Stress Analysis":
             fig.add_trace(go.Scatter(x=[2, 2, 1.5, 1.5], y=[0, -packer_depth_ft, -packer_depth_ft, 0], fill='toself', fillcolor=fill_color, line=dict(color=main_color, width=2.5, dash=line_style), showlegend=False))
             fig.add_trace(go.Scatter(x=[-4.5, -1.5, -1.5, -4.5], y=[-packer_depth_ft*0.95, -packer_depth_ft*0.95, -packer_depth_ft, -packer_depth_ft], fill='toself', fillcolor='#1E293B', line=dict(color='#0F172A'), name='Production Packer'))
             fig.add_trace(go.Scatter(x=[4.5, 1.5, 1.5, 4.5], y=[-packer_depth_ft*0.95, -packer_depth_ft*0.95, -packer_depth_ft, -packer_depth_ft], fill='toself', fillcolor='#1E293B', line=dict(color='#0F172A'), showlegend=False))
+            
             status_text = "❌ FAILED / BUCKLED" if string_failed else "✅ STRING SAFE"
             fig.add_annotation(
                 x=0, y=-packer_depth_ft * 0.5,
@@ -2574,16 +2593,18 @@ elif page == "4. Tubing Stress Analysis":
                 borderwidth=2,
                 opacity=0.9
             )
-            # FIXED: Legend position updated to top-right to prevent visualizer overlap
+            
+            # FIXED: Top margin and legend vertical offset increased to completely eliminate title overlap
             fig.update_layout(
-                title="Dynamic Tubing & Wellbore Stress Profile",
+                title=dict(text="Dynamic Tubing & Wellbore Stress Profile", y=0.96, x=0.5, xanchor='center', yanchor='top'),
                 xaxis=dict(range=[-7, 7], visible=False),
                 yaxis=dict(title="True Vertical Depth - TVD (ft)", range=[-packer_depth_ft * 1.08, 200]),
-                height=500,
-                margin=dict(l=40, r=20, t=40, b=20),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                height=520,
+                margin=dict(l=40, r=20, t=80, b=30),
+                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
             )
             st.plotly_chart(fig, use_container_width=True)
+            
         st.markdown("---")
         st.markdown("### 📈 Metric Summary")
         m1, m2, m3, m4, m5 = st.columns(5)
@@ -2592,12 +2613,14 @@ elif page == "4. Tubing Stress Analysis":
         m3.metric("APB Pressure Rise", f"{dp_apb_psi:.1f} psi", help="Thermal expansion of trapped annular fluid")
         m4.metric("Tubing MAASP", f"{maasp_psi:.1f} psi", help="Collapse Rating / SF - Annular Hydrostatic Head")
         m5.metric("Structural Status", "FAIL" if string_failed else "PASS", delta="-CRITICAL" if string_failed else "SAFE", delta_color="inverse" if string_failed else "normal")
+
     # =========================================================================
     # TAB 2: ADVANCED STRESS DISTRIBUTION & API TR 5C3 LIMIT STATES
     # =========================================================================
     with tab2:
         st.markdown("### 🔬 Advanced Triaxial Mechanics & API TR 5C3 Limit States")
         st.caption("Interactive analysis playground for Lamé thick-wall stress gradients, von Mises triaxial yield envelopes, ductile rupture, and external pressure collapse degradation.")
+        
         col_m1, col_m2 = st.columns(2)
         with col_m1:
             st.markdown(f"""
@@ -2637,10 +2660,11 @@ elif page == "4. Tubing Stress Analysis":
                 </p>
             </div>
             """, unsafe_allow_html=True)
+            
         st.markdown("#### 🎯 Guided 'What-If' Failure Presets")
         st.caption("Click any preset button below to automatically load scenario parameters into session state and examine real-time structural responses.")
         
-        # PRESET BUTTON HANDLERS - FIXED TO OVERRIDE INPUT CONTROLS DIRECTLY
+        # PRESET BUTTON HANDLERS
         col_p1, col_p2, col_p3, col_p4 = st.columns(4)
         if col_p1.button("💥 Severe APB Collapse", use_container_width=True, key="preset_apb"):
             st.session_state.t2_pi_in = 500.0
@@ -2684,13 +2708,14 @@ elif page == "4. Tubing Stress Analysis":
             st.markdown("##### 📐 Tubing Geometry & Material")
             t2_od = st.number_input("Outer Diameter - OD (in)", min_value=1.5, max_value=9.625, value=3.500, step=0.125, format="%.3f", key="t2_od_in")
             t2_id = st.number_input("Inner Diameter - ID (in)", min_value=1.0, max_value=8.535, value=2.992, step=0.125, format="%.3f", key="t2_id_in")
-            t2_smys = st.number_input(f"{term('smys', 'Yield Strength - SMYS')} (psi)", min_value=30000.0, max_value=150000.0, step=5000.0, format="%.0f", key="t2_smys_in")
-            t2_dls = st.slider(f"{term('dogleg', 'Dogleg Severity - DLS')} (°/100ft)", min_value=0.0, max_value=15.0, step=0.5, key="t2_dls_in")
+            # FIXED: Plain text label string prevents raw HTML span tags from being displayed in number_input label
+            t2_smys = st.number_input("Yield Strength - SMYS (psi)", min_value=30000.0, max_value=150000.0, step=5000.0, format="%.0f", key="t2_smys_in")
+            t2_dls = st.slider("Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, step=0.5, key="t2_dls_in")
         with col_s2:
             st.markdown("##### ⚡ Applied Operating Loads")
             t2_pi = st.slider("Internal Pressure P_i (psi)", min_value=0.0, max_value=15000.0, step=250.0, key="t2_pi_in")
             t2_pe = st.slider("External Pressure P_e (psi)", min_value=0.0, max_value=15000.0, step=250.0, key="t2_pe_in")
-            t2_fa = st.slider(f"{term('axial-load', 'Net Axial Force F_a')} (klbs)", min_value=-100.0, max_value=300.0, step=5.0, key="t2_fa_in")
+            t2_fa = st.slider("Net Axial Force F_a (klbs)", min_value=-100.0, max_value=300.0, step=5.0, key="t2_fa_in")
 
         t2_wall_nom = (t2_od - t2_id) / 2.0
         t2_k_wall = 0.875
@@ -2703,7 +2728,7 @@ elif page == "4. Tubing Stress Analysis":
         t2_sigma_z_outer = (t2_fa_lbs / t2_area_nom) + t2_sigma_bending
         r_points = np.linspace(t2_r_iw, t2_r_o, 50)
         
-        # Lame thick-wall solution
+        # Lamé thick-wall solution
         lame_mean = (t2_pi * t2_r_iw**2 - t2_pe * t2_r_o**2) / (t2_r_o**2 - t2_r_iw**2)
         lame_dev = ((t2_pi - t2_pe) * t2_r_iw**2 * t2_r_o**2) / (r_points**2 * (t2_r_o**2 - t2_r_iw**2))
         sigma_r_profile = lame_mean - lame_dev
@@ -2714,6 +2739,7 @@ elif page == "4. Tubing Stress Analysis":
                                      + (s_z - sigma_r_profile)**2))
         vme_max_psi = vme_profile.max()
         triaxial_sf_t2 = t2_smys / vme_max_psi if vme_max_psi > 0 else 99.0
+        
         st.markdown("---")
         col_c1, col_c2 = st.columns(2, gap="medium")
         with col_c1:
@@ -2723,16 +2749,18 @@ elif page == "4. Tubing Stress Analysis":
             fig_lame.add_trace(go.Scatter(x=r_points, y=sigma_r_profile, mode='lines', name='Radial Stress (σ_r)', line=dict(color='#D97706', width=2.5)))
             fig_lame.add_trace(go.Scatter(x=r_points, y=vme_profile, mode='lines', name='von Mises (σ_VME)', line=dict(color='#059669', width=2.5, dash='dash')))
             fig_lame.add_hline(y=t2_smys, line_dash="dot", line_color="red", annotation_text="SMYS Yield Limit", annotation_position="top left")
-            # FIXED: Legend position updated to top-right to prevent title overlap
+            
+            # FIXED: Top margin (t=80) and legend vertical offset (y=1.15) resolved legend-title overlap
             fig_lame.update_layout(
-                title="Stress Variation Across Pipe Wall Thickness",
+                title=dict(text="Stress Variation Across Pipe Wall Thickness", y=0.96, x=0.5, xanchor='center', yanchor='top'),
                 xaxis_title="Wall Radius (inches)",
                 yaxis_title="Stress (psi)",
-                height=420,
-                margin=dict(l=40, r=20, t=50, b=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                height=450,
+                margin=dict(l=40, r=20, t=80, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
             )
             st.plotly_chart(fig_lame, use_container_width=True)
+            
         with col_c2:
             st.markdown("##### 🎯 Chart B: von Mises Triaxial Yield Ellipse")
             dp_range = np.linspace(-12000, 12000, 100)
@@ -2743,6 +2771,7 @@ elif page == "4. Tubing Stress Analysis":
             fa_lower_klbs = ((s_h_arr - root) / 2.0) * t2_area_nom / 1000.0
             delta_p_current = t2_pi - t2_pe
             point_color = "#DC2626" if triaxial_sf_t2 < 1.25 else "#059669"
+            
             fig_ellipse = go.Figure()
             fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_upper_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), name='Yield Envelope Boundary', showlegend=True))
             fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_lower_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), showlegend=False))
@@ -2754,27 +2783,31 @@ elif page == "4. Tubing Stress Analysis":
                 textposition="top right",
                 name='Current Operating Point'
             ))
-            # FIXED: Legend position updated to top-right to prevent title overlap
+            
+            # FIXED: Top margin (t=80) and legend vertical offset (y=1.15) resolved legend-title overlap
             fig_ellipse.update_layout(
-                title="Triaxial Yield Envelope (Fa [klbs] vs ΔP [psi])",
+                title=dict(text="Triaxial Yield Envelope (Fa [klbs] vs ΔP [psi])", y=0.96, x=0.5, xanchor='center', yanchor='top'),
                 xaxis_title="Differential Pressure ΔP = Pi - Pe (psi)",
                 yaxis_title="Net Axial Tension Force Fa (klbs)",
-                height=420,
-                margin=dict(l=40, r=20, t=50, b=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                height=450,
+                margin=dict(l=40, r=20, t=80, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
             )
             st.plotly_chart(fig_ellipse, use_container_width=True)
+            
         st.markdown("---")
         m_t1, m_t2, m_t3, m_t4 = st.columns(4)
         m_t1.metric("Governing von Mises Stress", f"{vme_max_psi:.0f} psi")
         m_t2.metric("Triaxial Safety Factor", f"{triaxial_sf_t2:.2f}", delta="SF >= 1.25", delta_color="normal" if triaxial_sf_t2 >= 1.25 else "inverse")
         m_t3.metric("Bending Stress (DLS)", f"{t2_sigma_bending:.0f} psi")
         m_t4.metric("Triaxial Status", "PASS" if triaxial_sf_t2 >= 1.25 else "YIELD FAILURE", delta="-CRITICAL" if triaxial_sf_t2 < 1.25 else "SAFE", delta_color="inverse" if triaxial_sf_t2 < 1.25 else "normal")
+
     # =========================================================================
     # TAB 3: SHUT-IN SURFACE CITHP BURST ANALYSIS
     # =========================================================================
     with tab3:
-        st.markdown(f"### 🛡️ Static Shut-In Wellhead Pressure ({term('cithp', 'CITHP')}) Analysis")
+        # FIXED: Plain section header prevents raw span elements in title while keeping term pop-up clean in paragraph text below
+        st.markdown("### 🛡️ Static Shut-In Wellhead Pressure (CITHP) Analysis")
         st.caption("Interactive evaluation of static shut-in closed-in tubing head pressure via gas-column barometric equilibrium and surface burst safety margins.")
         st.markdown(f"""
         <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #2563EB; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
@@ -2786,6 +2819,7 @@ elif page == "4. Tubing Stress Analysis":
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
         if 't3_pbhp' not in st.session_state: st.session_state.t3_pbhp = 4500.0
         if 't3_tvd' not in st.session_state: st.session_state.t3_tvd = 10000.0
         if 't3_sg' not in st.session_state: st.session_state.t3_sg = 0.65
@@ -2801,6 +2835,7 @@ elif page == "4. Tubing Stress Analysis":
             st.markdown("##### 🛠️ Pipe Rating Controls")
             grades_list = ["J55", "N80", "L80-1", "P110", "L80-13Cr", "S13Cr-110", "22Cr-110", "25Cr-125"]
             t3_grade = st.selectbox("Steel Grade Selection:", grades_list, index=grades_list.index(st.session_state.t3_grade) if st.session_state.t3_grade in grades_list else 2, key="t3_grade_select")
+            
         st.session_state.t3_pbhp = t3_pbhp
         st.session_state.t3_tvd = t3_tvd
         st.session_state.t3_sg = t3_sg
@@ -2812,6 +2847,7 @@ elif page == "4. Tubing Stress Analysis":
         p_avg_psia = (t3_pbhp / 2.0) + 14.7
         z_fact = 0.88 + 0.00002 * (p_avg_psia - 3000.0)
         z_fact = max(0.65, min(1.25, z_fact))
+        
         p_bhp_psia = t3_pbhp + 14.7
         cithp_psia = p_bhp_psia * np.exp(-(0.01875 * t3_sg * t3_tvd) / (z_fact * t_avg_r))
         cithp_calc_psi = max(cithp_psia - 14.7, 0.0)
@@ -2833,11 +2869,13 @@ elif page == "4. Tubing Stress Analysis":
         m_e2.metric("Pipe Body Burst Limit", f"{p_burst:.0f} psi", help="Candidate internal yield pressure")
         m_e3.metric("Surface Burst SF", f"{sf_burst_cithp:.2f}", delta="SF >= 1.10", delta_color="normal" if burst_pass else "inverse")
         m_e4.metric("Mill Proof Test P_test", f"{p_test_mill:.0f} psi", help="API 5CT Mill Test Gate (80% yield)")
+        
         st.markdown("<br>", unsafe_allow_html=True)
         if not burst_pass:
             st.error(f"🔴 **SURFACE BURST FAILURE**: Calculated shut-in CITHP ({cithp_calc_psi:.0f} psi) exceeds allowable burst limit. Safety factor ({sf_burst_cithp:.2f}) is below target 1.10.")
         else:
             st.success(f"🟢 **SURFACE BURST SAFE**: Safety Factor ({sf_burst_cithp:.2f}) meets or exceeds the required 1.10 design threshold.")
+            
         if not hydro_pass:
             st.warning(f"⚠️ **API 5CT PROOF-TEST ALERT**: Mill proof test pressure ({p_test_mill:.0f} psi) is below expected static shut-in CITHP ({cithp_calc_psi:.0f} psi). Wellhead pressure exceeds standard mill test parameters.")
 
