@@ -1605,7 +1605,7 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 elif page == "2. Wellbore Geometry & PVT":
     st.markdown('<div class="main-header">Step 2: Wellbore Geometry & Interactive PVT Characterization</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Interactive simulation of fluid phase behavior, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Interactive simulation of fluid phase behaviour, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
 
     tab_pvt, tab_geo = st.tabs([
         "📊 Tab 1: Interactive PVT & Depth Profiles",
