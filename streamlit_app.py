@@ -1814,7 +1814,6 @@ elif page == "2. Wellbore Geometry & PVT":
             col_k3.metric("Z-Factor (Z)", f"{z_ins:.3f}")
             col_k4.metric("Gas Volume Factor (B_g)", f"{bg_ins:.5f} ft³/scf")
             col_k5.metric("In-Situ Gas Density (ρ_g)", f"{rho_g_ins:.2f} lb/ft³")
-
     # -------------------------------------------------------------------------
     # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
     # -------------------------------------------------------------------------
@@ -1850,7 +1849,7 @@ elif page == "2. Wellbore Geometry & PVT":
         
         p_pc = 756.8 - 131.07 * gas_sg_g - 3.6 * (gas_sg_g ** 2)
         t_pc = 169.2 + 349.5 * gas_sg_g - 74.0 * (gas_sg_g ** 2)
-        st.markdown(f"**Standing's {term('pseudo-critical', 'Pseudo-Critical')} Anchors:** <i>P</i><sub>pc</sub> = <b>{p_pc:.1f} psia</b> | <i>T</i><sub>pc</sub> = <b>{t_pc:.1f} °R</b>", unsafe_allow_html=True)
+        st.markdown(f"**Standing's {term('pseudo-critical', 'Pseudo-Critical Anchors')}:** <i>P</i><sub>pc</sub> = <b>{p_pc:.1f} psia</b> | <i>T</i><sub>pc</sub> = <b>{t_pc:.1f} °R</b>", unsafe_allow_html=True)
         tvd_array_g = np.linspace(0, tvd_gas, 60)
         api_g = float(inputs.get('api_gravity', 35.0))
         gamma_o_g = 141.5 / (131.5 + api_g)
@@ -3353,13 +3352,11 @@ elif page == "5. Material Selection":
 elif page == METHODOLOGY_PAGE:
     st.markdown('<div class="main-header">Step 6: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
-
     # Which step to auto-expand, driven by the ?step=N links in the flowchart below.
     try:
         active_step = int(st.query_params.get("step", 0))
     except (TypeError, ValueError):
         active_step = 0
-
     # -------------------------------------------------------------------------
     # 1. OVERVIEW FLOWCHART (clickable: each box links to ?step=N)
     # -------------------------------------------------------------------------
@@ -3373,7 +3370,6 @@ elif page == METHODOLOGY_PAGE:
     </p>
 </div>
 """, unsafe_allow_html=True)
-
     flowchart_html = """<style>
 .flow-container { display: flex; flex-direction: column; align-items: center; max-width: 720px; margin: 0 auto 2rem auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 .flow-box { width: 100%; padding: 12px 18px; border-radius: 8px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #CBD5E1; box-sizing: border-box; position: relative; }
@@ -3502,7 +3498,6 @@ elif page == METHODOLOGY_PAGE:
         <span class="flow-step-title" style="font-size: 0.98rem;">Optimal Recommended Tubing String (Ranked by Minimal Pressure Drop)</span>
     </div>
 </div>"""
-
     st.markdown(flowchart_html, unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("""
@@ -3510,7 +3505,6 @@ elif page == METHODOLOGY_PAGE:
     <h2 style="color: #1E40AF; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain A: Thermodynamics &amp; Slurry Rheology</h2>
 </div>
 """, unsafe_allow_html=True)
-
     st.markdown('<div id="step-1"></div>', unsafe_allow_html=True)
     with st.expander("Step 1  ·  Multiphase Fluid PVT & Gas Compressibility (Z-Factor)   —   Domain A", expanded=(active_step == 1)):
         formula_card(
@@ -3537,7 +3531,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate when the PVT solution will not converge numerically, or when extreme reservoir pressure produces non-physical liquid expansion (<i>B<sub>o</sub></i> &le; 0).",
         )
-
         formula_card(
             "1.2",
             "Gas Well Density &amp; Pseudo-Critical Properties",
@@ -3560,7 +3553,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             f"Rejects a candidate when the in-situ {term('z-factor')} falls outside the valid thermodynamic range (0.65 &le; <i>Z</i> &le; 1.25), which signals the correlation is being used outside its envelope.",
         )
-
     st.markdown('<div id="step-2"></div>', unsafe_allow_html=True)
     with st.expander("Step 2  ·  Solid Particle Slurry Density & Volumetric Concentration   —   Domain A", expanded=(active_step == 2)):
         formula_card(
@@ -3585,15 +3577,12 @@ elif page == METHODOLOGY_PAGE:
             f'({int(CV_SOLIDS_MAX * 100)}% by volume) — hyper-concentrated slurry falls outside '
             'standard multiphase transport models."',
         )
-
     st.markdown("---")
-
     st.markdown("""
 <div style="background-color: #FEF3C7; border-left: 6px solid #D97706; padding: 0.75rem 1rem; border-radius: 6px; margin: 0.5rem 0 1.25rem;">
     <h2 style="color: #92400E; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain B: Flow Hydrodynamics &amp; Velocity Boundaries</h2>
 </div>
 """, unsafe_allow_html=True)
-
     st.markdown('<div id="step-3"></div>', unsafe_allow_html=True)
     with st.expander("Step 3  ·  Multiphase Frictional Hydraulics & Pressure Loss   —   Domain B", expanded=(active_step == 3)):
         formula_card(
@@ -3615,7 +3604,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate when total pressure drop exceeds the available drawdown (<i>&Delta;P<sub>total</sub></i> &gt; P<sub>bhp</sub> &minus; P<sub>wh</sub>), leaving the well unable to flow naturally.",
         )
-
         formula_card(
             "3.2",
             "Colebrook-White Friction Factor &amp; Reynolds Number",
@@ -3635,7 +3623,6 @@ elif page == METHODOLOGY_PAGE:
             f'"Rejects a candidate when severe internal restriction produces a non-physical friction '
             f'factor (<i>f</i> &gt; {FRICTION_FACTOR_MAX})."',
         )
-
     st.markdown('<div id="step-4"></div>', unsafe_allow_html=True)
     with st.expander("Step 4  ·  Triple Velocity Operating Envelope (Erosion, Loading & Settling)   —   Domain B", expanded=(active_step == 4)):
         formula_card(
@@ -3655,7 +3642,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate when early-life peak mixture velocity exceeds the Salama erosion threshold (<i>v<sub>m</sub></i> &gt; <i>v<sub>erosional</sub></i>), which would wash out the wall.",
         )
-
         formula_card(
             "4.2",
             "Solid Settling &amp; Critical Liquid Lift Criteria",
@@ -3677,15 +3663,12 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate when velocity falls below the carrying minimum (<i>v<sub>m</sub></i> &lt; <i>v<sub>carrying</sub></i>) in either early or late life, which would plug the well with sand or load it with liquid.",
         )
-
     st.markdown("---")
-
     st.markdown("""
 <div style="background-color: #D1FAE5; border-left: 6px solid #059669; padding: 0.75rem 1rem; border-radius: 6px; margin: 0.5rem 0 1.25rem;">
     <h2 style="color: #065F46; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain C: Structural Mechanics &amp; Environmental Integrity</h2>
 </div>
 """, unsafe_allow_html=True)
-
     st.markdown('<div id="step-5"></div>', unsafe_allow_html=True)
     with st.expander("Step 5  ·  Lubinski 5-Force Net Axial Load & Trapped Annular APB   —   Domain C", expanded=(active_step == 5)):
         formula_card(
@@ -3710,7 +3693,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate when the magnitude of net axial load |<i>F<sub>axial</sub></i>| exceeds the pipe body rating (SMYS × A<sub>steel</sub>).",
         )
-
         formula_card(
             "5.2",
             "Trapped Annular Pressure Build-up (APB)",
@@ -3729,7 +3711,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a configuration when APB exceeds 1500 psi, which erodes the external collapse safety margin.",
         )
-
     st.markdown('<div id="step-6"></div>', unsafe_allow_html=True)
     with st.expander("Step 6  ·  API TR 5C3 / ISO 10400 Triaxial Yield, Ductile Rupture & Collapse   —   Domain C", expanded=(active_step == 6)):
         st.markdown(
@@ -3742,7 +3723,6 @@ elif page == METHODOLOGY_PAGE:
             '</div>',
             unsafe_allow_html=True,
         )
-
         formula_card(
             "6.1",
             "Lam&eacute; Thick-Wall Component Stresses (Clause 6)",
@@ -3769,7 +3749,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Feeds Step 6.2; no rejection occurs at this stage.",
         )
-
         formula_card(
             "6.2",
             "von Mises Triaxial Yield &mdash; Multi-Coordinate Evaluation (Clause 6)",
@@ -3795,7 +3774,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate whose governing <i>SF<sub>triaxial</sub></i> &lt; 1.25 at any evaluated coordinate, which would allow plastic deformation under combined loading.",
         )
-
         formula_card(
             "6.3",
             "Ductile Rupture under Combined Loading (Clause 7)",
@@ -3827,7 +3805,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate whose rupture capacity gives <i>SF</i> &lt; 1.25 against shut-in CITHP. High strain-hardening alloys (duplex, 22Cr/25Cr, <i>n</i> &gt; 0.2) are rejected outright unless a measured true stress-strain fit is supplied, since the empirical <i>n</i> estimate is invalid for them.",
         )
-
         formula_card(
             "6.4",
             "External Pressure Resistance / Collapse (Clause 8)",
@@ -3855,7 +3832,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate whose <i>SF<sub>collapse</sub></i> &lt; 1.10 against the APB-augmented external pressure. Calculation is terminated with an explicit error when &sigma;<sub>z</sub> &ge; <i>Y<sub>p</sub></i> (structural yielding in axial tension precedes collapse), when tension drives <i>Y<sub>pa</sub></i> below the validity floor of the API curve fits, or for cold-expanded pipe, where the Bauschinger effect invalidates these equations entirely.",
         )
-
     st.markdown('<div id="step-7"></div>', unsafe_allow_html=True)
     with st.expander("Step 7  ·  Shut-In CITHP Surface Burst, NACE Sour & Connection Gate   —   Domain C", expanded=(active_step == 7)):
         formula_card(
@@ -3875,7 +3851,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects a candidate failing the static surface burst factor (<i>SF<sub>burst</sub></i> &lt; 1.10), which risks wellhead rupture during shut-in.",
         )
-
         formula_card(
             "7.2",
             "NACE MR0175 Sour Service &amp; Premium Connection Logic",
@@ -3892,13 +3867,11 @@ elif page == METHODOLOGY_PAGE:
             ],
             "Rejects non-NACE-compliant grades under sour service (<i>p<sub>H<sub>2</sub>S</sub></i> &ge; 0.05 psia), grades whose maximum service temperature is below bottomhole temperature, and standard API EUE threads where gas-tight premium connections are required.",
         )
-
     st.markdown("""
 <div style="background-color: #FFEDD5; border-left: 6px solid #EA580C; padding: 0.75rem 1rem; border-radius: 6px; margin: 1.5rem 0 1.25rem;">
     <h2 style="color: #9A3412; font-size: 1.45rem; margin: 0; font-weight: 700;">Domain D: Product Specification &amp; Mill Acceptance</h2>
 </div>
 """, unsafe_allow_html=True)
-
     st.markdown('<div id="step-8"></div>', unsafe_allow_html=True)
     with st.expander("Step 8  ·  API 5CT / ISO 11960 Product Specification Verification   —   Domain D", expanded=(active_step == 8)):
         st.markdown(
@@ -3908,11 +3881,10 @@ elif page == METHODOLOGY_PAGE:
             'pipe can survive the well. Step 8 asks a different question: what the mill had to demonstrate before the '
             'joint was ever shipped. Of the four, only the hydrostatic proof test screens a candidate out &mdash; '
             'operating above the pressure at which a joint was proved sound is a design deficiency. The other three '
-            'are reported requirements that belong in the purchase specification and the mill certificate review.'
+            'are reported acceptance requirements that belong in the purchase specification and the mill certificate review.'
             '</div>',
             unsafe_allow_html=True,
         )
-
         formula_card(
             "8.1",
             "Minimum Tensile Gauge-Length Elongation (Ductility)",
@@ -3938,7 +3910,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "<b>Reported, not a rejection criterion.</b> This is the acceptance requirement the mill certificate must evidence for the grade and wall supplied. An explicitly requested round bar the wall cannot produce is refused outright rather than silently substituted.",
         )
-
         formula_card(
             "8.2",
             "Production Hydrostatic Proof-Test Pressure &mdash; Screening Gate",
@@ -3967,7 +3938,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "<b>Rejects</b> a candidate whose proof-test pressure falls below the shut-in CITHP the string must hold &mdash; the joint would be operated above the pressure at which its integrity was demonstrated. Exceeding the 10,000 psi cap is <i>flagged</i> rather than rejected: it means a specially agreed test is required, not that the pipe is unsuitable.",
         )
-
         formula_card(
             "8.3",
             "Charpy V-Notch Minimum Absorbed Energy (Toughness)",
@@ -3995,7 +3965,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "<b>Reported, not a rejection criterion.</b> Non-Q&amp;T grades (H40, J55, K55, M65) carry no floor class and are reported on the computed value alone. Where the wall cannot produce even a half-size longitudinal specimen, physical testing is waived and a QA manufacturing process check is flagged in its place &mdash; the candidate is not penalised for a geometry the test regime cannot accommodate.",
         )
-
         formula_card(
             "8.4",
             "As-Quenched Hardenability &amp; Martensite Fraction",
@@ -4022,7 +3991,6 @@ elif page == METHODOLOGY_PAGE:
             ],
             "<b>Reported, not a rejection criterion.</b> CRA grades (13Cr, 22Cr, 25Cr) and non-Q&amp;T grades return <i>not applicable</i> with a stated reason rather than an error &mdash; a solution-annealed duplex has no as-quenched martensite target, and that is not a fault in the candidate. Carbon outside the 0.15&ndash;0.50 wt% validity range is refused outright, with an explicit hint when the value looks like a mass fraction rather than a percentage.",
         )
-
     st.markdown("---")
     with st.expander("📘 Full glossary — every highlighted term on this page", expanded=False):
         st.markdown(
