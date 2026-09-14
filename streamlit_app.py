@@ -4845,7 +4845,7 @@ elif page == "10. Recommendation & Sensitivity":
         p_wh_t = np.maximum(p_wh_0 * decline_factor, 50.0)  # Minimum wellhead arrival pressure constraint
         dp_available_t = p_bhp_t - p_wh_t
         
-        # Recalculate Total Pressure Drop along field life
+        # Recalculate Total Pressure Drop along field life for baseline tubing
         dp_hydro_0 = float(selected_row['dp_hydro_psi'])
         dp_fric_0 = float(selected_row['dp_fric_psi'])
         
@@ -4866,7 +4866,6 @@ elif page == "10. Recommendation & Sensitivity":
                 exact_intersection_dp = float(dp_total_t[i])
                 break
             elif diff[i] < 0 and diff[i+1] > 0:  # Pressure drop exceeds available drawdown
-                # Linear interpolation between Year i and Year i+1
                 y1, y2 = years_arr[i], years_arr[i+1]
                 d1, d2 = diff[i], diff[i+1]
                 exact_intersection_year = float(y1 + (0 - d1) * (y2 - y1) / (d2 - d1))
@@ -4883,6 +4882,67 @@ elif page == "10. Recommendation & Sensitivity":
             breach_status_str = "🟢 **Not Breached (Sustained Natural Flow)**"
             breach_alert = f"Natural flow is successfully sustained across the full **{life_yrs_sim}-year** target well life!"
             breach_pass = True
+
+        # =========================================================================
+        # REPLACEMENT CANDIDATE EVALUATION & TRAJECTORY PREPARATION
+        # =========================================================================
+        sorted_replacements = pd.DataFrame()
+        top_1_repl_name = None
+        dp_repl_trajectory = None
+        repl_years_arr = None
+
+        if exact_intersection_year is not None:
+            breach_yr = exact_intersection_year
+            breach_decline = (1.0 - decline_sim / 100.0) ** breach_yr
+            
+            p_bhp_breach = float(p_bhp_0 * breach_decline)
+            p_wh_breach = float(max(p_wh_0 * breach_decline, 50.0))
+            
+            # Build depleted operational inputs dictionary at breach year
+            breach_inputs = dict(st.session_state.inputs)
+            breach_inputs['p_bhp'] = p_bhp_breach
+            breach_inputs['p_wh'] = p_wh_breach
+            
+            is_gas_well_breach = "Gas" in breach_inputs.get('well_type', 'Oil')
+            if is_gas_well_breach:
+                breach_inputs['q_gas_mmscfd'] = float(breach_inputs.get('q_gas_mmscfd', 15.0) * breach_decline)
+            else:
+                breach_inputs['q_liquid'] = float(breach_inputs.get('q_liquid', 5000.0) * breach_decline)
+            
+            # Re-run screening engine for all database candidates at depleted breach conditions
+            all_candidates = st.session_state.tubing_db
+            try:
+                breach_res_df = run_engineering_calculations(breach_inputs, all_candidates)
+            except Exception as e:
+                breach_res_df = pd.DataFrame()
+
+            if not breach_res_df.empty:
+                replacement_candidates = breach_res_df[
+                    (breach_res_df['Overall_Pass'] == True) & 
+                    (breach_res_df['Name'] != selected_life_tubing)
+                ].copy()
+                
+                if not replacement_candidates.empty:
+                    sorted_replacements = replacement_candidates.sort_values(
+                        by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'],
+                        ascending=[True, True, False]
+                    ).reset_index(drop=True)
+                    
+                    # Top Rank #1 Replacement Candidate Trajectory
+                    top_1_r = sorted_replacements.iloc[0]
+                    top_1_repl_name = top_1_r['Name']
+                    
+                    # Calculate trajectory for replacement tubing starting at breach year
+                    repl_years_arr = np.linspace(exact_intersection_year, life_yrs_sim, num=int(np.ceil(life_yrs_sim - exact_intersection_year)) + 5)
+                    repl_decline_factor = (1.0 - decline_sim / 100.0) ** repl_years_arr
+                    
+                    dp_hydro_repl_0 = float(top_1_r['dp_hydro_psi'])
+                    dp_fric_repl_0 = float(top_1_r['dp_fric_psi'])
+                    
+                    # Scale baseline pressure drop relative to breach year decline factor
+                    dp_fric_repl_t = (dp_fric_repl_0 / (breach_decline ** 1.8)) * (repl_decline_factor ** 1.8)
+                    dp_hydro_repl_t = dp_hydro_repl_0 * (0.92 + 0.08 * (repl_decline_factor / breach_decline))
+                    dp_repl_trajectory = dp_hydro_repl_t + dp_fric_repl_t
 
         with col_lc2:
             st.markdown("##### 📌 Lifecycle Key Performance Indicators")
@@ -4905,15 +4965,25 @@ elif page == "10. Recommendation & Sensitivity":
         # Plot Lifecycle Pressure Drop Trajectory Graph
         fig_life = go.Figure()
         
-        # 1. Total Pressure Drop curve
+        # 1. Baseline Tubing Total Pressure Drop curve
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_total_t, mode='lines+markers',
-            name=f'ΔP_total ({selected_life_tubing})',
+            name=f'Baseline ΔP_total ({selected_life_tubing})',
             line=dict(color='#1E3A8A', width=3),
-            hovertemplate='Year %{x}: ΔP_total = %{y:.1f} psi<extra></extra>'
+            hovertemplate='Year %{x}: Baseline ΔP = %{y:.1f} psi<extra></extra>'
         ))
         
-        # 2. Available Drawdown Limit curve
+        # 2. Replacement Tubing Trajectory (If Breach Occurs & Qualified Replacement Found)
+        if dp_repl_trajectory is not None and repl_years_arr is not None:
+            fig_life.add_trace(go.Scatter(
+                x=repl_years_arr, y=dp_repl_trajectory, mode='lines+markers',
+                name=f'Replacement ΔP_total ({top_1_repl_name})',
+                line=dict(color='#10B981', width=3, dash='dashdot'),
+                marker=dict(size=6, symbol='diamond'),
+                hovertemplate='Year %{x:.1f}: Replacement ΔP = %{y:.1f} psi<extra></extra>'
+            ))
+        
+        # 3. Available Drawdown Limit curve
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_available_t, mode='lines+markers',
             name='Available Drawdown Limit (P_bhp - P_wh)',
@@ -4921,7 +4991,7 @@ elif page == "10. Recommendation & Sensitivity":
             hovertemplate='Year %{x}: Available Drawdown = %{y:.1f} psi<extra></extra>'
         ))
         
-        # 3. Hydrostatic Component
+        # 4. Hydrostatic Component (Baseline)
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_hydro_t, mode='lines',
             name='Hydrostatic Component (ΔP_hydro)',
@@ -4929,7 +4999,7 @@ elif page == "10. Recommendation & Sensitivity":
             visible='legendonly'
         ))
         
-        # 4. Frictional Component
+        # 5. Frictional Component (Baseline)
         fig_life.add_trace(go.Scatter(
             x=years_arr, y=dp_fric_t, mode='lines',
             name='Frictional Component (ΔP_fric)',
@@ -4937,14 +5007,12 @@ elif page == "10. Recommendation & Sensitivity":
             visible='legendonly'
         ))
         
-        # 5. Exact Intersection Point Marker and Vertical Line
+        # 6. Exact Intersection Point Marker and Vertical Line
         if exact_intersection_year is not None:
-            # Vertical dashed line at exact intersection year
             fig_life.add_vline(
                 x=exact_intersection_year, line_dash="dashdot", line_color="#DC2626", line_width=1.5
             )
             
-            # Exact Intersection Marker at coordinate (X_intersect, Y_intersect)
             fig_life.add_trace(go.Scatter(
                 x=[exact_intersection_year],
                 y=[exact_intersection_dp],
@@ -4956,7 +5024,7 @@ elif page == "10. Recommendation & Sensitivity":
                 name='Exact Drawdown Limit Breach Point'
             ))
 
-        # Layout styling: Legend repositioned to avoid title overlap
+        # Layout styling
         fig_life.update_layout(
             title=dict(
                 text=f"Tubing Pressure Drop Trajectory vs. Target Well Life ({life_yrs_sim} Years)",
@@ -4987,134 +5055,94 @@ elif page == "10. Recommendation & Sensitivity":
             <h5 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.4rem; font-weight: 700;">💡 Well Life Lifecycle Analysis Findings</h5>
             <ul style="margin: 0; font-size: 0.88rem; color: #1E293B; line-height: 1.6;">
                 <li><b>Target Field Life:</b> <b>{life_yrs_sim} Years</b> (Annual production decline rate: <b>{decline_sim}%</b>).</li>
-                <li><b>Selected Tubing Candidate:</b> <b>{selected_life_tubing}</b> (ID: <b>{id_in_sim}"</b>, OD: <b>{od_in_sim}"</b>, Grade: <b>{grade_sim}</b>).</li>
+                <li><b>Selected Baseline Tubing:</b> <b>{selected_life_tubing}</b> (ID: <b>{id_in_sim}"</b>, OD: <b>{od_in_sim}"</b>, Grade: <b>{grade_sim}</b>).</li>
                 <li><b>Drawdown Status:</b> {breach_alert}</li>
-                <li><b>Engineering Recommendation:</b> {"If drawdown limit is breached prior to target well life, artificial lift or a tubing replacement (velocity string retrofit) must be executed at or prior to the breach year." if not breach_pass else "This candidate provides sufficient hydraulic diameter to sustain natural flow throughout the full target well life."}</li>
+                <li><b>Replacement Trajectory:</b> {"Rank #1 replacement candidate <b>" + str(top_1_repl_name) + "</b> restores natural flow from Year " + f"{exact_intersection_year:.2f}" + " to Year " + str(life_yrs_sim) + "." if top_1_repl_name else ("No breach encountered." if breach_pass else "No natural flow replacement candidate available; artificial lift required.")}</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
         
-# =========================================================================
+        # =========================================================================
         # REPLACEMENT CANDIDATE SCREENING AT BREACH YEAR (MATCHING TAB 1 FORMAT)
         # =========================================================================
         st.markdown("---")
         st.subheader("🔄 Replacement Tubing Candidate Screening Matrix")
         
         if exact_intersection_year is not None:
-            breach_yr = exact_intersection_year
-            breach_decline = (1.0 - decline_sim / 100.0) ** breach_yr
-            
-            p_bhp_breach = float(p_bhp_0 * breach_decline)
-            p_wh_breach = float(max(p_wh_0 * breach_decline, 50.0))
-            
-            # Build depleted operational inputs dictionary at breach year
-            breach_inputs = dict(st.session_state.inputs)
-            breach_inputs['p_bhp'] = p_bhp_breach
-            breach_inputs['p_wh'] = p_wh_breach
-            
-            is_gas_well_breach = "Gas" in breach_inputs.get('well_type', 'Oil')
-            if is_gas_well_breach:
-                breach_inputs['q_gas_mmscfd'] = float(breach_inputs.get('q_gas_mmscfd', 15.0) * breach_decline)
-            else:
-                breach_inputs['q_liquid'] = float(breach_inputs.get('q_liquid', 5000.0) * breach_decline)
-            
-            # Re-run screening engine for all database candidates at depleted breach conditions
-            all_candidates = st.session_state.tubing_db
-            try:
-                breach_res_df = run_engineering_calculations(breach_inputs, all_candidates)
-            except Exception as e:
-                breach_res_df = pd.DataFrame()
-                st.error(f"Error evaluating replacement candidates at Year {breach_yr:.2f}: {e}")
+            col_r1, col_r2 = st.columns([1.2, 1.8], gap="medium")
 
-            if not breach_res_df.empty:
-                # Exclude the currently breached candidate from replacement selection
-                replacement_candidates = breach_res_df[
-                    (breach_res_df['Overall_Pass'] == True) & 
-                    (breach_res_df['Name'] != selected_life_tubing)
-                ].copy()
-                
-                if not replacement_candidates.empty:
-                    sorted_replacements = replacement_candidates.sort_values(
-                        by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'],
-                        ascending=[True, True, False]
-                    ).reset_index(drop=True)
-                else:
-                    sorted_replacements = pd.DataFrame()
-
-                col_r1, col_r2 = st.columns([1.2, 1.8], gap="medium")
-
-                with col_r1:
-                    st.markdown(f"##### Qualified Replacement Candidates at Year {breach_yr:.2f}")
-                    if not sorted_replacements.empty:
-                        st.markdown(f"**Total Qualified Replacement Options:** `{len(sorted_replacements)}` of `{len(all_candidates)}` candidates")
-                        
-                        top_3_repl = sorted_replacements.head(3)
-                        for idx, candidate in top_3_repl.iterrows():
-                            rank = idx + 1
-                            if rank == 1:
-                                border_color, bg_color, badge = "#10B981", "#ECFDF5", "🏆 Rank 1 (Top Replacement)"
-                            elif rank == 2:
-                                border_color, bg_color, badge = "#3B82F6", "#EFF6FF", "🥈 Rank 2 Replacement"
-                            else:
-                                border_color, bg_color, badge = "#F59E0B", "#FFFBEB", "🥉 Rank 3 Replacement"
-                            
-                            st.markdown(f"""
-                            <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                    <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
-                                    <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
-                                    <div><b>Depleted ΔP:</b> {candidate['dp_total_psi']} psi</div>
-                                    <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
-                                    <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
-                                    <div><b>Connection:</b> {candidate['Connection']}</div>
-                                    <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
-                                    <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                        remaining_repl = sorted_replacements.iloc[3:]
-                        if not remaining_repl.empty:
-                            st.markdown("##### Other Qualified Replacement Options")
-                            repl_table_df = remaining_repl.copy()
-                            repl_table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_replacements) + 1)]
-                            repl_table_df = repl_table_df[[
-                                'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
-                            ]].rename(columns={
-                                'Name': 'Tubing', 'dp_total_psi': 'ΔP (psi)', 'Velocity_fts': 'Vel (ft/s)',
-                                'triaxial_sf': 'Triaxial SF', 'burst_sf': 'Burst SF'
-                            })
-                            st.dataframe(repl_table_df, use_container_width=True, hide_index=True)
-                    else:
-                        st.error(f"### No Tubing Candidates Passed Screening at Year {breach_yr:.2f} Depleted Conditions!")
-                        st.warning("Depleted reservoir pressure is insufficient for natural flow in any available tubing size. Artificial lift retrofit (ESP / Gas Lift) is required.")
-
-                with col_r2:
-                    st.markdown(f"##### Replacement Engineering Justification Rationale (Year {breach_yr:.2f})")
-                    if not sorted_replacements.empty:
-                        top_1_r = sorted_replacements.iloc[0]
+            with col_r1:
+                st.markdown(f"##### Qualified Replacement Candidates at Year {exact_intersection_year:.2f}")
+                if not sorted_replacements.empty:
+                    st.markdown(f"**Total Qualified Replacement Options:** `{len(sorted_replacements)}` of `{len(all_candidates)}` candidates")
+                    
+                    top_3_repl = sorted_replacements.head(3)
+                    for idx, candidate in top_3_repl.iterrows():
+                        rank = idx + 1
+                        if rank == 1:
+                            border_color, bg_color, badge = "#10B981", "#ECFDF5", "🏆 Rank 1 (Top Replacement)"
+                        elif rank == 2:
+                            border_color, bg_color, badge = "#3B82F6", "#EFF6FF", "🥈 Rank 2 Replacement"
+                        else:
+                            border_color, bg_color, badge = "#F59E0B", "#FFFBEB", "🥉 Rank 3 Replacement"
                         
                         st.markdown(f"""
-                        <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
-                            <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Replacement Recommendation: {top_1_r['Name']}</h4>
-                            <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
-                                To replace <b>{selected_life_tubing}</b> after reaching the drawdown limit at <b>Year {breach_yr:.2f}</b>, 
-                                <b>{top_1_r['Name']}</b> is selected as the Rank #1 replacement candidate. It restores natural flow by reducing friction, achieving a total pressure drop of <b>{top_1_r['dp_total_psi']} psi</b> (within available drawdown <b>{top_1_r['dp_avail_psi']} psi</b>).
-                            </p>
+                        <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
+                                <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
+                                <div><b>Depleted ΔP:</b> {candidate['dp_total_psi']} psi</div>
+                                <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
+                                <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
+                                <div><b>Connection:</b> {candidate['Connection']}</div>
+                                <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
+                                <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
+                            </div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
-                        st.markdown(
-                            f"##### Screening & Lifecycle Replacement Criteria\n"
-                            f"* **Hydraulics at Depleted BHP ({p_bhp_breach:.1f} psi):** "
-                            f"Total pressure drop ($\Delta P_{{total}}$) sits within available drawdown (**{top_1_r['dp_avail_psi']} psi**).\n"
-                            f"* **Velocity Window Compliance:** Operating flow velocity (**{top_1_r['Velocity_fts']} ft/s**) "
-                            f"remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) "
-                            f"and below erosional limits (**{top_1_r['v_erosional']} ft/s**).\n"
-                            f"* **Structural & Surface Safety:** Preserves structural integrity with "
-                            f"Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$)."
-                        )
+
+                    remaining_repl = sorted_replacements.iloc[3:]
+                    if not remaining_repl.empty:
+                        st.markdown("##### Other Qualified Replacement Options")
+                        repl_table_df = remaining_repl.copy()
+                        repl_table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_replacements) + 1)]
+                        repl_table_df = repl_table_df[[
+                            'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
+                        ]].rename(columns={
+                            'Name': 'Tubing', 'dp_total_psi': 'ΔP (psi)', 'Velocity_fts': 'Vel (ft/s)',
+                            'triaxial_sf': 'Triaxial SF', 'burst_sf': 'Burst SF'
+                        })
+                        st.dataframe(repl_table_df, use_container_width=True, hide_index=True)
+                else:
+                    st.error(f"### No Tubing Candidates Passed Screening at Year {exact_intersection_year:.2f} Depleted Conditions!")
+                    st.warning("Depleted reservoir pressure is insufficient for natural flow in any available tubing size. Artificial lift retrofit (ESP / Gas Lift) is required.")
+
+            with col_r2:
+                st.markdown(f"##### Replacement Engineering Justification Rationale (Year {exact_intersection_year:.2f})")
+                if not sorted_replacements.empty:
+                    top_1_r = sorted_replacements.iloc[0]
+                    
+                    st.markdown(f"""
+                    <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                        <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Replacement Recommendation: {top_1_r['Name']}</h4>
+                        <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
+                            To replace <b>{selected_life_tubing}</b> after reaching the drawdown limit at <b>Year {exact_intersection_year:.2f}</b>, 
+                            <b>{top_1_r['Name']}</b> is selected as the Rank #1 replacement candidate. It restores natural flow by reducing pressure loss, achieving a total pressure drop of <b>{top_1_r['dp_total_psi']} psi</b> (well within available drawdown <b>{top_1_r['dp_avail_psi']} psi</b>).
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown(
+                        f"##### Screening & Lifecycle Replacement Criteria\n"
+                        f"* **Hydraulics at Depleted BHP ({p_bhp_breach:.1f} psi):** "
+                        f"Total pressure drop ($\Delta P_{{total}}$) sits within available drawdown (**{top_1_r['dp_avail_psi']} psi**).\n"
+                        f"* **Velocity Window Compliance:** Operating flow velocity (**{top_1_r['Velocity_fts']} ft/s**) "
+                        f"remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) "
+                        f"and below erosional limits (**{top_1_r['v_erosional']} ft/s**).\n"
+                        f"* **Structural & Surface Safety:** Preserves structural integrity with "
+                        f"Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$)."
+                    )
         else:
             st.info(f"🟢 **No Replacement Needed:** **{selected_life_tubing}** does not breach the drawdown limit within the {life_yrs_sim}-year field life.")
