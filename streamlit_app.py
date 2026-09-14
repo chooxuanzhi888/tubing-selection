@@ -4994,7 +4994,7 @@ elif page == "10. Recommendation & Sensitivity":
         </div>
         """, unsafe_allow_html=True)
         
-        # =========================================================================
+# =========================================================================
         # REPLACEMENT CANDIDATE SCREENING AT BREACH YEAR (MATCHING TAB 1 FORMAT)
         # =========================================================================
         st.markdown("---")
@@ -5106,11 +5106,15 @@ elif page == "10. Recommendation & Sensitivity":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown(rf"""
-                        ##### Screening & Lifecycle Replacement Criteria
-                        * **Hydraulics at Depleted BHP ({p_bhp_breach:.1f} psi):** Total pressure drop ($\Delta P_{{{\text{{total}}}} order}$) sits within available drawdown (**{top_1_r['dp_avail_psi']} psi**).
-                        * **Velocity Window Compliance:** Operating flow velocity (**{top_1_r['Velocity_fts']} ft/s**) remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) and below erosional limits (**{top_1_r['v_erosional']} ft/s**).
-                        * **Structural & Surface Safety:** Preserves structural integrity with Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$).
-                        """)
+                        st.markdown(
+                            f"##### Screening & Lifecycle Replacement Criteria\n"
+                            f"* **Hydraulics at Depleted BHP ({p_bhp_breach:.1f} psi):** "
+                            f"Total pressure drop ($\Delta P_{{total}}$) sits within available drawdown (**{top_1_r['dp_avail_psi']} psi**).\n"
+                            f"* **Velocity Window Compliance:** Operating flow velocity (**{top_1_r['Velocity_fts']} ft/s**) "
+                            f"remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) "
+                            f"and below erosional limits (**{top_1_r['v_erosional']} ft/s**).\n"
+                            f"* **Structural & Surface Safety:** Preserves structural integrity with "
+                            f"Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$)."
+                        )
         else:
             st.info(f"🟢 **No Replacement Needed:** **{selected_life_tubing}** does not breach the drawdown limit within the {life_yrs_sim}-year field life.")
