@@ -1756,7 +1756,7 @@ elif page == "2. Wellbore Geometry & PVT":
                     title=dict(text='Oil Formation Volume Factor B_o (rb/STB)', font=dict(color='#D97706')),
                     overlaying='x', side='top'
                 ),
-                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'), autorange='reversed')
+                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'))
             )
         else:
             fig_primary.add_trace(go.Scatter(
@@ -1780,7 +1780,7 @@ elif page == "2. Wellbore Geometry & PVT":
                     title=dict(text='Gas Formation Volume Factor B_g (ft³/scf)', font=dict(color='#7C3AED')),
                     overlaying='x', side='top'
                 ),
-                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'), autorange='reversed')
+                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'))
             )
         fig_primary.update_layout(
             height=580,
@@ -1929,8 +1929,7 @@ elif page == "2. Wellbore Geometry & PVT":
                 side='top'
             ),
             yaxis=dict(
-                title=dict(text='True Vertical Depth - TVD (ft)'), 
-                autorange='reversed'
+                title=dict(text='True Vertical Depth - TVD (ft)')
             ),
             height=540,
             margin=dict(l=60, r=60, t=110, b=40),
