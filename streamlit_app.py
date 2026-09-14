@@ -2614,7 +2614,7 @@ elif page == "4. Tubing Stress Analysis":
         m4.metric("Tubing MAASP", f"{maasp_psi:.1f} psi", help="Collapse Rating / SF - Annular Hydrostatic Head")
         m5.metric("Structural Status", "FAIL" if string_failed else "PASS", delta="-CRITICAL" if string_failed else "SAFE", delta_color="inverse" if string_failed else "normal")
 
-    # =========================================================================
+# =========================================================================
     # TAB 2: ADVANCED STRESS DISTRIBUTION & API TR 5C3 LIMIT STATES
     # =========================================================================
     with tab2:
@@ -2749,7 +2749,6 @@ elif page == "4. Tubing Stress Analysis":
             fig_lame.add_trace(go.Scatter(x=r_points, y=vme_profile, mode='lines', name='von Mises (σ_VME)', line=dict(color='#059669', width=2.5, dash='dash')))
             fig_lame.add_hline(y=t2_smys, line_dash="dot", line_color="red", annotation_text="SMYS Yield Limit", annotation_position="top left")
             
-            # FIXED: Top margin t=90 and legend y=1.02 resolved title-legend overlap
             fig_lame.update_layout(
                 title=dict(text="Stress Variation Across Pipe Wall Thickness", y=0.98, x=0.5, xanchor='center', yanchor='top'),
                 xaxis_title="Wall Radius (inches)",
@@ -2762,20 +2761,31 @@ elif page == "4. Tubing Stress Analysis":
             
         with col_c2:
             st.markdown("##### 🎯 Chart B: von Mises Triaxial Yield Ellipse")
-            dp_range = np.linspace(-12000, 12000, 100)
-            s_h_arr = (dp_range * (t2_od / 2.0)) / t2_wall_nom
-            discriminant = s_h_arr**2 - 4.0 * (s_h_arr**2 - t2_smys**2)
-            root = np.sqrt(np.where(discriminant >= 0, discriminant, np.nan))
-            fa_upper_klbs = ((s_h_arr + root) / 2.0) * t2_area_nom / 1000.0
-            fa_lower_klbs = ((s_h_arr - root) / 2.0) * t2_area_nom / 1000.0
+            
+            # Swapped axes: X = Axial Stress σ_z (ksi), Y = Pressure Differential ΔP (psi)
+            sz_arr = np.linspace(-t2_smys * 1.15, t2_smys * 1.15, 200)
+            disc = sz_arr**2 - 4.0 * (sz_arr**2 - t2_smys**2)
+            valid_mask = disc >= 0
+            sz_v = sz_arr[valid_mask]
+            disc_v = disc[valid_mask]
+            
+            sh_upper = (sz_v + np.sqrt(disc_v)) / 2.0
+            sh_lower = (sz_v - np.sqrt(disc_v)) / 2.0
+            
+            # Convert Hoop Stress to Differential Pressure ΔP = P_i - P_e
+            dp_upper = sh_upper * (2.0 * t2_wall_nom / t2_od)
+            dp_lower = sh_lower * (2.0 * t2_wall_nom / t2_od)
+            sz_v_ksi = sz_v / 1000.0
+            
             delta_p_current = t2_pi - t2_pe
+            sz_current_ksi = t2_sigma_z_outer / 1000.0
             point_color = "#DC2626" if triaxial_sf_t2 < 1.25 else "#059669"
             
             fig_ellipse = go.Figure()
-            fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_upper_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), name='Yield Envelope Boundary', showlegend=True))
-            fig_ellipse.add_trace(go.Scatter(x=dp_range, y=fa_lower_klbs, mode='lines', line=dict(color='#1E3A8A', width=2), showlegend=False))
+            fig_ellipse.add_trace(go.Scatter(x=sz_v_ksi, y=dp_upper, mode='lines', line=dict(color='#1E3A8A', width=2), name='Yield Envelope Boundary', showlegend=True))
+            fig_ellipse.add_trace(go.Scatter(x=sz_v_ksi, y=dp_lower, mode='lines', line=dict(color='#1E3A8A', width=2), showlegend=False))
             fig_ellipse.add_trace(go.Scatter(
-                x=[delta_p_current], y=[t2_fa],
+                x=[sz_current_ksi], y=[delta_p_current],
                 mode='markers+text',
                 marker=dict(size=14, color=point_color, symbol='diamond'),
                 text=[f"  SF = {triaxial_sf_t2:.2f}"],
@@ -2783,11 +2793,19 @@ elif page == "4. Tubing Stress Analysis":
                 name='Current Operating Point'
             ))
             
-            # FIXED: Top margin t=90 and legend y=1.02 resolved title-legend overlap
+            # Centered Cross Axes Configuration (0 at intersection)
             fig_ellipse.update_layout(
-                title=dict(text="Triaxial Yield Envelope (Fa [klbs] vs ΔP [psi])", y=0.98, x=0.5, xanchor='center', yanchor='top'),
-                xaxis_title="Differential Pressure ΔP = Pi - Pe (psi)",
-                yaxis_title="Net Axial Tension Force Fa (klbs)",
+                title=dict(text="von Mises Triaxial Yield Ellipse (ΔP [psi] vs σ_z [ksi])", y=0.98, x=0.5, xanchor='center', yanchor='top'),
+                xaxis=dict(
+                    title="Axial Stress σ_z (ksi)",
+                    zeroline=True, zerolinewidth=2, zerolinecolor='#64748B',
+                    showgrid=True, gridcolor='#E2E8F0'
+                ),
+                yaxis=dict(
+                    title="Tubing Pressure Differential ΔP = Pi - Pe (psi)",
+                    zeroline=True, zerolinewidth=2, zerolinecolor='#64748B',
+                    showgrid=True, gridcolor='#E2E8F0'
+                ),
                 height=450,
                 margin=dict(l=40, r=20, t=90, b=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
