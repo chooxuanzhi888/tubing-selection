@@ -2594,14 +2594,14 @@ elif page == "4. Tubing Stress Analysis":
                 opacity=0.9
             )
             
-            # FIXED: Top margin and legend vertical offset increased to completely eliminate title overlap
+            # FIXED: Legend position set to y=1.02 and title top coordinate set to y=0.98 with t=90 padding to eliminate overlap
             fig.update_layout(
-                title=dict(text="Dynamic Tubing & Wellbore Stress Profile", y=0.96, x=0.5, xanchor='center', yanchor='top'),
+                title=dict(text="Dynamic Tubing & Wellbore Stress Profile", y=0.98, x=0.5, xanchor='center', yanchor='top'),
                 xaxis=dict(range=[-7, 7], visible=False),
                 yaxis=dict(title="True Vertical Depth - TVD (ft)", range=[-packer_depth_ft * 1.08, 200]),
-                height=520,
-                margin=dict(l=40, r=20, t=80, b=30),
-                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
+                height=530,
+                margin=dict(l=40, r=20, t=90, b=30),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig, use_container_width=True)
             
@@ -2708,7 +2708,6 @@ elif page == "4. Tubing Stress Analysis":
             st.markdown("##### 📐 Tubing Geometry & Material")
             t2_od = st.number_input("Outer Diameter - OD (in)", min_value=1.5, max_value=9.625, value=3.500, step=0.125, format="%.3f", key="t2_od_in")
             t2_id = st.number_input("Inner Diameter - ID (in)", min_value=1.0, max_value=8.535, value=2.992, step=0.125, format="%.3f", key="t2_id_in")
-            # FIXED: Plain text label string prevents raw HTML span tags from being displayed in number_input label
             t2_smys = st.number_input("Yield Strength - SMYS (psi)", min_value=30000.0, max_value=150000.0, step=5000.0, format="%.0f", key="t2_smys_in")
             t2_dls = st.slider("Dogleg Severity - DLS (°/100ft)", min_value=0.0, max_value=15.0, step=0.5, key="t2_dls_in")
         with col_s2:
@@ -2750,14 +2749,14 @@ elif page == "4. Tubing Stress Analysis":
             fig_lame.add_trace(go.Scatter(x=r_points, y=vme_profile, mode='lines', name='von Mises (σ_VME)', line=dict(color='#059669', width=2.5, dash='dash')))
             fig_lame.add_hline(y=t2_smys, line_dash="dot", line_color="red", annotation_text="SMYS Yield Limit", annotation_position="top left")
             
-            # FIXED: Top margin (t=80) and legend vertical offset (y=1.15) resolved legend-title overlap
+            # FIXED: Top margin t=90 and legend y=1.02 resolved title-legend overlap
             fig_lame.update_layout(
-                title=dict(text="Stress Variation Across Pipe Wall Thickness", y=0.96, x=0.5, xanchor='center', yanchor='top'),
+                title=dict(text="Stress Variation Across Pipe Wall Thickness", y=0.98, x=0.5, xanchor='center', yanchor='top'),
                 xaxis_title="Wall Radius (inches)",
                 yaxis_title="Stress (psi)",
                 height=450,
-                margin=dict(l=40, r=20, t=80, b=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
+                margin=dict(l=40, r=20, t=90, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_lame, use_container_width=True)
             
@@ -2784,14 +2783,14 @@ elif page == "4. Tubing Stress Analysis":
                 name='Current Operating Point'
             ))
             
-            # FIXED: Top margin (t=80) and legend vertical offset (y=1.15) resolved legend-title overlap
+            # FIXED: Top margin t=90 and legend y=1.02 resolved title-legend overlap
             fig_ellipse.update_layout(
-                title=dict(text="Triaxial Yield Envelope (Fa [klbs] vs ΔP [psi])", y=0.96, x=0.5, xanchor='center', yanchor='top'),
+                title=dict(text="Triaxial Yield Envelope (Fa [klbs] vs ΔP [psi])", y=0.98, x=0.5, xanchor='center', yanchor='top'),
                 xaxis_title="Differential Pressure ΔP = Pi - Pe (psi)",
                 yaxis_title="Net Axial Tension Force Fa (klbs)",
                 height=450,
-                margin=dict(l=40, r=20, t=80, b=40),
-                legend=dict(orientation="h", yanchor="bottom", y=1.15, xanchor="right", x=1)
+                margin=dict(l=40, r=20, t=90, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_ellipse, use_container_width=True)
             
@@ -2806,7 +2805,6 @@ elif page == "4. Tubing Stress Analysis":
     # TAB 3: SHUT-IN SURFACE CITHP BURST ANALYSIS
     # =========================================================================
     with tab3:
-        # FIXED: Plain section header prevents raw span elements in title while keeping term pop-up clean in paragraph text below
         st.markdown("### 🛡️ Static Shut-In Wellhead Pressure (CITHP) Analysis")
         st.caption("Interactive evaluation of static shut-in closed-in tubing head pressure via gas-column barometric equilibrium and surface burst safety margins.")
         st.markdown(f"""
