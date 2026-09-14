@@ -4854,7 +4854,7 @@ elif page == "10. Recommendation & Sensitivity":
         dp_total_t = dp_hydro_t + dp_fric_t
         
         # ---------------------------------------------------------------------
-        # EXACT INTERSECTION CALCULATION (Linear Interpolation Between Steps)
+        # EXACT INTERSECTION CALCULATION FOR BASELINE TUBING
         # ---------------------------------------------------------------------
         diff = dp_total_t - dp_available_t
         exact_intersection_year = None
@@ -4875,21 +4875,22 @@ elif page == "10. Recommendation & Sensitivity":
                 break
 
         if exact_intersection_year is not None:
-            breach_status_str = f"⚠️ **Year {exact_intersection_year:.2f}**"
+            breach_status_str = f"Yr {exact_intersection_year:.1f} Breached"
             breach_alert = f"Drawdown limit reached at **Year {exact_intersection_year:.2f}**. Natural flow ceases as total pressure drop ({exact_intersection_dp:.1f} psi) exceeds available drawdown."
             breach_pass = False
         else:
-            breach_status_str = "🟢 **Not Breached (Sustained Natural Flow)**"
+            breach_status_str = "Not Breached"
             breach_alert = f"Natural flow is successfully sustained across the full **{life_yrs_sim}-year** target well life!"
             breach_pass = True
 
         # =========================================================================
-        # REPLACEMENT CANDIDATE EVALUATION & TRAJECTORY PREPARATION
+        # REPLACEMENT CANDIDATE EVALUATION & SECOND BREACH TRAJECTORY
         # =========================================================================
         sorted_replacements = pd.DataFrame()
         top_1_repl_name = None
         dp_repl_trajectory = None
         repl_years_arr = None
+        repl_breach_yr = None
 
         if exact_intersection_year is not None:
             breach_yr = exact_intersection_year
@@ -4932,17 +4933,27 @@ elif page == "10. Recommendation & Sensitivity":
                     top_1_r = sorted_replacements.iloc[0]
                     top_1_repl_name = top_1_r['Name']
                     
-                    # Calculate trajectory for replacement tubing starting at breach year
-                    repl_years_arr = np.linspace(exact_intersection_year, life_yrs_sim, num=int(np.ceil(life_yrs_sim - exact_intersection_year)) + 5)
+                    # Calculate high-density trajectory for replacement tubing from breach year to end of field life
+                    repl_years_arr = np.linspace(exact_intersection_year, life_yrs_sim, num=100)
                     repl_decline_factor = (1.0 - decline_sim / 100.0) ** repl_years_arr
+                    
+                    dp_avail_repl_t = (p_bhp_0 * repl_decline_factor) - np.maximum(p_wh_0 * repl_decline_factor, 50.0)
                     
                     dp_hydro_repl_0 = float(top_1_r['dp_hydro_psi'])
                     dp_fric_repl_0 = float(top_1_r['dp_fric_psi'])
                     
-                    # Scale baseline pressure drop relative to breach year decline factor
                     dp_fric_repl_t = (dp_fric_repl_0 / (breach_decline ** 1.8)) * (repl_decline_factor ** 1.8)
                     dp_hydro_repl_t = dp_hydro_repl_0 * (0.92 + 0.08 * (repl_decline_factor / breach_decline))
                     dp_repl_trajectory = dp_hydro_repl_t + dp_fric_repl_t
+
+                    # Check if replacement tubing ALSO breaches drawdown limit before field life ends
+                    diff_repl = dp_repl_trajectory - dp_avail_repl_t
+                    for r_idx in range(len(repl_years_arr) - 1):
+                        if diff_repl[r_idx] <= 0 and diff_repl[r_idx+1] > 0:
+                            ry1, ry2 = repl_years_arr[r_idx], repl_years_arr[r_idx+1]
+                            rd1, rd2 = diff_repl[r_idx], diff_repl[r_idx+1]
+                            repl_breach_yr = float(ry1 + (0 - rd1) * (ry2 - ry1) / (rd2 - rd1))
+                            break
 
         with col_lc2:
             st.markdown("##### 📌 Lifecycle Key Performance Indicators")
@@ -4976,10 +4987,9 @@ elif page == "10. Recommendation & Sensitivity":
         # 2. Replacement Tubing Trajectory (If Breach Occurs & Qualified Replacement Found)
         if dp_repl_trajectory is not None and repl_years_arr is not None:
             fig_life.add_trace(go.Scatter(
-                x=repl_years_arr, y=dp_repl_trajectory, mode='lines+markers',
+                x=repl_years_arr, y=dp_repl_trajectory, mode='lines',
                 name=f'Replacement ΔP_total ({top_1_repl_name})',
                 line=dict(color='#10B981', width=3, dash='dashdot'),
-                marker=dict(size=6, symbol='diamond'),
                 hovertemplate='Year %{x:.1f}: Replacement ΔP = %{y:.1f} psi<extra></extra>'
             ))
         
@@ -5007,7 +5017,7 @@ elif page == "10. Recommendation & Sensitivity":
             visible='legendonly'
         ))
         
-        # 6. Exact Intersection Point Marker and Vertical Line
+        # 6. Baseline Breach Marker
         if exact_intersection_year is not None:
             fig_life.add_vline(
                 x=exact_intersection_year, line_dash="dashdot", line_color="#DC2626", line_width=1.5
@@ -5018,10 +5028,26 @@ elif page == "10. Recommendation & Sensitivity":
                 y=[exact_intersection_dp],
                 mode='markers+text',
                 marker=dict(size=14, color='#DC2626', symbol='x', line=dict(width=2, color='black')),
-                text=[f"  Intersection: Yr {exact_intersection_year:.2f} ({exact_intersection_dp:.0f} psi)"],
+                text=[f"  Baseline Breach: Yr {exact_intersection_year:.2f}"],
                 textposition="top right",
-                textfont=dict(color="#DC2626", size=12, family="Arial Black"),
-                name='Exact Drawdown Limit Breach Point'
+                textfont=dict(color="#DC2626", size=11, family="Arial Black"),
+                name='Baseline Drawdown Limit Breach'
+            ))
+
+        # 7. Replacement Breach Marker (if replacement tubing breaches as well)
+        if repl_breach_yr is not None:
+            fig_life.add_vline(
+                x=repl_breach_yr, line_dash="dot", line_color="#D97706", line_width=1.5
+            )
+            fig_life.add_trace(go.Scatter(
+                x=[repl_breach_yr],
+                y=[(p_bhp_0 * ((1.0 - decline_sim / 100.0) ** repl_breach_yr)) - max(p_wh_0 * ((1.0 - decline_sim / 100.0) ** repl_breach_yr), 50.0)],
+                mode='markers+text',
+                marker=dict(size=12, color='#D97706', symbol='diamond', line=dict(width=2, color='black')),
+                text=[f"  Replacement Breach: Yr {repl_breach_yr:.2f}"],
+                textposition="top left",
+                textfont=dict(color="#D97706", size=11, family="Arial Black"),
+                name='Replacement Tubing Limit Breach'
             ))
 
         # Layout styling
@@ -5057,7 +5083,8 @@ elif page == "10. Recommendation & Sensitivity":
                 <li><b>Target Field Life:</b> <b>{life_yrs_sim} Years</b> (Annual production decline rate: <b>{decline_sim}%</b>).</li>
                 <li><b>Selected Baseline Tubing:</b> <b>{selected_life_tubing}</b> (ID: <b>{id_in_sim}"</b>, OD: <b>{od_in_sim}"</b>, Grade: <b>{grade_sim}</b>).</li>
                 <li><b>Drawdown Status:</b> {breach_alert}</li>
-                <li><b>Replacement Trajectory:</b> {"Rank #1 replacement candidate <b>" + str(top_1_repl_name) + "</b> restores natural flow from Year " + f"{exact_intersection_year:.2f}" + " to Year " + str(life_yrs_sim) + "." if top_1_repl_name else ("No breach encountered." if breach_pass else "No natural flow replacement candidate available; artificial lift required.")}</li>
+                <li><b>Replacement Trajectory:</b> {"Rank #1 replacement candidate <b>" + str(top_1_repl_name) + "</b> restores natural flow starting from Year " + f"{exact_intersection_year:.2f}" + "." if top_1_repl_name else ("No breach encountered." if breach_pass else "No natural flow replacement candidate available; artificial lift required.")}</li>
+                {f"<li>⚠️ <b>Secondary Replacement Limit:</b> Replacement candidate <b>{top_1_repl_name}</b> also reaches its drawdown limit at <b>Year {repl_breach_yr:.2f}</b>. Natural flow cannot be sustained beyond Year {repl_breach_yr:.2f}; artificial lift installation (e.g., ESP, Gas Lift) must be executed at or prior to <b>Year {repl_breach_yr:.2f}</b>.</li>" if repl_breach_yr is not None else ""}
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -5142,7 +5169,15 @@ elif page == "10. Recommendation & Sensitivity":
                         f"remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) "
                         f"and below erosional limits (**{top_1_r['v_erosional']} ft/s**).\n"
                         f"* **Structural & Surface Safety:** Preserves structural integrity with "
-                        f"Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$)."
+                        f"Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$).\n"
                     )
+
+                    # Dynamic Explanation if replacement string reaches drawdown limit before field life ends
+                    if repl_breach_yr is not None:
+                        st.warning(
+                            f"⚠️ **Secondary Replacement Limit Notice:**\n\n"
+                            f"The replacement tubing (**{top_1_repl_name}**) extends natural flow production, but will subsequently reach its drawdown limit at **Year {repl_breach_yr:.2f}**.\n\n"
+                            f"**Engineering Action:** The operator must schedule tubing replacement at **Year {exact_intersection_year:.2f}** and plan for artificial lift (ESP / Gas Lift) installation at **Year {repl_breach_yr:.2f}** to avoid production shut-in."
+                        )
         else:
             st.info(f"🟢 **No Replacement Needed:** **{selected_life_tubing}** does not breach the drawdown limit within the {life_yrs_sim}-year field life.")
