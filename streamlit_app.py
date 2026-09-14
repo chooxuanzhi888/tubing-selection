@@ -1815,7 +1815,7 @@ elif page == "2. Wellbore Geometry & PVT":
             col_k4.metric("Gas Volume Factor (B_g)", f"{bg_ins:.5f} ft³/scf")
             col_k5.metric("In-Situ Gas Density (ρ_g)", f"{rho_g_ins:.2f} lb/ft³")
             
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
     # -------------------------------------------------------------------------
     with tab_geo:
@@ -1851,15 +1851,18 @@ elif page == "2. Wellbore Geometry & PVT":
         p_pc = 756.8 - 131.07 * gas_sg_g - 3.6 * (gas_sg_g ** 2)
         t_pc = 169.2 + 349.5 * gas_sg_g - 74.0 * (gas_sg_g ** 2)
         st.markdown(f"**Standing's {term('pseudo-critical', 'Pseudo-Critical Anchors')}:** <i>P</i><sub>pc</sub> = <b>{p_pc:.1f} psia</b> | <i>T</i><sub>pc</sub> = <b>{t_pc:.1f} °R</b>", unsafe_allow_html=True)
+        
         tvd_array_g = np.linspace(0, tvd_gas, 60)
         api_g = float(inputs.get('api_gravity', 35.0))
         gamma_o_g = 141.5 / (131.5 + api_g)
         water_sg_g = float(inputs.get('water_sg', 1.05))
         rho_w_g = water_sg_g * 62.4
+        
         q_g_scf_d = q_gas_mmscfd * 1e6
         q_cond_stbd = q_gas_mmscfd * cgr_g
         q_wat_stbd = q_gas_mmscfd * wgr_g
         q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
+        
         total_liq_bbl = q_cond_stbd + q_wat_stbd
         if total_liq_bbl > 0:
             wc_frac_g = q_wat_stbd / total_liq_bbl
@@ -1871,14 +1874,17 @@ elif page == "2. Wellbore Geometry & PVT":
         depth_frac_g = tvd_array_g / tvd_gas if tvd_gas > 0 else np.zeros_like(tvd_array_g)
         p_psia_g = p_wh_g + (p_bhp_g - p_wh_g) * depth_frac_g + 14.7
         t_deg_r_g = t_wh_g + (t_bht_g - t_wh_g) * depth_frac_g + 459.67
+        
         z_arr_g = np.array([
             compute_dynamic_z_factor(p, t, gas_sg_g) for p, t in zip(p_psia_g, t_deg_r_g)
         ])
+        
         rho_g_arr_g = (2.7 * gas_sg_g * p_psia_g) / (z_arr_g * t_deg_r_g)
         q_g_ft3s_arr = (q_g_scf_d * 14.7 * t_deg_r_g * z_arr_g) / (p_psia_g * 520.0 * 86400.0)
         q_m_ft3s_arr = q_l_ft3s + q_g_ft3s_arr
         lambda_l_arr = np.where(q_m_ft3s_arr > 0, q_l_ft3s / q_m_ft3s_arr, 0.0)
         rho_m_arr = lambda_l_arr * rho_l_g + (1.0 - lambda_l_arr) * rho_g_arr_g
+        
         df_gas_pvt = pd.DataFrame({
             'TVD_ft': tvd_array_g,
             'Z_Factor': z_arr_g,
@@ -1893,18 +1899,23 @@ elif page == "2. Wellbore Geometry & PVT":
         # -------------------------------------------------------------------------
         fig_gas_b = go.Figure()
         fig_gas_b.add_trace(go.Scatter(
-            x=df_gas_pvt['rho_m'], y=df_gas_pvt['TVD_ft'],
-            mode='lines+markers', name='Multiphase Mixture Density (ρ_m, lb/ft³)',
+            x=df_gas_pvt['rho_m'], 
+            y=df_gas_pvt['TVD_ft'],
+            mode='lines+markers', 
+            name='Multiphase Mixture Density (ρ_m, lb/ft³)',
             line=dict(color='#1E3A8A', width=3),
             hovertemplate='Depth: %{y:.1f} ft<br>ρ_m: %{x:.2f} lb/ft³<extra></extra>'
         ))
         fig_gas_b.add_trace(go.Scatter(
-            x=df_gas_pvt['q_g_ft3s'], y=df_gas_pvt['TVD_ft'],
-            mode='lines', name='Downhole Volumetric Gas Rate (q_g, ft³/s)',
+            x=df_gas_pvt['q_g_ft3s'], 
+            y=df_gas_pvt['TVD_ft'],
+            mode='lines', 
+            name='Downhole Volumetric Gas Rate (q_g, ft³/s)',
             line=dict(color='#7C3AED', width=2.5, dash='dash'),
             xaxis='x2',
             hovertemplate='Depth: %{y:.1f} ft<br>q_g: %{x:.3f} ft³/s<extra></extra>'
         ))
+        
         fig_gas_b.update_layout(
             title=dict(
                 text='Downhole Gas Rate (q_g) & Homogeneous Mixture Density (ρ_m) vs. Depth'
@@ -1914,9 +1925,13 @@ elif page == "2. Wellbore Geometry & PVT":
             ),
             xaxis2=dict(
                 title=dict(text='Downhole Gas Volumetric Rate q_g (ft³/s)', font=dict(color='#7C3AED')),
-                overlaying='x', side='top'
+                overlaying='x', 
+                side='top'
             ),
-            yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'),
+            yaxis=dict(
+                title=dict(text='True Vertical Depth - TVD (ft)'), 
+                autorange='reversed'
+            ),
             height=540,
             margin=dict(l=60, r=60, t=110, b=40),
             legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
@@ -1927,18 +1942,18 @@ elif page == "2. Wellbore Geometry & PVT":
         # Physical Interpretation Card
         st.markdown(
             f"""
-        <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
-            <h4 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;">💡 Engineering Interpretation: Gas Expansion vs. Mixture Density Decay</h4>
-            <p style="font-size: 0.89rem; color: #1E293B; line-height: 1.6; margin-bottom: 0.5rem;">
-                As produced gas travels upward from bottomhole (<i>P</i><sub>bhp</sub>) to wellhead (<i>P</i><sub>wh</sub>), the overburden pressure drops significantly. According to the Real Gas Law (<i>P</i> · <i>V</i> = <i>n</i> · <i>Z</i> · <i>R</i> · <i>T</i>):
-            </p>
-            <ul style="font-size: 0.87rem; color: #334155; line-height: 1.55; margin-bottom: 0;">
-                <li><b>Volumetric Gas Expansion (<i>q</i><sub>g</sub> ↑):</b> Lower pressure shallow in the wellbore allows gas molecules to decompress and expand. The volumetric flow rate (<i>q</i><sub>g</sub>) increases drastically as the fluid approaches the surface, driving higher actual fluid velocities.</li>
-                <li><b>Density Reduction ({term("rho-g", "ρ<sub>g</sub>")} ↓ & ρ<sub>m</sub> ↓):</b> Because the same mass of gas now occupies a significantly larger volume (<i>q</i><sub>g</sub>), in-situ gas density (ρ<sub>g</sub>) drops sharply toward the surface.</li>
-                <li><b>Liquid Holdup Influence ({term("holdup", "λ<sub>l</sub>")}):</b> Lower mixture density (ρ<sub>m</sub>) near the surface reduces {term("hydrostatic", "hydrostatic head")} pressure losses. However, if condensate (CGR) or water (WGR) is present, the dense liquid phase exerts a stronger weighting on ρ<sub>m</sub> = λ<sub>l</sub> · ρ<sub>l</sub> + (1 - λ<sub>l</sub>) · ρ<sub>g</sub>, keeping ρ<sub>m</sub> higher than pure gas density.</li>
-            </ul>
-        </div>
-        """,
+            <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
+                <h4 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;">💡 Engineering Interpretation: Gas Expansion vs. Mixture Density Decay</h4>
+                <p style="font-size: 0.89rem; color: #1E293B; line-height: 1.6; margin-bottom: 0.5rem;">
+                    As produced gas travels upward from bottomhole (<i>P</i><sub>bhp</sub>) to wellhead (<i>P</i><sub>wh</sub>), the overburden pressure drops significantly. According to the Real Gas Law (<i>P</i> · <i>V</i> = <i>n</i> · <i>Z</i> · <i>R</i> · <i>T</i>):
+                </p>
+                <ul style="font-size: 0.87rem; color: #334155; line-height: 1.55; margin-bottom: 0;">
+                    <li><b>Volumetric Gas Expansion (<i>q</i><sub>g</sub> ↑):</b> Lower pressure shallow in the wellbore allows gas molecules to decompress and expand. The volumetric flow rate (<i>q</i><sub>g</sub>) increases drastically as the fluid approaches the surface, driving higher actual fluid velocities.</li>
+                    <li><b>Density Reduction ({term("rho-g", "ρ<sub>g</sub>")} ↓ & ρ<sub>m</sub> ↓):</b> Because the same mass of gas now occupies a significantly larger volume (<i>q</i><sub>g</sub>), in-situ gas density (ρ<sub>g</sub>) drops sharply toward the surface.</li>
+                    <li><b>Liquid Holdup Influence ({term("holdup", "λ<sub>l</sub>")}):</b> Lower mixture density (ρ<sub>m</sub>) near the surface reduces {term("hydrostatic", "hydrostatic head")} pressure losses. However, if condensate (CGR) or water (WGR) is present, the dense liquid phase exerts a stronger weighting on ρ<sub>m</sub> = λ<sub>l</sub> · ρ<sub>l</sub> + (1 - λ<sub>l</sub>) · ρ<sub>g</sub>, keeping ρ<sub>m</sub> higher than pure gas density.</li>
+                </ul>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
