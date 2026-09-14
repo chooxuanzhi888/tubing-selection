@@ -254,6 +254,7 @@ COLLAPSE_SF_TARGET = 1.10   # Clause 8 external pressure resistance
 # -----------------------------------------------------------------------------
 # Plain-English explanations for the jargon on Page 6. Rendered as click-to-open
 # pop-ups so a reader who does not know a term can get it without leaving the page.
+# Expanded GLOSSARY dictionary with the requested Page 2 terms
 GLOSSARY = {
     "z-factor": ("Z-factor (gas compressibility)",
                  "How far a real gas strays from ideal-gas behaviour. Z = 1 is ideal; hot deep gas "
@@ -265,9 +266,19 @@ GLOSSARY = {
     "rs": ("Solution gas-oil ratio (Rs)",
            "How much gas is dissolved in the oil at downhole conditions. As pressure drops on the way "
            "up, this gas comes out of solution, lightening the fluid column and adding gas volume."),
-    "bo": ("Oil formation volume factor (Bo)",
+    "bo": ("Downhole oil volumetric swelling (Bo)",
            "Barrels of downhole live oil that shrink into one stock-tank barrel at surface. A Bo of 1.3 "
            "means the oil occupies 30% more space downhole because of dissolved gas."),
+    "rho-o-live": ("Live-oil density (rho_o,live)",
+                   "The downhole density of oil containing dissolved solution gas. As pressure decreases toward surface "
+                   "and gas breaks out of solution, live-oil density increases."),
+    "rho-g": ("In-situ gas density (rho_g)",
+              "The actual mass per unit volume of real gas under downhole temperature and pressure conditions, "
+              "governed by the real-gas equation of state."),
+    "bg": ("Gas formation volume factor (Bg)",
+           "The ratio of the volume of gas downhole at pressure and temperature to the volume of the same gas at standard surface conditions."),
+    "rho-l-gas": ("Condensate/water holdup density (rho_l)",
+                  "The weighted density of liquid phases (condensate and formation water) present in the gas stream, setting the overall liquid holdup column weight."),
     "holdup": ("Liquid holdup",
                "The fraction of the pipe cross-section occupied by liquid rather than gas. It sets the "
                "weight of the fluid column, and therefore how much hydrostatic pressure the well must lift against."),
@@ -1606,21 +1617,17 @@ if page == "1. Introduction & Overview":
 elif page == "2. Wellbore Geometry & PVT":
     st.markdown('<div class="main-header">Step 2: Wellbore Geometry & Interactive PVT Characterization</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Interactive simulation of fluid phase behaviour, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
-
     tab_pvt, tab_geo = st.tabs([
         "📊 Tab 1: Interactive PVT & Depth Profiles",
         "📐 Tab 2: Gas Thermodynamics & Mixture Density"
     ])
-
     # -------------------------------------------------------------------------
     # TAB 1: INTERACTIVE PVT & DEPTH PROFILES
     # -------------------------------------------------------------------------
     with tab_pvt:
         inputs = st.session_state.inputs
-
         with st.expander("⚙️ Interactive Controls & Fluid Parameters", expanded=True):
             col_m1, col_m2, col_m3 = st.columns(3)
-
             with col_m1:
                 well_mode = st.radio(
                     "Select Well Operating Mode:",
@@ -1629,57 +1636,49 @@ elif page == "2. Wellbore Geometry & PVT":
                 )
                 max_tvd = st.slider("Target TVD (ft)", min_value=2000.0, max_value=25000.0, value=float(inputs.get('tvd', 10000.0)), step=500.0)
                 n_points = st.slider("Depth Grid Resolution (Steps)", min_value=20, max_value=200, value=50, step=10)
-
             with col_m2:
-                p_wh_in = st.number_input("Wellhead Pressure - P_wh (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0)
-                p_bhp_in = st.number_input("Bottomhole Pressure - P_bhp (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0)
-                t_wh_in = st.number_input("Wellhead Temp - T_wh (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0)
-                t_bht_in = st.number_input("Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0)
-
+                p_wh_in = st.number_input("Wellhead Pressure - $P_{wh}$ (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0)
+                p_bhp_in = st.number_input("Bottomhole Pressure - $P_{bhp}$ (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0)
+                t_wh_in = st.number_input("Wellhead Temp - $T_{wh}$ (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0)
+                t_bht_in = st.number_input("Bottomhole Temp - $T_{bht}$ (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0)
             with col_m3:
                 api_in = st.number_input("Oil Gravity (°API)", min_value=10.0, max_value=60.0, value=float(inputs.get('api_gravity', 35.0)), step=0.5)
                 gas_sg_in = st.number_input("Gas Specific Gravity (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01)
                 water_sg_in = st.number_input("Water Specific Gravity", min_value=1.00, max_value=1.30, value=float(inputs.get('water_sg', 1.05)), step=0.01)
-
                 if "Oil" in well_mode:
                     gor_in = st.number_input("Producing GOR (scf/STB)", min_value=0.0, max_value=10000.0, value=float(inputs.get('gor', 800.0)), step=50.0)
                     wc_in = st.number_input("Water Cut (%)", min_value=0.0, max_value=100.0, value=float(inputs.get('water_cut', 5.0)), step=1.0)
                 else:
                     cgr_in = st.number_input("Condensate-Gas Ratio (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(inputs.get('cgr_stb_mmscf', 25.0)), step=5.0)
                     wgr_in = st.number_input("Water-Gas Ratio (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(inputs.get('wgr_bbl_mmscf', 5.0)), step=1.0)
-
+        
         # Mode Explanation Box
         if "Oil" in well_mode:
             st.info(
                 "💡 **Oil Well Mode Explanation:** Uses **Standing's Empirical PVT Correlations** to model "
-                r"dissolved gas in oil ($R_s$), downhole oil volumetric swelling ($B_o$), live-oil density ($\rho_{o,live}$), "
+                r"dissolved gas in oil ($R_s$), " + term("bo", "downhole oil volumetric swelling") + r" ($B_o$), " +
+                term("rho-o-live", "live-oil density") + r" ($\rho_{o,live}$), "
                 r"and combined total liquid density ($\rho_l$). As pressure drops toward the surface, gas breaks out of solution, "
                 "shrinking the liquid volume and increasing live-oil density."
             )
         else:
             st.info(
                 "💡 **Gas Well Mode Explanation:** Uses the **Dranchuk-Abou-Kassem (DAK) Equation of State** to calculate "
-                r"gas compressibility ($Z$-factor), in-situ gas density ($\rho_g$), gas formation volume factor ($B_g$), and "
-                r"condensate/water holdup density ($\rho_l$). Demonstrates how high pressure at depth heavily compresses gas, "
+                r"gas compressibility ($Z$-factor), " + term("rho-g", "in-situ gas density") + r" ($\rho_g$), " +
+                term("bg", "gas formation volume factor") + r" ($B_g$), and " +
+                term("rho-l-gas", "condensate/water holdup density") + r" ($\rho_l$). Demonstrates how high pressure at depth heavily compresses gas, "
                 "significantly increasing downhole gas density compared to surface conditions."
             )
-
-        # -------------------------------------------------------------------------
-        # DEPTH PROFILE COMPUTATIONS (TAB 1)
-        # -------------------------------------------------------------------------
+            
         tvd_array = np.linspace(0, max_tvd, n_points)
         gamma_o = 141.5 / (131.5 + api_in)
         rho_w = water_sg_in * 62.4
-
-        # Vectorized depth profile: pressure and temperature ramp linearly with TVD,
-        # so the whole column is built with NumPy instead of a per-depth Python loop
-        # that re-tested the well mode on every iteration.
         depth_frac = tvd_array / max_tvd if max_tvd > 0 else np.zeros_like(tvd_array)
         p_psia_arr = p_wh_in + (p_bhp_in - p_wh_in) * depth_frac + 14.7
         t_deg_f_arr = t_wh_in + (t_bht_in - t_wh_in) * depth_frac
         t_deg_r_arr = t_deg_f_arr + 459.67
         zeros = np.zeros_like(tvd_array)
-
+        
         if "Oil" in well_mode:
             rs_arr = np.minimum(
                 gas_sg_in * (((p_psia_arr / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_deg_f_arr))) ** 1.2048,
@@ -1691,14 +1690,11 @@ elif page == "2. Wellbore Geometry & PVT":
             rho_l_arr = (1.0 - wc_frac) * rho_o_live_arr + wc_frac * rho_w
             bg_arr, rho_g_arr = zeros, zeros
         else:
-            # The DAK Z-factor is an implicit fixed point, so it stays a per-point
-            # solve; everything derived from it is vectorized.
             z_arr = np.array([
                 compute_dynamic_z_factor(p, t, gas_sg_in) for p, t in zip(p_psia_arr, t_deg_r_arr)
             ])
             rho_g_arr = (2.7 * gas_sg_in * p_psia_arr) / (z_arr * t_deg_r_arr)
             bg_arr = 0.02829 * z_arr * t_deg_r_arr / p_psia_arr
-
             total_liq_bbl = cgr_in + wgr_in
             rho_cond = 62.4 * gamma_o
             if total_liq_bbl > 0:
@@ -1709,7 +1705,7 @@ elif page == "2. Wellbore Geometry & PVT":
             rho_l_arr = np.full_like(tvd_array, rho_l_scalar)
             rs_arr, rho_o_live_arr = zeros, zeros
             bo_arr = np.ones_like(tvd_array)
-
+            
         df_pvt = pd.DataFrame({
             'TVD_ft': tvd_array,
             'P_psia': p_psia_arr,
@@ -1720,11 +1716,9 @@ elif page == "2. Wellbore Geometry & PVT":
             'rho_l': rho_l_arr,
             'rho_g': rho_g_arr
         })
-
+        
         st.markdown("### 📊 Live Liquid Density & Volumetric Expansion vs. True Vertical Depth")
-
         fig_primary = go.Figure()
-
         if "Oil" in well_mode:
             fig_primary.add_trace(go.Scatter(
                 x=df_pvt['rho_l'], y=df_pvt['TVD_ft'],
@@ -1750,7 +1744,7 @@ elif page == "2. Wellbore Geometry & PVT":
                 xaxis2=dict(
                     title='Oil Formation Volume Factor B_o (rb/STB)',
                     title_font=dict(color='#D97706'),
-                    overlaying='x', side='top'
+                    overlaying='x', side='top', pad=dict(t=10)
                 ),
                 yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
             )
@@ -1773,57 +1767,48 @@ elif page == "2. Wellbore Geometry & PVT":
                 xaxis2=dict(
                     title='Gas Formation Volume Factor B_g (ft³/scf)',
                     title_font=dict(color='#7C3AED'),
-                    overlaying='x', side='top'
+                    overlaying='x', side='top', pad=dict(t=10)
                 ),
                 yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
             )
-
         fig_primary.update_layout(
             height=580,
-            margin=dict(l=60, r=60, t=80, b=50),
+            margin=dict(l=60, r=60, t=90, b=50),
             legend=dict(orientation="h", yanchor="bottom", y=-0.18, xanchor="center", x=0.5),
             hovermode="y unified"
         )
         st.plotly_chart(fig_primary, use_container_width=True)
-
         st.markdown("---")
         st.markdown("### 🔍 Depth Spot-Inspection Panel")
         inspect_tvd = st.slider("Select Depth to Inspect (ft)", min_value=0.0, max_value=max_tvd, value=max_tvd / 2.0, step=100.0)
-
         p_ins_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (inspect_tvd / max_tvd)
         p_ins_psia = p_ins_gauge + 14.7
         t_ins_f = t_wh_in + (t_bht_in - t_wh_in) * (inspect_tvd / max_tvd)
-
         col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
         col_k1.metric("Local Pressure", f"{p_ins_gauge:.1f} psig")
         col_k2.metric("Local Temperature", f"{t_ins_f:.1f} °F")
-
         if "Oil" in well_mode:
             rs_ins = gas_sg_in * (((p_ins_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_ins_f))) ** 1.2048
             rs_ins = min(rs_ins, gor_in)
             bo_ins = 0.9759 + 0.000120 * ((rs_ins * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_ins_f) ** 1.2)
             rho_o_ins = (62.4 * gamma_o + 0.0136 * rs_ins * gas_sg_in) / bo_ins
             rho_l_ins = (1.0 - (wc_in / 100.0)) * rho_o_ins + (wc_in / 100.0) * rho_w
-
-            col_k3.metric("Solution GOR (R_s)", f"{rs_ins:.1f} scf/STB")
-            col_k4.metric("Oil Swelling (B_o)", f"{bo_ins:.3f} rb/STB")
-            col_k5.metric("Total Liquid Density (ρ_l)", f"{rho_l_ins:.2f} lb/ft³")
+            col_k3.metric("Solution GOR ($R_s$)", f"{rs_ins:.1f} scf/STB")
+            col_k4.metric("Oil Swelling ($B_o$)", f"{bo_ins:.3f} rb/STB")
+            col_k5.metric("Total Liquid Density ($\rho_l$)", f"{rho_l_ins:.2f} lb/ft³")
         else:
             z_ins = compute_dynamic_z_factor(p_ins_psia, t_ins_f + 459.67, gas_sg_in)
             rho_g_ins = (2.7 * gas_sg_in * p_ins_psia) / (z_ins * (t_ins_f + 459.67))
             bg_ins = 0.02829 * z_ins * (t_ins_f + 459.67) / p_ins_psia
-
-            col_k3.metric("Z-Factor", f"{z_ins:.3f}")
-            col_k4.metric("Gas Volume Factor (B_g)", f"{bg_ins:.5f} ft³/scf")
-            col_k5.metric("In-Situ Gas Density (ρ_g)", f"{rho_g_ins:.2f} lb/ft³")
+            col_k3.metric("Z-Factor ($Z$)", f"{z_ins:.3f}")
+            col_k4.metric("Gas Volume Factor ($B_g$)", f"{bg_ins:.5f} ft³/scf")
+            col_k5.metric("In-Situ Gas Density ($\rho_g$)", f"{rho_g_ins:.2f} lb/ft³")
 
     # -------------------------------------------------------------------------
     # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
     # -------------------------------------------------------------------------
     with tab_geo:
         st.markdown(r"### 🧪 Gas PVT, Compressibility ($Z$) & Mixture Density ($\rho_m$)")
-
-        # Explanatory Box Focusing on Mode Differences
         st.markdown(r"""
         <div style="background-color: #F8FAFC; border-left: 4px solid #0284C7; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem;">
             <b style="color: #0369A1; font-size: 1.0rem;">🔥 Fundamental Differences: Oil PVT vs. Gas Well Thermodynamics</b>
@@ -1833,46 +1818,34 @@ elif page == "2. Wellbore Geometry & PVT":
             </ul>
         </div>
         """, unsafe_allow_html=True)
-
         inputs = st.session_state.inputs
-
         with st.expander("⚙️ Gas Well PVT Parameters & Production Controls", expanded=True):
             col_g1, col_g2, col_g3 = st.columns(3)
-
             with col_g1:
                 tvd_gas = st.slider("Target TVD - Depth (ft)", min_value=2000.0, max_value=25000.0, value=float(inputs.get('tvd', 10000.0)), step=500.0, key="gas_tvd")
-                q_gas_mmscfd = st.number_input("Surface Gas Rate - Q_g (MMscf/D)", min_value=0.1, max_value=200.0, value=float(inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
-                gas_sg_g = st.number_input("Gas Specific Gravity - γ_g (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01, key="gas_sg_g")
-
+                q_gas_mmscfd = st.number_input("Surface Gas Rate - $Q_g$ (MMscf/D)", min_value=0.1, max_value=200.0, value=float(inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
+                gas_sg_g = st.number_input("Gas Specific Gravity - $\gamma_g$ (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01, key="gas_sg_g")
             with col_g2:
-                p_wh_g = st.number_input("Wellhead Pressure - P_wh (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0, key="p_wh_g")
-                p_bhp_g = st.number_input("Bottomhole Pressure - P_bhp (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0, key="p_bhp_g")
+                p_wh_g = st.number_input("Wellhead Pressure - $P_{wh}$ (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0, key="p_wh_g")
+                p_bhp_g = st.number_input("Bottomhole Pressure - $P_{bhp}$ (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0, key="p_bhp_g")
                 cgr_g = st.slider("Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(inputs.get('cgr_stb_mmscf', 25.0)), step=5.0, key="cgr_g_slider")
-
             with col_g3:
-                t_wh_g = st.number_input("Wellhead Temp - T_wh (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0, key="t_wh_g")
-                t_bht_g = st.number_input("Bottomhole Temp - BHT (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0, key="t_bht_g")
+                t_wh_g = st.number_input("Wellhead Temp - $T_{wh}$ (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0, key="t_wh_g")
+                t_bht_g = st.number_input("Bottomhole Temp - $T_{bht}$ (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0, key="t_bht_g")
                 wgr_g = st.slider("Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(inputs.get('wgr_bbl_mmscf', 5.0)), step=1.0, key="wgr_g_slider")
-
-        # -------------------------------------------------------------------------
-        # GAS THERMODYNAMICS & MIXTURE DENSITY COMPUTATIONS
-        # -------------------------------------------------------------------------
+        
         p_pc = 756.8 - 131.07 * gas_sg_g - 3.6 * (gas_sg_g ** 2)
         t_pc = 169.2 + 349.5 * gas_sg_g - 74.0 * (gas_sg_g ** 2)
-
         st.caption(f"**Standing's Pseudo-Critical Anchors:** $P_{{pc}}$ = **{p_pc:.1f} psia** | $T_{{pc}}$ = **{t_pc:.1f} °R**")
-
         tvd_array_g = np.linspace(0, tvd_gas, 60)
         api_g = float(inputs.get('api_gravity', 35.0))
         gamma_o_g = 141.5 / (131.5 + api_g)
         water_sg_g = float(inputs.get('water_sg', 1.05))
         rho_w_g = water_sg_g * 62.4
-
         q_g_scf_d = q_gas_mmscfd * 1e6
         q_cond_stbd = q_gas_mmscfd * cgr_g
         q_wat_stbd = q_gas_mmscfd * wgr_g
         q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
-
         total_liq_bbl = q_cond_stbd + q_wat_stbd
         if total_liq_bbl > 0:
             wc_frac_g = q_wat_stbd / total_liq_bbl
@@ -1880,12 +1853,10 @@ elif page == "2. Wellbore Geometry & PVT":
             rho_l_g = (1.0 - wc_frac_g) * rho_cond_g + wc_frac_g * rho_w_g
         else:
             rho_l_g = 62.4 * gamma_o_g
-
-        # Vectorized gas column; only the implicit DAK Z-factor solve stays per-point.
+            
         depth_frac_g = tvd_array_g / tvd_gas if tvd_gas > 0 else np.zeros_like(tvd_array_g)
         p_psia_g = p_wh_g + (p_bhp_g - p_wh_g) * depth_frac_g + 14.7
         t_deg_r_g = t_wh_g + (t_bht_g - t_wh_g) * depth_frac_g + 459.67
-
         z_arr_g = np.array([
             compute_dynamic_z_factor(p, t, gas_sg_g) for p, t in zip(p_psia_g, t_deg_r_g)
         ])
@@ -1894,7 +1865,6 @@ elif page == "2. Wellbore Geometry & PVT":
         q_m_ft3s_arr = q_l_ft3s + q_g_ft3s_arr
         lambda_l_arr = np.where(q_m_ft3s_arr > 0, q_l_ft3s / q_m_ft3s_arr, 0.0)
         rho_m_arr = lambda_l_arr * rho_l_g + (1.0 - lambda_l_arr) * rho_g_arr_g
-
         df_gas_pvt = pd.DataFrame({
             'TVD_ft': tvd_array_g,
             'Z_Factor': z_arr_g,
@@ -1903,7 +1873,7 @@ elif page == "2. Wellbore Geometry & PVT":
             'lambda_l': lambda_l_arr,
             'rho_m': rho_m_arr
         })
-
+        
         # -------------------------------------------------------------------------
         # FOCUSED PLOTLY CHART (CHART B: DOWNHOLE RATE & MIXTURE DENSITY)
         # -------------------------------------------------------------------------
@@ -1922,24 +1892,25 @@ elif page == "2. Wellbore Geometry & PVT":
             hovertemplate='Depth: %{y:.1f} ft<br>q_g: %{x:.3f} ft³/s<extra></extra>'
         ))
         fig_gas_b.update_layout(
-            title=r'Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth',
+            title=dict(
+                text=r'Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth',
+                pad=dict(b=20)  # Avoid overlap between main title and upper X-axis label
+            ),
             xaxis=dict(title='Multiphase Mixture Density ρ_m (lb/ft³)', title_font=dict(color='#1E3A8A')),
             xaxis2=dict(
                 title='Downhole Gas Volumetric Rate q_g (ft³/s)',
                 title_font=dict(color='#7C3AED'),
-                overlaying='x', side='top'
+                overlaying='x', side='top', pad=dict(t=15)
             ),
             yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed'),
-            height=500,
-            margin=dict(l=60, r=60, t=80, b=40),
+            height=540,
+            margin=dict(l=60, r=60, t=110, b=40),
             legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
             hovermode="y unified"
         )
         st.plotly_chart(fig_gas_b, use_container_width=True)
-
-        # -------------------------------------------------------------------------
-        # PHYSICAL INTERPRETATION & THERMODYNAMIC ANALYSIS CARD
-        # -------------------------------------------------------------------------
+        
+        # Physical Interpretation Card
         st.markdown(
             """
         <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
