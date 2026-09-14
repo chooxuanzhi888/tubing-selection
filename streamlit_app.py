@@ -4801,12 +4801,12 @@ elif page == "10. Recommendation & Sensitivity":
             st.plotly_chart(fig_v, use_container_width=True)
 
 # =========================================================================
-    # TAB 2: TUBING SELECTION ALONG WELL LIFE (UPDATED REFINED PLOT & INTERSECTION)
+    # TAB 2: TUBING SELECTION ALONG WELL LIFE & REPLACEMENT SCREENING
     # =========================================================================
     with page10_tab2:
         st.subheader("📈 Tubing Selection & Pressure Drop Trajectory Along Well Life")
         st.caption("Simulate pressure drop evolution from Year 0 to Target Well Field Life under exponential reservoir pressure depletion and rate decline.")
-
+        
         # Inputs for well life simulation
         field_life_yrs = int(st.session_state.inputs.get('field_life_yrs', 20))
         decline_rate_pct = float(st.session_state.inputs.get('decline_rate', 8.0))
@@ -4974,7 +4974,7 @@ elif page == "10. Recommendation & Sensitivity":
                 xanchor="right",
                 x=0.98,
                 bgcolor="rgba(255, 255, 255, 0.85)",
-                bordercolor="#CBD5E1",  # Fixed: added '#' prefix to make it a valid Plotly hex color string
+                bordercolor="#CBD5E1",
                 borderwidth=1
             )
         )
@@ -4989,7 +4989,128 @@ elif page == "10. Recommendation & Sensitivity":
                 <li><b>Target Field Life:</b> <b>{life_yrs_sim} Years</b> (Annual production decline rate: <b>{decline_sim}%</b>).</li>
                 <li><b>Selected Tubing Candidate:</b> <b>{selected_life_tubing}</b> (ID: <b>{id_in_sim}"</b>, OD: <b>{od_in_sim}"</b>, Grade: <b>{grade_sim}</b>).</li>
                 <li><b>Drawdown Status:</b> {breach_alert}</li>
-                <li><b>Engineering Recommendation:</b> {"If drawdown limit is breached prior to target well life, artificial lift (e.g., gas lift or ESP) or a velocity string retrofit must be scheduled prior to the breach year." if not breach_pass else "This candidate provides sufficient hydraulic diameter to sustain natural flow throughout the full target well life."}</li>
+                <li><b>Engineering Recommendation:</b> {"If drawdown limit is breached prior to target well life, artificial lift or a tubing replacement (velocity string retrofit) must be executed at or prior to the breach year." if not breach_pass else "This candidate provides sufficient hydraulic diameter to sustain natural flow throughout the full target well life."}</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
+        
+        # =========================================================================
+        # REPLACEMENT CANDIDATE SCREENING AT BREACH YEAR (MATCHING TAB 1 FORMAT)
+        # =========================================================================
+        st.markdown("---")
+        st.subheader("🔄 Replacement Tubing Candidate Screening Matrix")
+        
+        if exact_intersection_year is not None:
+            breach_yr = exact_intersection_year
+            breach_decline = (1.0 - decline_sim / 100.0) ** breach_yr
+            
+            p_bhp_breach = float(p_bhp_0 * breach_decline)
+            p_wh_breach = float(max(p_wh_0 * breach_decline, 50.0))
+            
+            # Build depleted operational inputs dictionary at breach year
+            breach_inputs = dict(st.session_state.inputs)
+            breach_inputs['p_bhp'] = p_bhp_breach
+            breach_inputs['p_wh'] = p_wh_breach
+            
+            is_gas_well_breach = "Gas" in breach_inputs.get('well_type', 'Oil')
+            if is_gas_well_breach:
+                breach_inputs['q_gas_mmscfd'] = float(breach_inputs.get('q_gas_mmscfd', 15.0) * breach_decline)
+            else:
+                breach_inputs['q_liquid'] = float(breach_inputs.get('q_liquid', 5000.0) * breach_decline)
+            
+            # Re-run screening engine for all database candidates at depleted breach conditions
+            all_candidates = st.session_state.tubing_db
+            try:
+                breach_res_df = run_engineering_calculations(breach_inputs, all_candidates)
+            except Exception as e:
+                breach_res_df = pd.DataFrame()
+                st.error(f"Error evaluating replacement candidates at Year {breach_yr:.2f}: {e}")
+
+            if not breach_res_df.empty:
+                # Exclude the currently breached candidate from replacement selection
+                replacement_candidates = breach_res_df[
+                    (breach_res_df['Overall_Pass'] == True) & 
+                    (breach_res_df['Name'] != selected_life_tubing)
+                ].copy()
+                
+                if not replacement_candidates.empty:
+                    sorted_replacements = replacement_candidates.sort_values(
+                        by=['dp_total_psi', 'Velocity_fts', 'triaxial_sf'],
+                        ascending=[True, True, False]
+                    ).reset_index(drop=True)
+                else:
+                    sorted_replacements = pd.DataFrame()
+
+                col_r1, col_r2 = st.columns([1.2, 1.8], gap="medium")
+
+                with col_r1:
+                    st.markdown(f"##### Qualified Replacement Candidates at Year {breach_yr:.2f}")
+                    if not sorted_replacements.empty:
+                        st.markdown(f"**Total Qualified Replacement Options:** `{len(sorted_replacements)}` of `{len(all_candidates)}` candidates")
+                        
+                        top_3_repl = sorted_replacements.head(3)
+                        for idx, candidate in top_3_repl.iterrows():
+                            rank = idx + 1
+                            if rank == 1:
+                                border_color, bg_color, badge = "#10B981", "#ECFDF5", "🏆 Rank 1 (Top Replacement)"
+                            elif rank == 2:
+                                border_color, bg_color, badge = "#3B82F6", "#EFF6FF", "🥈 Rank 2 Replacement"
+                            else:
+                                border_color, bg_color, badge = "#F59E0B", "#FFFBEB", "🥉 Rank 3 Replacement"
+                            
+                            st.markdown(f"""
+                            <div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">#{rank}. {candidate['Name']}</span>
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: {border_color}; text-transform: uppercase;">{badge}</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.88rem; color: #334155;">
+                                    <div><b>Depleted ΔP:</b> {candidate['dp_total_psi']} psi</div>
+                                    <div><b>Flow Velocity:</b> {candidate['Velocity_fts']} ft/s</div>
+                                    <div><b>Grade / Mat:</b> {candidate['Grade']}</div>
+                                    <div><b>Connection:</b> {candidate['Connection']}</div>
+                                    <div><b>Triaxial SF:</b> {candidate['triaxial_sf']}</div>
+                                    <div><b>Surface Burst SF:</b> {candidate['burst_sf']}</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        remaining_repl = sorted_replacements.iloc[3:]
+                        if not remaining_repl.empty:
+                            st.markdown("##### Other Qualified Replacement Options")
+                            repl_table_df = remaining_repl.copy()
+                            repl_table_df['Rank'] = [f"#{i}" for i in range(4, len(sorted_replacements) + 1)]
+                            repl_table_df = repl_table_df[[
+                                'Rank', 'Name', 'Grade', 'dp_total_psi', 'Velocity_fts', 'triaxial_sf', 'burst_sf'
+                            ]].rename(columns={
+                                'Name': 'Tubing', 'dp_total_psi': 'ΔP (psi)', 'Velocity_fts': 'Vel (ft/s)',
+                                'triaxial_sf': 'Triaxial SF', 'burst_sf': 'Burst SF'
+                            })
+                            st.dataframe(repl_table_df, use_container_width=True, hide_index=True)
+                    else:
+                        st.error(f"### No Tubing Candidates Passed Screening at Year {breach_yr:.2f} Depleted Conditions!")
+                        st.warning("Depleted reservoir pressure is insufficient for natural flow in any available tubing size. Artificial lift retrofit (ESP / Gas Lift) is required.")
+
+                with col_r2:
+                    st.markdown(f"##### Replacement Engineering Justification Rationale (Year {breach_yr:.2f})")
+                    if not sorted_replacements.empty:
+                        top_1_r = sorted_replacements.iloc[0]
+                        
+                        st.markdown(f"""
+                        <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-left: 5px solid #16A34A; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                            <h4 style="color: #15803D; margin-top: 0; margin-bottom: 0.4rem; font-size: 1.05rem;">🎯 Replacement Recommendation: {top_1_r['Name']}</h4>
+                            <p style="font-size: 0.89rem; color: #166534; line-height: 1.5; margin: 0;">
+                                To replace <b>{selected_life_tubing}</b> after reaching the drawdown limit at <b>Year {breach_yr:.2f}</b>, 
+                                <b>{top_1_r['Name']}</b> is selected as the Rank #1 replacement candidate. It restores natural flow by reducing friction, achieving a total pressure drop of <b>{top_1_r['dp_total_psi']} psi</b> (within available drawdown <b>{top_1_r['dp_avail_psi']} psi</b>).
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown(rf"""
+                        ##### Screening & Lifecycle Replacement Criteria
+                        * **Hydraulics at Depleted BHP ({p_bhp_breach:.1f} psi):** Total pressure drop ($\Delta P_{{{\text{{total}}}} order}$) sits within available drawdown (**{top_1_r['dp_avail_psi']} psi**).
+                        * **Velocity Window Compliance:** Operating flow velocity (**{top_1_r['Velocity_fts']} ft/s**) remains above the depleted carrying velocity limit (**{top_1_r['v_carrying']} ft/s**) and below erosional limits (**{top_1_r['v_erosional']} ft/s**).
+                        * **Structural & Surface Safety:** Preserves structural integrity with Triaxial SF = **{top_1_r['triaxial_sf']}** ($\ge 1.25$) and Burst SF = **{top_1_r['burst_sf']}** ($\ge 1.10$).
+                        """)
+        else:
+            st.info(f"🟢 **No Replacement Needed:** **{selected_life_tubing}** does not breach the drawdown limit within the {life_yrs_sim}-year field life.")
