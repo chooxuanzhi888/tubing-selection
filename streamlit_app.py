@@ -1740,13 +1740,14 @@ elif page == "2. Wellbore Geometry & PVT":
                 hovertemplate='Depth: %{y:.1f} ft<br>B_o: %{x:.4f} rb/STB<extra></extra>'
             ))
             fig_primary.update_layout(
-                xaxis=dict(title='Density (lb/ft³)', title_font=dict(color='#1E3A8A')),
-                xaxis2=dict(
-                    title='Oil Formation Volume Factor B_o (rb/STB)',
-                    title_font=dict(color='#D97706'),
-                    overlaying='x', side='top', pad=dict(t=10)
+                xaxis=dict(
+                    title=dict(text='Density (lb/ft³)', font=dict(color='#1E3A8A'))
                 ),
-                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
+                xaxis2=dict(
+                    title=dict(text='Oil Formation Volume Factor B_o (rb/STB)', font=dict(color='#D97706')),
+                    overlaying='x', side='top'
+                ),
+                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'), autorange='reversed')
             )
         else:
             fig_primary.add_trace(go.Scatter(
@@ -1763,13 +1764,14 @@ elif page == "2. Wellbore Geometry & PVT":
                 hovertemplate='Depth: %{y:.1f} ft<br>B_g: %{x:.5f} ft³/scf<extra></extra>'
             ))
             fig_primary.update_layout(
-                xaxis=dict(title='Gas Density (lb/ft³)', title_font=dict(color='#059669')),
-                xaxis2=dict(
-                    title='Gas Formation Volume Factor B_g (ft³/scf)',
-                    title_font=dict(color='#7C3AED'),
-                    overlaying='x', side='top', pad=dict(t=10)
+                xaxis=dict(
+                    title=dict(text='Gas Density (lb/ft³)', font=dict(color='#059669'))
                 ),
-                yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed')
+                xaxis2=dict(
+                    title=dict(text='Gas Formation Volume Factor B_g (ft³/scf)', font=dict(color='#7C3AED')),
+                    overlaying='x', side='top'
+                ),
+                yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'), autorange='reversed')
             )
         fig_primary.update_layout(
             height=580,
@@ -1893,16 +1895,16 @@ elif page == "2. Wellbore Geometry & PVT":
         ))
         fig_gas_b.update_layout(
             title=dict(
-                text=r'Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth',
-                pad=dict(b=20)  # Avoid overlap between main title and upper X-axis label
+                text=r'Downhole Gas Rate ($q_g$) & Homogeneous Mixture Density ($\rho_m$) vs. Depth'
             ),
-            xaxis=dict(title='Multiphase Mixture Density ρ_m (lb/ft³)', title_font=dict(color='#1E3A8A')),
+            xaxis=dict(
+                title=dict(text='Multiphase Mixture Density ρ_m (lb/ft³)', font=dict(color='#1E3A8A'))
+            ),
             xaxis2=dict(
-                title='Downhole Gas Volumetric Rate q_g (ft³/s)',
-                title_font=dict(color='#7C3AED'),
-                overlaying='x', side='top', pad=dict(t=15)
+                title=dict(text='Downhole Gas Volumetric Rate q_g (ft³/s)', font=dict(color='#7C3AED')),
+                overlaying='x', side='top'
             ),
-            yaxis=dict(title='True Vertical Depth - TVD (ft)', autorange='reversed'),
+            yaxis=dict(title=dict(text='True Vertical Depth - TVD (ft)'), autorange='reversed'),
             height=540,
             margin=dict(l=60, r=60, t=110, b=40),
             legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
