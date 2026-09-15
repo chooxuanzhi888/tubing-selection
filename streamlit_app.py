@@ -413,9 +413,8 @@ GLOSSARY = {
                    "gauge length. It is the practical measure of ductility: a pipe that meets its strength numbers but "
                    "not its elongation will fracture rather than deform when overloaded, giving no warning."),
     "charpy": ("Charpy V-notch (CVN)",
-               "A notched bar struck by a swinging pendulum; the energy absorbed in breaking it measures toughness, "
-               "the resistance to brittle fracture from an existing flaw. Required because a pipe can be strong and "
-               "ductile in tension yet still shatter at a notch under impact loading."),
+               "A standardized impact test that measures how much energy steel can absorb when struck by a "
+               "heavy swinging pendulum before it breaks. "),
     "martensite": ("Martensite",
                    "The hard, supersaturated phase formed when steel is quenched fast enough to trap carbon in the "
                    "lattice. The as-quenched hardness is measured as proof that the required martensite fraction was "
