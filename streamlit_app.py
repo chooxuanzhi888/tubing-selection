@@ -3191,12 +3191,11 @@ elif page == "5. Material Selection":
         st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================================
-    # PAGE 5 - TAB 2: API 5CT MATERIAL QA & CONCEPT SIMULATOR
+    # PAGE 5 - TAB 2: API 5CT MATERIAL QA & CONCEPT SIMULATOR (UPDATED CODES)
     # =========================================================================
     with page5_tab2:
         st.markdown("### 🔬 API 5CT / ISO 11960 Material Property QA Simulator")
         st.caption("Interactive simulator for the four API 5CT mill acceptance properties: Ductility, Proof Pressure, Toughness, and As-Quenched Hardenability.")
-
         # Inner Sub-Tabs for the 4 QA Properties
         qa_sub1, qa_sub2, qa_sub3, qa_sub4 = st.tabs([
             "📏 1. Ductility (Elongation)",
@@ -3204,7 +3203,6 @@ elif page == "5. Material Selection":
             "💥 3. Toughness (CVN)",
             "🔥 4. Martensite & Hardness"
         ])
-
         # ---------------------------------------------------------------------
         # SUB-TAB 1: DUCTILITY (MINIMUM ELONGATION)
         # ---------------------------------------------------------------------
@@ -3219,7 +3217,6 @@ elif page == "5. Material Selection":
                 </p>
             </div>
             """, unsafe_allow_html=True)
-
             col_d1, col_d2 = st.columns([1, 1.1], gap="medium")
             with col_d1:
                 st.markdown("**Interactive Ductility Controls:**")
@@ -3228,7 +3225,6 @@ elif page == "5. Material Selection":
                 grade_utms = {"J55": 75000.0, "L80-1": 95000.0, "N80": 100000.0, "P110": 125000.0, "Q125": 135000.0}
                 utm_psi = grade_utms[qa_grade_d]
                 st.info(f"Grade **{qa_grade_d}** Specified Min Tensile Strength (<i>U</i>): **{utm_psi:,.0f} psi**")
-
             with col_d2:
                 if qa_wall_d <= 0.350:
                     spec_type = "Strip Specimen (1.50 in Width)"
@@ -3236,10 +3232,8 @@ elif page == "5. Material Selection":
                 else:
                     spec_type = "Round Bar Specimen (0.500 in Diameter)"
                     area_physical = 0.20
-
                 area_effective = min(area_physical, 0.75) # Capped at 0.75 in2
                 elongation_pct = 625000.0 * (area_effective ** 0.2) / (utm_psi ** 0.9)
-
                 st.markdown("**Simulated API 5CT Elongation Outputs:**")
                 st.markdown(f"""
                 <div class="qa-metric-container">
@@ -3255,7 +3249,6 @@ elif page == "5. Material Selection":
                     <div style="font-size:1.0rem; font-weight:bold; color:#0F172A;">{area_effective:.4f} in² {'(Capped at 0.75 in²)' if area_physical > 0.75 else ''}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
         # ---------------------------------------------------------------------
         # SUB-TAB 2: PROOF-TEST PRESSURE VS. CITHP GATE
         # ---------------------------------------------------------------------
@@ -3270,7 +3263,6 @@ elif page == "5. Material Selection":
                 </p>
             </div>
             """, unsafe_allow_html=True)
-
             col_p1, col_p2 = st.columns([1.1, 1.0], gap="medium")
             with col_p1:
                 st.markdown("**Tubing Geometry & Mill Test Settings:**")
@@ -3280,16 +3272,13 @@ elif page == "5. Material Selection":
                 grade_yields = {"J55": 55000.0, "L80-1": 80000.0, "P110": 110000.0, "Q125": 125000.0}
                 ys_psi = grade_yields[qa_grade_p]
                 f_factor = 0.60 if (qa_grade_p in ["J55"] and qa_od_p > 9.625) else 0.80
-
                 st.markdown("---")
                 st.markdown("**Surface Operating Pressure (Manual Override):**")
                 qa_cithp_manual = st.slider("Closed-In Tubing Head Pressure - CITHP (psi)", 0, 15000, 6500, 100, key="qa_cithp_manual")
-
             with col_p2:
                 p_test_psi = (2.0 * ys_psi * f_factor * qa_wall_p) / qa_od_p
                 pass_proof = p_test_psi >= qa_cithp_manual
                 sf_proof = p_test_psi / qa_cithp_manual if qa_cithp_manual > 0 else 99.0
-
                 st.markdown("**Factory Proof vs. Operating Load Results:**")
                 st.markdown(f"""
                 <div class="qa-metric-container">
@@ -3305,7 +3294,6 @@ elif page == "5. Material Selection":
                     <div style="font-size:1.2rem; font-weight:bold; color:#1E3A8A;">{sf_proof:.2f} x</div>
                 </div>
                 """, unsafe_allow_html=True)
-
                 if pass_proof:
                     st.markdown("""
                         <div class="status-card-sweet">
@@ -3324,7 +3312,6 @@ elif page == "5. Material Selection":
                             </p>
                         </div>
                     """, unsafe_allow_html=True)
-
         # ---------------------------------------------------------------------
         # SUB-TAB 3: TOUGHNESS (CHARPY V-NOTCH)
         # ---------------------------------------------------------------------
@@ -3338,18 +3325,17 @@ elif page == "5. Material Selection":
                 </p>
             </div>
             """, unsafe_allow_html=True)
-
             col_c1, col_c2 = st.columns([1, 1.1], gap="medium")
             with col_c1:
                 st.markdown("**Pipe & Coupling QA Parameters:**")
                 qa_wall_c = st.slider("Wall Thickness - t (mm)", 4.0, 20.0, 9.5, 0.5, key="qa_wall_c")
                 qa_grade_c = st.selectbox("Grade", ["L80-1", "P110", "Q125"], index=0, key="qa_grade_c")
                 qa_subsize = st.select_slider("Specimen Sub-Size Scaling Factor", options=[0.50, 0.75, 1.00], value=1.00, key="qa_subsize")
+                st.caption("<i>Scales the absorbed impact energy requirement down linearly (1.00 = full-size 10x10 mm, 0.75 = 10x7.5 mm, 0.50 = 10x5 mm) for thinner pipe walls that cannot accommodate standard specimens.</i>")
                 grade_ys_min_mpa = {"L80-1": 552.0, "P110": 758.0, "Q125": 862.0}
                 grade_ys_max_mpa = {"L80-1": 655.0, "P110": 965.0, "Q125": 1034.0}
                 ys_min = grade_ys_min_mpa[qa_grade_c]
                 ys_max = grade_ys_max_mpa[qa_grade_c]
-
             with col_c2:
                 cvn_body_trans = (ys_min * (0.00118 * qa_wall_c + 0.01288) + 2.04) * qa_subsize
                 cvn_cplg_trans = (ys_max * (0.00118 * qa_wall_c + 0.01288) + 2.04) * qa_subsize
@@ -3357,27 +3343,29 @@ elif page == "5. Material Selection":
                 cvn_cplg_trans = max(cvn_cplg_trans, 11.0 * qa_subsize)
                 cvn_body_long = cvn_body_trans * 2.0
                 cvn_cplg_long = cvn_cplg_trans * 2.0
-
                 st.markdown("**Comparative Absorbed Energy Requirements:**")
                 st.markdown(f"""
                 <div class="qa-metric-container">
                     <div style="font-size:0.8rem; color:#64748B;">Pipe Body Transverse CVN</div>
                     <div style="font-size:1.1rem; font-weight:bold; color:#0F172A;">{cvn_body_trans:.1f} Joules</div>
+                    <div style="font-size:0.75rem; color:#64748B; margin-top:2px;">Transverse impact energy requirement for the main pipe body section based on Y<sub>S,min</sub>.</div>
                 </div>
                 <div class="qa-metric-container">
                     <div style="font-size:0.8rem; color:#64748B;">Coupling Transverse CVN (+{cvn_cplg_trans - cvn_body_trans:.1f} J stiffer)</div>
                     <div style="font-size:1.1rem; font-weight:bold; color:#1E3A8A;">{cvn_cplg_trans:.1f} Joules</div>
+                    <div style="font-size:0.75rem; color:#64748B; margin-top:2px;">Stricter transverse requirement for threaded couplings evaluated at Y<sub>S,max</sub> to prevent joint brittle fracture.</div>
                 </div>
                 <div class="qa-metric-container">
                     <div style="font-size:0.8rem; color:#64748B;">Pipe Body Longitudinal CVN</div>
                     <div style="font-size:1.1rem; font-weight:bold; color:#0F172A;">{cvn_body_long:.1f} Joules</div>
+                    <div style="font-size:0.75rem; color:#64748B; margin-top:2px;">Longitudinal axis impact energy requirement (typically 2x transverse) for the pipe body.</div>
                 </div>
                 <div class="qa-metric-container">
                     <div style="font-size:0.8rem; color:#64748B;">Coupling Longitudinal CVN</div>
                     <div style="font-size:1.1rem; font-weight:bold; color:#0F172A;">{cvn_cplg_long:.1f} Joules</div>
+                    <div style="font-size:0.75rem; color:#64748B; margin-top:2px;">Longitudinal axis impact energy requirement for the coupling evaluated at Y<sub>S,max</sub>.</div>
                 </div>
                 """, unsafe_allow_html=True)
-
         # ---------------------------------------------------------------------
         # SUB-TAB 4: MARTENSITE FRACTION & HARDNESS
         # ---------------------------------------------------------------------
@@ -3390,9 +3378,11 @@ elif page == "5. Material Selection":
                     Evaluation is performed at mid-wall (slowest cooling point).
                     <b>Corrosion Resistant Alloys (13Cr, 22Cr, 25Cr) automatically override to Not Applicable</b> as they are solution-annealed.
                 </p>
+                <p style="font-size:0.88rem; color:#334155; margin-top:5px;">
+                    <b>What is HRC?</b> Rockwell Hardness C Scale (HRC) is a standard indentation hardness test used for high-strength steels. A higher HRC value indicates greater material hardness and resistance to plastic deformation, but also increases susceptibility to brittle fracture and sulfide stress cracking in sour environments.
+                </p>
             </div>
             """, unsafe_allow_html=True)
-
             col_m1, col_m2 = st.columns([1, 1.1], gap="medium")
             with col_m1:
                 st.markdown("**Grade & Carbon Content Inputs:**")
@@ -3402,7 +3392,6 @@ elif page == "5. Material Selection":
                     index=0, key="qa_grade_m"
                 )
                 qa_carbon_wt = st.slider("Carbon Content (wt %)", 0.15, 0.50, 0.25, 0.01, key="qa_carbon_wt")
-
             with col_m2:
                 is_cra_grade = "Cr" in qa_grade_m or "Duplex" in qa_grade_m
                 if is_cra_grade:
@@ -3419,13 +3408,15 @@ elif page == "5. Material Selection":
                     if qa_grade_m in ["C90", "T95"]:
                         hrc_min = 58.0 * qa_carbon_wt + 17.2
                         target_m = "≥ 90% Martensite Target (Severe Sour Grade)"
+                        target_m_desc = "Why ≥ 90% Martensite Target? Severe sour service grades (C90, T95) demand a high martensite fraction (≥ 90%) during quenching to guarantee complete, uniform tempering. Lower martensite fractions leave untempered bainite or ferrite patches, which create localized galvanic cells and drastically accelerate Sulfide Stress Cracking (SSC) failures under downhole H₂S exposure."
                     elif qa_grade_m == "C110":
                         hrc_min = 59.0 * qa_carbon_wt + 18.2
                         target_m = "≥ 95% Martensite Target (Ultra-High Strength Sour)"
+                        target_m_desc = "Why ≥ 95% Martensite Target? As an ultra-high strength sour service grade (110 ksi yield), C110 requires an exceptionally high martensite transformation (≥ 95%) through full wall thickness. This minimizes micro-segregation and ensures maximum resistance to hydrogen embrittlement in harsh sour environments."
                     else:
                         hrc_min = 52.0 * qa_carbon_wt + 14.0
                         target_m = "≥ 50% Martensite Target (Standard Q&T Steel)"
-
+                        target_m_desc = "Why at least 50% Martensite Target? Standard quenched and tempered steels require a minimum 50% martensite fraction at mid-wall to ensure sufficient hardenability and mechanical strength throughout the full pipe wall before final tempering."
                     st.markdown("**Required As-Quenched Mid-Wall Properties:**")
                     st.markdown(f"""
                     <div class="qa-metric-container">
@@ -3435,6 +3426,7 @@ elif page == "5. Material Selection":
                     <div class="qa-metric-container">
                         <div style="font-size:0.8rem; color:#64748B;">Target Microstructural Phase</div>
                         <div style="font-size:1.0rem; font-weight:bold; color:#0F172A;">{target_m}</div>
+                        <div style="font-size:0.75rem; color:#64748B; margin-top:4px; line-height:1.4;">{target_m_desc}</div>
                     </div>
                     <div style="font-size:0.8rem; color:#64748B; margin-top:4px;">
                         Measurement location: Mid-wall (position of maximum wall thickness and slowest quench rate).
