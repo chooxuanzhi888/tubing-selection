@@ -1606,8 +1606,7 @@ if page == "1. Introduction & Overview":
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 4</span>'
-        'Tubing cross-section dimensions'
-        'or the list for details.'
+        'Tubing cross-section dimensions.'
         '</figcaption></figure>',
         unsafe_allow_html=True,
     )
