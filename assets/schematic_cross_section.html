@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,15 +10,14 @@
       --card-bg: #ffffff;
       --text-main: #0f172a;
       --text-muted: #64748b;
-      --border-color: #cbd5e1;
+      --border-color: #e2e8f0;
       --primary: #2563eb;
       --primary-light: #eff6ff;
 
-      /* Dimension Color Coding */
-      --color-nominal: #2563eb;  /* Blue */
-      --color-id: #0d9488;       /* Teal */
-      --color-drift: #d97706;    /* Amber/Orange */
-      --color-steel: #94a3b8;    /* Steel Pipe Wall */
+      /* Aesthetic Dimension Palette */
+      --color-nominal: #2563eb;  /* Vibrant Royal Blue */
+      --color-id: #0d9488;       /* Deep Teal */
+      --color-drift: #d97706;    /* Amber */
     }
 
     * {
@@ -29,7 +27,7 @@
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-main);
       display: flex;
@@ -40,18 +38,19 @@
 
     header {
       max-width: 1200px;
-      margin: 0 auto 20px auto;
+      margin: 0 auto 24px auto;
       width: 100%;
     }
 
     header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
+      font-size: 1.75rem;
+      font-weight: 800;
       color: var(--text-main);
+      letter-spacing: -0.02em;
     }
 
     header p {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: var(--text-muted);
       margin-top: 4px;
     }
@@ -75,9 +74,9 @@
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
+      padding: 28px;
       display: flex;
       flex-direction: column;
     }
@@ -85,7 +84,7 @@
     .schematic-card {
       align-items: center;
       justify-content: center;
-      background-color: #ffffff;
+      background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f8fafc 100%);
     }
 
     .schematic-container {
@@ -94,84 +93,91 @@
       height: auto;
     }
 
-    /* SVG Interactive Components */
+    /* SVG Micro-Interactions */
     .detail-group {
       cursor: pointer;
-      transition: all 0.2s ease;
     }
 
     .detail-group circle,
     .detail-group line,
     .detail-group path,
+    .detail-group rect,
     .detail-group text {
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .detail-group:hover circle.interactive-target {
       stroke-width: 3.5px;
-      filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.3));
+      filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.35));
     }
 
     .detail-group:hover text {
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .detail-group.active circle.interactive-target {
       stroke-width: 4px;
       stroke: #0f172a !important;
-      filter: drop-shadow(0 0 6px rgba(15, 23, 42, 0.25));
+      filter: drop-shadow(0 0 10px rgba(15, 23, 42, 0.3));
+    }
+
+    .detail-group.active rect {
+      stroke: #0f172a !important;
+      stroke-width: 2px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .detail-group.active text {
       font-weight: 800;
-      fill: #0f172a;
+      fill: #0f172a !important;
     }
 
     /* Side Panel Styling */
     .panel-header {
       border-bottom: 2px solid var(--border-color);
-      padding-bottom: 14px;
-      margin-bottom: 18px;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     .panel-title-badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 16px;
-      font-size: 0.72rem;
-      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
     }
 
     .panel-title {
-      font-size: 1.4rem;
-      font-weight: 700;
+      font-size: 1.5rem;
+      font-weight: 800;
       color: var(--text-main);
     }
 
     .info-section {
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
     .info-label {
-      font-size: 0.75rem;
-      font-weight: 700;
+      font-size: 0.78rem;
+      font-weight: 800;
       text-transform: uppercase;
       color: var(--text-muted);
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
     }
 
     .info-content {
-      font-size: 0.92rem;
-      line-height: 1.5;
+      font-size: 0.95rem;
+      line-height: 1.6;
       color: var(--text-main);
       background-color: var(--bg-color);
-      padding: 12px 14px;
-      border-radius: 8px;
+      padding: 16px;
+      border-radius: 12px;
       border: 1px solid var(--border-color);
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
     }
 
     .empty-state {
@@ -186,15 +192,15 @@
     }
 
     .empty-state svg {
-      margin-bottom: 12px;
+      margin-bottom: 16px;
       stroke: var(--text-muted);
     }
 
-    /* Selection Legend Items */
+    /* Legend Selection Items */
     .legend-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       margin-top: 16px;
       width: 100%;
     }
@@ -203,23 +209,26 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 14px;
-      border-radius: 8px;
+      padding: 14px 16px;
+      border-radius: 12px;
       border: 1px solid var(--border-color);
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: all 0.25s ease;
     }
 
     .legend-item:hover {
       background-color: var(--bg-color);
+      border-color: #cbd5e1;
+      transform: translateX(3px);
     }
 
     .legend-item.active {
       background-color: var(--primary-light);
       border-color: var(--primary);
-      font-weight: 600;
+      color: var(--primary);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
     }
 
     .legend-left {
@@ -228,10 +237,11 @@
     }
 
     .legend-color-dot {
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      margin-right: 10px;
+      margin-right: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   </style>
 </head>
@@ -239,7 +249,7 @@
 
   <header>
     <h1>Production Tubing Cross-Section Design</h1>
-    <p>Click on any dimension feature on the circular cross-section or list below to view its introduction.</p>
+    <p>Click on any dimension feature on the circular cross-section or list below to view its parameters.</p>
   </header>
 
   <div class="container">
@@ -247,10 +257,17 @@
     <div class="card schematic-card">
       <svg class="schematic-container" viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Hatching Pattern for Steel Pipe Wall Cross-Section -->
-          <pattern id="steel-hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#cbd5e1" stroke-width="2.5" />
-          </pattern>
+          <!-- Solid Metallic Metallic Gradient for Steel Pipe Wall -->
+          <radialGradient id="steel-wall-grad" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+            <stop offset="0%" stop-color="#94a3b8" />
+            <stop offset="70%" stop-color="#64748b" />
+            <stop offset="100%" stop-color="#475569" />
+          </radialGradient>
+
+          <!-- Soft Outer Glow / Shadow for Pipe Wall -->
+          <filter id="wall-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.12" />
+          </filter>
 
           <!-- Arrow Heads for Dimension Lines -->
           <marker id="arrow-nominal" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -265,49 +282,49 @@
         </defs>
 
         <!-- Center Crosshair Centerlines -->
-        <g stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 4">
+        <g stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="6 4">
           <line x1="260" y1="20" x2="260" y2="500"/>
           <line x1="20" y1="260" x2="500" y2="260"/>
         </g>
 
-        <!-- TUBING STEEL WALL (BASE GEOMETRY) -->
+        <!-- SOLID TUBING STEEL WALL (BASE GEOMETRY) -->
         <path d="M 260 80 A 180 180 0 1 0 260 440 A 180 180 0 1 0 260 80 Z M 260 130 A 130 130 0 1 1 260 390 A 130 130 0 1 1 260 130 Z"
-              fill="url(#steel-hatch)" stroke="#64748b" stroke-width="1.5" fill-rule="evenodd"/>
+              fill="url(#steel-wall-grad)" stroke="#334155" stroke-width="1.5" fill-rule="evenodd" filter="url(#wall-shadow)"/>
 
-        <!-- DETAIL 1: NOMINAL SIZE (OUTER DIAMETER / OD) -->
+        <!-- DETAIL 1: NOMINAL OD (OUTER DIAMETER) -->
         <g class="detail-group" id="detail-nominal" onclick="selectDetail('nominal')">
           <circle cx="260" cy="260" r="180" fill="none" stroke="var(--color-nominal)" stroke-width="2.5" class="interactive-target"/>
 
-          <line x1="80" y1="60" x2="440" y2="60" stroke="var(--color-nominal)" stroke-width="1.5" marker-start="url(#arrow-nominal)" marker-end="url(#arrow-nominal)"/>
-          <line x1="80" y1="60" x2="80" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
-          <line x1="440" y1="60" x2="440" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="80" y1="52" x2="440" y2="52" stroke="var(--color-nominal)" stroke-width="1.5" marker-start="url(#arrow-nominal)" marker-end="url(#arrow-nominal)"/>
+          <line x1="80" y1="52" x2="80" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="440" y1="52" x2="440" y2="260" stroke="var(--color-nominal)" stroke-width="1" stroke-dasharray="3 3"/>
 
-          <rect x="180" y="42" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-nominal)" stroke-width="1"/>
-          <text x="260" y="58" fill="var(--color-nominal)" font-size="12" font-weight="bold" text-anchor="middle">NOMINAL SIZE (OD)</text>
+          <rect x="190" y="36" width="140" height="30" fill="#ffffff" rx="6" stroke="var(--color-nominal)" stroke-width="1.2" filter="url(#wall-shadow)"/>
+          <text x="260" y="55" fill="var(--color-nominal)" font-size="12" font-weight="bold" text-anchor="middle">NOMINAL OD</text>
         </g>
 
-        <!-- DETAIL 2: INTERNAL DIAMETER (ID) -->
+        <!-- DETAIL 2: NOMINAL ID (INTERNAL DIAMETER) -->
         <g class="detail-group" id="detail-id" onclick="selectDetail('id')">
           <circle cx="260" cy="260" r="130" fill="none" stroke="var(--color-id)" stroke-width="2.5" stroke-dasharray="6 3" class="interactive-target"/>
 
           <line x1="168" y1="352" x2="352" y2="168" stroke="var(--color-id)" stroke-width="1.5" marker-start="url(#arrow-id)" marker-end="url(#arrow-id)"/>
 
-          <rect x="290" y="210" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-id)" stroke-width="1"/>
-          <text x="370" y="226" fill="var(--color-id)" font-size="12" font-weight="bold" text-anchor="middle">INTERNAL DIA. (ID)</text>
+          <rect x="290" y="200" width="140" height="30" fill="#ffffff" rx="6" stroke="var(--color-id)" stroke-width="1.2" filter="url(#wall-shadow)"/>
+          <text x="360" y="219" fill="var(--color-id)" font-size="12" font-weight="bold" text-anchor="middle">NOMINAL ID</text>
         </g>
 
-        <!-- DETAIL 3: DRIFT INTERNAL DIAMETER (DRIFT ID) -->
+        <!-- DETAIL 3: DRIFT INTERNAL DIAMETER (DRIFT ID - Tightened Gap to ID) -->
         <g class="detail-group" id="detail-drift" onclick="selectDetail('drift')">
-          <circle cx="260" cy="260" r="105" fill="rgba(217, 119, 6, 0.06)" stroke="var(--color-drift)" stroke-width="2" stroke-dasharray="4 4" class="interactive-target"/>
+          <circle cx="260" cy="260" r="122" fill="rgba(217, 119, 6, 0.08)" stroke="var(--color-drift)" stroke-width="2" stroke-dasharray="4 4" class="interactive-target"/>
 
-          <line x1="155" y1="260" x2="365" y2="260" stroke="var(--color-drift)" stroke-width="1.5" marker-start="url(#arrow-drift)" marker-end="url(#arrow-drift)"/>
+          <line x1="138" y1="260" x2="382" y2="260" stroke="var(--color-drift)" stroke-width="1.5" marker-start="url(#arrow-drift)" marker-end="url(#arrow-drift)"/>
 
-          <rect x="180" y="275" width="160" height="24" fill="#ffffff" rx="4" stroke="var(--color-drift)" stroke-width="1"/>
-          <text x="260" y="291" fill="var(--color-drift)" font-size="12" font-weight="bold" text-anchor="middle">DRIFT ID CLEARANCE</text>
+          <rect x="170" y="275" width="180" height="30" fill="#ffffff" rx="6" stroke="var(--color-drift)" stroke-width="1.2" filter="url(#wall-shadow)"/>
+          <text x="260" y="294" fill="var(--color-drift)" font-size="12" font-weight="bold" text-anchor="middle">DRIFT ID CLEARANCE</text>
         </g>
 
         <!-- Center Point -->
-        <circle cx="260" cy="260" r="3" fill="#0f172a"/>
+        <circle cx="260" cy="260" r="3.5" fill="#0f172a"/>
       </svg>
     </div>
 
@@ -327,13 +344,13 @@
 
       <!-- Empty State View -->
       <div id="empty-panel" class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
         <h3>No Parameter Selected</h3>
-        <p style="margin-top: 8px; font-size: 0.88rem;">Click on any dimension line in the cross-section diagram or select one from the list below to view details.</p>
+        <p style="margin-top: 8px; font-size: 0.9rem; line-height: 1.5;">Click on any dimension line in the cross-section diagram or select one from the list below to view details.</p>
       </div>
 
       <!-- Quick Selection List -->
@@ -343,7 +360,7 @@
         <div class="legend-item" id="legend-nominal" onclick="selectDetail('nominal')">
           <div class="legend-left">
             <div class="legend-color-dot" style="background-color: var(--color-nominal);"></div>
-            <span>Nominal Size (OD)</span>
+            <span>Nominal OD</span>
           </div>
           <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Outer Limit</span>
         </div>
@@ -351,17 +368,14 @@
         <div class="legend-item" id="legend-id" onclick="selectDetail('id')">
           <div class="legend-left">
             <div class="legend-color-dot" style="background-color: var(--color-id);"></div>
-            <span>Internal Diameter (ID)</span>
+            <span>Nominal ID</span>
           </div>
           <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Bore Size</span>
         </div>
 
         <div class="legend-item" id="legend-drift" onclick="selectDetail('drift')">
-          <div class="legend-left">
-            <div class="legend-color-dot" style="background-color: var(--color-drift);"></div>
-            <span>Drift Internal Diameter</span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">Tool Clearance</span>
+          <div class="legend-color-dot" style="background-color: var(--color-drift);"></div>
+          <span>Drift Internal Diameter</span>
         </div>
       </div>
     </div>
@@ -371,16 +385,16 @@
     // Data definitions for tubing cross-section parameters
     const detailsData = {
       nominal: {
-        name: "Nominal Size (Outer Diameter / OD)",
+        name: "Nominal OD (Outer Diameter)",
         badgeBg: "#eff6ff",
         badgeColor: "#2563eb",
-        intro: "The Nominal Size represents the standardized outer diameter (OD) of the production tubing pipe body as specified by API Spec 5CT standards."
+        intro: "The Nominal OD represents the standardized outer diameter of the production tubing pipe body as specified by API Spec 5CT standards."
       },
       id: {
-        name: "Internal Diameter (ID)",
+        name: "Nominal ID (Internal Diameter)",
         badgeBg: "#ccfbf1",
         badgeColor: "#0f766e",
-        intro: "The Internal Diameter (ID) is the calculated inner wall dimension of the tubing joint, determined by subtracting twice the nominal wall thickness from the outer diameter (ID = OD - 2t)."
+        intro: "The Nominal ID is the calculated inner wall dimension of the tubing joint, determined by subtracting twice the nominal wall thickness from the outer diameter (ID = OD - 2t)."
       },
       drift: {
         name: "Drift Internal Diameter (Drift ID)",
