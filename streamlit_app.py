@@ -1602,7 +1602,7 @@ if page == "1. Introduction & Overview":
 
     # Interactive schematic in place of a static Figure 4 image. Clicking a dimension
     # in the SVG (or the legend list) renders its introduction in the panel.
-    components.html(load_asset('schematic_cross_section.html'), height=700, scrolling=False)
+    components.html(load_asset('schematic_cross_section.html'), height=600, scrolling=False)
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 4</span>'
