@@ -1660,7 +1660,7 @@ elif page == "2. Wellbore Hydraulics":
             </div>
             """, unsafe_allow_html=True)
         with col_slurry_html:
-            components.html(load_asset('slurry_physics.html'), height=320, scrolling=False)
+            components.html(load_asset('slurry_physics.html'), height=400, scrolling=False)
         # Simplified Callout Cards (Page 5 Style)
         st.markdown(f"""
         <div class="m2-card">
