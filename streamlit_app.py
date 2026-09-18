@@ -1620,9 +1620,9 @@ if page == "1. Introduction & Overview":
                 <tr><th style="width: 26%;">Specification</th><th>Why it matters</th></tr>
             </thead>
             <tbody>
-                <tr><td class="p1-spec">Nominal size / OD</td><td>Sets overall tubing size and compatibility with the casing.</td></tr>
-                <tr><td class="p1-spec">Internal diameter (ID)</td><td>Drives <b>fluid velocity and pressure loss</b>.</td></tr>
-                <tr><td class="p1-spec">Drift diameter</td><td>Limits the maximum equipment diameter that can pass through the tubing.</td></tr>
+                <tr><td class="p1-spec">Nominal OD</td><td>Sets overall tubing size and compatibility with the casing.</td></tr>
+                <tr><td class="p1-spec">Nominal ID</td><td>Drives <b>fluid velocity and pressure loss</b>.</td></tr>
+                <tr><td class="p1-spec">Drift ID</td><td>Limits the maximum equipment diameter that can pass through the tubing.</td></tr>
                 <tr><td class="p1-spec">Nominal weight</td><td>Indicates tubing weight and relates directly to <b>wall thickness</b>.</td></tr>
                 <tr><td class="p1-spec">Steel grade</td><td>Determines <b>strength and suitability for corrosive environments</b>.</td></tr>
                 <tr><td class="p1-spec">Connection</td><td>Affects connection strength, sealing, and overall tubing integrity.</td></tr>
