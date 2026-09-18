@@ -1551,7 +1551,7 @@ if page == "1. Introduction & Overview":
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 2</span>'
-        'Typical upper-completion components — click a section of the schematic for details.'
+        'Typical upper-completion components'
         '</figcaption></figure>',
         unsafe_allow_html=True,
     )
@@ -1582,7 +1582,7 @@ if page == "1. Introduction & Overview":
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 3</span>'
-        'Casing and tubing strings in a completed well — click a string in the schematic '
+        'Casing and tubing strings'
         'or the list for details.'
         '</figcaption></figure>',
         unsafe_allow_html=True,
@@ -1606,7 +1606,7 @@ if page == "1. Introduction & Overview":
     st.markdown(
         '<figure class="p1-figure"><figcaption class="p1-figure-caption">'
         '<span class="p1-figure-number">Figure 4</span>'
-        'Tubing cross-section dimensions — click a dimension in the schematic '
+        'Tubing cross-section dimensions'
         'or the list for details.'
         '</figcaption></figure>',
         unsafe_allow_html=True,
