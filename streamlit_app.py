@@ -240,7 +240,7 @@ MAX_SERVICE_TEMP_C = {
 }
 DEFAULT_MAX_SERVICE_TEMP_C = 150.0
 
-# Engine screening thresholds shared with the Page 6 methodology documentation.
+# Engine screening thresholds shared with the Page 5 methodology documentation.
 Z_FACTOR_MIN, Z_FACTOR_MAX = 0.65, 1.25
 CV_SOLIDS_MAX = 0.15
 FRICTION_FACTOR_MAX = 0.15
@@ -252,7 +252,7 @@ COLLAPSE_SF_TARGET = 1.10   # Clause 8 external pressure resistance
 # -----------------------------------------------------------------------------
 # PAGE 3 METHODOLOGY: GLOSSARY & CARD BUILDERS
 # -----------------------------------------------------------------------------
-# Plain-English explanations for the jargon on Page 6. Rendered as click-to-open
+# Plain-English explanations for the jargon on Page 5. Rendered as click-to-open
 # pop-ups so a reader who does not know a term can get it without leaving the page.
 # Expanded GLOSSARY dictionary with the requested Page 2 terms
 GLOSSARY = {
@@ -568,7 +568,7 @@ def static_cithp_psi(p_bhp, tvd, gas_sg, z_factor, t_avg_r):
     converted to absolute for the exponential and returned as gauge, matching the
     convention used everywhere else in the app.
 
-    Shared by the engine and the Page 7 default so the surface burst check and the
+    Shared by the engine and the Page 6 default so the surface burst check and the
     value shown in the input form always come from the same model.
     """
     p_bhp_psia = p_bhp + 14.7
@@ -1242,8 +1242,8 @@ def widest_window_candidate(tubing_db_json, q_liq_ref):
 def active_candidate_df():
     """Return the candidate set the screening pages should evaluate.
 
-    Honours the Page 8 OD/grade filters when they have been set; falls back to the
-    full database otherwise (e.g. when the user goes straight to Page 9).
+    Honours the Page 7 OD/grade filters when they have been set; falls back to the
+    full database otherwise (e.g. when the user goes straight to Page 8).
     """
     db = st.session_state.tubing_db
     selection = st.session_state.get('candidate_filter')
@@ -1274,23 +1274,22 @@ st.sidebar.caption("Upper-Completion Design Engine")
 
 PAGE_LABELS = [
     "1. Introduction & Overview",
-    "2. PVT Properties of Fluid",
-    "3. Wellbore Hydraulics",
-    "4. Tubing Stress Analysis",
-    "5. Material Selection",
-    "6. Calculation Methodology",
-    "7. Well & Fluid Inputs",
-    "8. Candidate Tubing Specs",
-    "9. Engineering Calculations",
-    "10. Recommendation & Sensitivity",
+    "2. Wellbore Hydraulics",
+    "3. Tubing Stress Analysis",
+    "4. Material Selection",
+    "5. Calculation Methodology",
+    "6. Well & Fluid Inputs",
+    "7. Candidate Tubing Specs",
+    "8. Engineering Calculations",
+    "9. Recommendation & Sensitivity",
 ]
 
 # Referenced by name rather than position so inserting a page cannot silently
 # redirect the flowchart deep links to the wrong step.
 METHODOLOGY_PAGE = "6. Calculation Methodology"
 
-# A ?step=N link in the Page 6 flowchart must survive the rerun it triggers: force
-# the sidebar back onto Page 6 so the reader lands on the step they clicked.
+# A ?step=N link in the Page 5 flowchart must survive the rerun it triggers: force
+# the sidebar back onto Page 5 so the reader lands on the step they clicked.
 _requested_step = st.query_params.get("step")
 if _requested_step and st.session_state.get("nav_page") != METHODOLOGY_PAGE:
     st.session_state["nav_page"] = METHODOLOGY_PAGE
@@ -1635,457 +1634,9 @@ if page == "1. Introduction & Overview":
     st.markdown('<hr class="p1-rule" />', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# PAGE 2: WELLBORE HYDRAULICS & PVT
+# PAGE 2: WELLBORE HYDRAULICS
 # -----------------------------------------------------------------------------
-elif page == "2. PVT Properties of Fluid":
-    st.markdown('<div class="main-header">Step 2: PVT Properties of Fluid</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Understand the fluid phase behaviour, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
-    
-    tab_pvt, tab_geo = st.tabs([
-        "📊 Tab 1: Interactive PVT & Depth Profiles",
-        "📐 Tab 2: Gas Thermodynamics & Mixture Density"
-    ])
-
-    # -------------------------------------------------------------------------
-    # TAB 1: INTERACTIVE PVT & DEPTH PROFILES
-    # -------------------------------------------------------------------------
-    with tab_pvt:
-        inputs = st.session_state.inputs
-        with st.expander("⚙️ Interactive Controls & Fluid Parameters", expanded=True):
-            col_m1, col_m2, col_m3 = st.columns(3)
-            with col_m1:
-                well_mode = st.radio(
-                    "Select Well Operating Mode:",
-                    ["Oil Well (Standing's PVT)", "Gas Well (Dranchuk-Abou-Kassem EOS)"],
-                    index=0 if "Oil" in inputs.get('well_type', 'Oil Well') else 1,
-                    key="tab1_well_mode"
-                )
-                max_tvd = st.slider(
-                    "Target TVD (ft)",
-                    min_value=2000.0, max_value=25000.0,
-                    value=float(inputs.get('tvd', 10000.0)),
-                    step=500.0, key="tab1_max_tvd"
-                )
-                n_points = st.slider(
-                    "Depth Grid Resolution (Steps)",
-                    min_value=20, max_value=200,
-                    value=50, step=10, key="tab1_n_points"
-                )
-            with col_m2:
-                p_wh_in = st.number_input(
-                    "Wellhead Pressure - P_wh (psig)",
-                    min_value=0.0, max_value=5000.0,
-                    value=float(inputs.get('p_wh', 800.0)),
-                    step=50.0, key="tab1_p_wh"
-                )
-                p_bhp_in = st.number_input(
-                    "Bottomhole Pressure - P_bhp (psig)",
-                    min_value=500.0, max_value=20000.0,
-                    value=float(inputs.get('p_bhp', 4500.0)),
-                    step=100.0, key="tab1_p_bhp"
-                )
-                t_wh_in = st.number_input(
-                    "Wellhead Temp - T_wh (°F)",
-                    min_value=32.0, max_value=300.0,
-                    value=float(inputs.get('t_wh', 150.0)),
-                    step=5.0, key="tab1_t_wh"
-                )
-                t_bht_in = st.number_input(
-                    "Bottomhole Temp - T_bht (°F)",
-                    min_value=80.0, max_value=450.0,
-                    value=float(inputs.get('t_bht', 210.0)),
-                    step=5.0, key="tab1_t_bht"
-                )
-            with col_m3:
-                api_in = st.number_input(
-                    "Oil Gravity (°API)",
-                    min_value=10.0, max_value=60.0,
-                    value=float(inputs.get('api_gravity', 35.0)),
-                    step=0.5, key="tab1_api_gravity"
-                )
-                gas_sg_in = st.number_input(
-                    "Gas Specific Gravity (Air=1.0)",
-                    min_value=0.50, max_value=1.20,
-                    value=float(inputs.get('gas_sg', 0.65)),
-                    step=0.01, key="tab1_gas_sg"
-                )
-                water_sg_in = st.number_input(
-                    "Water Specific Gravity",
-                    min_value=1.00, max_value=1.30,
-                    value=float(inputs.get('water_sg', 1.05)),
-                    step=0.01, key="tab1_water_sg"
-                )
-                if "Oil" in well_mode:
-                    gor_in = st.number_input(
-                        "Producing GOR (scf/STB)",
-                        min_value=0.0, max_value=10000.0,
-                        value=float(inputs.get('gor', 800.0)),
-                        step=50.0, key="tab1_gor"
-                    )
-                    wc_in = st.number_input(
-                        "Water Cut (%)",
-                        min_value=0.0, max_value=100.0,
-                        value=float(inputs.get('water_cut', 5.0)),
-                        step=1.0, key="tab1_water_cut"
-                    )
-                else:
-                    cgr_in = st.number_input(
-                        "Condensate-Gas Ratio (STB/MMscf)",
-                        min_value=0.0, max_value=500.0,
-                        value=float(inputs.get('cgr_stb_mmscf', 25.0)),
-                        step=5.0, key="tab1_cgr"
-                    )
-                    wgr_in = st.number_input(
-                        "Water-Gas Ratio (bbl/MMscf)",
-                        min_value=0.0, max_value=200.0,
-                        value=float(inputs.get('wgr_bbl_mmscf', 5.0)),
-                        step=1.0, key="tab1_wgr"
-                    )
-        
-        # Mode Explanation Box
-        if "Oil" in well_mode:
-            st.markdown(
-                f"""
-                <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem; font-size: 0.9rem; color: #1E293B; line-height: 1.6;">
-                    💡 <b>Oil Well Mode Explanation:</b> Uses <b>Standing's Empirical PVT Correlations</b> to model 
-                    dissolved gas in oil (<i>R</i><sub>s</sub>), {term("bo", "downhole oil volumetric swelling")} (<i>B</i><sub>o</sub>), 
-                    {term("rho-o-live", "live-oil density")} (<i>ρ</i><sub>o,live</sub>), and combined total liquid density (<i>ρ</i><sub>l</sub>). 
-                    As pressure drops toward the surface, gas breaks out of solution, shrinking the liquid volume and increasing live-oil density.
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"""
-                <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem; font-size: 0.9rem; color: #1E293B; line-height: 1.6;">
-                    💡 <b>Gas Well Mode Explanation:</b> Uses the <b>Dranchuk-Abou-Kassem (DAK) Equation of State</b> to calculate 
-                    gas compressibility (<i>Z</i>-factor), {term("rho-g", "in-situ gas density")} (<i>ρ</i><sub>g</sub>), 
-                    {term("bg", "gas formation volume factor")} (<i>B</i><sub>g</sub>), and 
-                    {term("rho-l-gas", "condensate/water holdup density")} (<i>ρ</i><sub>l</sub>). Demonstrates how high pressure at depth heavily compresses gas, 
-                    significantly increasing downhole gas density compared to surface conditions.
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            
-        tvd_array = np.linspace(0, max_tvd, n_points)
-        tvd_negative_array = -tvd_array  # TVD mapped so 0 is surface and negative values go deeper
-        
-        gamma_o = 141.5 / (131.5 + api_in)
-        rho_w = water_sg_in * 62.4
-        depth_frac = tvd_array / max_tvd if max_tvd > 0 else np.zeros_like(tvd_array)
-        p_psia_arr = p_wh_in + (p_bhp_in - p_wh_in) * depth_frac + 14.7
-        t_deg_f_arr = t_wh_in + (t_bht_in - t_wh_in) * depth_frac
-        t_deg_r_arr = t_deg_f_arr + 459.67
-        zeros = np.zeros_like(tvd_array)
-        
-        if "Oil" in well_mode:
-            rs_arr = np.minimum(
-                gas_sg_in * (((p_psia_arr / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_deg_f_arr))) ** 1.2048,
-                gor_in,
-            )
-            bo_arr = 0.9759 + 0.000120 * ((rs_arr * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_deg_f_arr) ** 1.2)
-            rho_o_live_arr = (62.4 * gamma_o + 0.0136 * rs_arr * gas_sg_in) / bo_arr
-            wc_frac = wc_in / 100.0
-            rho_l_arr = (1.0 - wc_frac) * rho_o_live_arr + wc_frac * rho_w
-            bg_arr, rho_g_arr = zeros, zeros
-        else:
-            z_arr = np.array([
-                compute_dynamic_z_factor(p, t, gas_sg_in) for p, t in zip(p_psia_arr, t_deg_r_arr)
-            ])
-            rho_g_arr = (2.7 * gas_sg_in * p_psia_arr) / (z_arr * t_deg_r_arr)
-            bg_arr = 0.02829 * z_arr * t_deg_r_arr / p_psia_arr
-            total_liq_bbl = cgr_in + wgr_in
-            rho_cond = 62.4 * gamma_o
-            if total_liq_bbl > 0:
-                wc_frac = wgr_in / total_liq_bbl
-                rho_l_scalar = (1.0 - wc_frac) * rho_cond + wc_frac * rho_w
-            else:
-                rho_l_scalar = rho_cond
-            rho_l_arr = np.full_like(tvd_array, rho_l_scalar)
-            rs_arr, rho_o_live_arr = zeros, zeros
-            bo_arr = np.ones_like(tvd_array)
-            
-        df_pvt = pd.DataFrame({
-            'TVD_ft': tvd_negative_array,
-            'TVD_positive_ft': tvd_array,
-            'P_psia': p_psia_arr,
-            'Rs_scf_stb': rs_arr,
-            'Bo_rb_stb': bo_arr,
-            'Bg_cuft_scf': bg_arr,
-            'rho_o_live': rho_o_live_arr,
-            'rho_l': rho_l_arr,
-            'rho_g': rho_g_arr
-        })
-        
-        st.markdown("### 📊 Live Liquid Density & Volumetric Expansion vs. True Vertical Depth")
-        fig_primary = go.Figure()
-        if "Oil" in well_mode:
-            fig_primary.add_trace(go.Scatter(
-                x=df_pvt['rho_l'], y=df_pvt['TVD_ft'],
-                mode='lines+markers', name='Total Liquid Density (ρ_l, lb/ft³)',
-                line=dict(color='#1E3A8A', width=3),
-                customdata=df_pvt['TVD_positive_ft'],
-                hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>ρ_l: %{x:.2f} lb/ft³<extra></extra>'
-            ))
-            fig_primary.add_trace(go.Scatter(
-                x=df_pvt['rho_o_live'], y=df_pvt['TVD_ft'],
-                mode='lines', name='Live Oil Density (ρ_o,live, lb/ft³)',
-                line=dict(color='#2563EB', width=2, dash='dash'),
-                customdata=df_pvt['TVD_positive_ft'],
-                hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>ρ_o,live: %{x:.2f} lb/ft³<extra></extra>'
-            ))
-            fig_primary.add_trace(go.Scatter(
-                x=df_pvt['Bo_rb_stb'], y=df_pvt['TVD_ft'],
-                mode='lines', name='Oil Swelling Factor (B_o, rb/STB)',
-                line=dict(color='#D97706', width=2.5, dash='dot'),
-                xaxis='x2',
-                customdata=df_pvt['TVD_positive_ft'],
-                hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>B_o: %{x:.4f} rb/STB<extra></extra>'
-            ))
-            fig_primary.update_layout(
-                xaxis=dict(
-                    title=dict(text='Density (lb/ft³)', font=dict(color='#1E3A8A'))
-                ),
-                xaxis2=dict(
-                    title=dict(text='Oil Formation Volume Factor B_o (rb/STB)', font=dict(color='#D97706')),
-                    overlaying='x', side='top'
-                ),
-                yaxis=dict(
-                    title=dict(text='True Vertical Depth - TVD (ft)'),
-                    autorange=False,
-                    range=[-max_tvd, 0]
-                )
-            )
-        else:
-            fig_primary.add_trace(go.Scatter(
-                x=df_pvt['rho_g'], y=df_pvt['TVD_ft'],
-                mode='lines+markers', name='In-Situ Gas Density (ρ_g, lb/ft³)',
-                line=dict(color='#059669', width=3),
-                customdata=df_pvt['TVD_positive_ft'],
-                hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>ρ_g: %{x:.2f} lb/ft³<extra></extra>'
-            ))
-            fig_primary.add_trace(go.Scatter(
-                x=df_pvt['Bg_cuft_scf'], y=df_pvt['TVD_ft'],
-                mode='lines', name='Gas Expansion Factor (B_g, ft³/scf)',
-                line=dict(color='#7C3AED', width=2.5, dash='dash'),
-                xaxis='x2',
-                customdata=df_pvt['TVD_positive_ft'],
-                hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>B_g: %{x:.5f} ft³/scf<extra></extra>'
-            ))
-            fig_primary.update_layout(
-                xaxis=dict(
-                    title=dict(text='Gas Density (lb/ft³)', font=dict(color='#059669'))
-                ),
-                xaxis2=dict(
-                    title=dict(text='Gas Formation Volume Factor B_g (ft³/scf)', font=dict(color='#7C3AED')),
-                    overlaying='x', side='top'
-                ),
-                yaxis=dict(
-                    title=dict(text='True Vertical Depth - TVD (ft)'),
-                    autorange=False,
-                    range=[-max_tvd, 0]
-                )
-            )
-        fig_primary.update_layout(
-            height=580,
-            margin=dict(l=60, r=60, t=90, b=50),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.18, xanchor="center", x=0.5),
-            hovermode="y unified"
-        )
-        st.plotly_chart(fig_primary, use_container_width=True)
-        st.markdown("---")
-        
-        st.markdown("### 🔍 Depth Spot-Inspection Panel")
-        inspect_tvd = st.slider(
-            "Select Depth to Inspect (ft)",
-            min_value=0.0, max_value=max_tvd,
-            value=max_tvd / 2.0, step=100.0,
-            key="tab1_inspect_tvd"
-        )
-        p_ins_gauge = p_wh_in + (p_bhp_in - p_wh_in) * (inspect_tvd / max_tvd)
-        p_ins_psia = p_ins_gauge + 14.7
-        t_ins_f = t_wh_in + (t_bht_in - t_wh_in) * (inspect_tvd / max_tvd)
-        
-        col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
-        col_k1.metric("Local Pressure", f"{p_ins_gauge:.1f} psig")
-        col_k2.metric("Local Temperature", f"{t_ins_f:.1f} °F")
-        
-        if "Oil" in well_mode:
-            rs_ins = gas_sg_in * (((p_ins_psia / 18.2) + 1.4) * (10 ** (0.0125 * api_in - 0.00091 * t_ins_f))) ** 1.2048
-            rs_ins = min(rs_ins, gor_in)
-            bo_ins = 0.9759 + 0.000120 * ((rs_ins * ((gas_sg_in / gamma_o) ** 0.5) + 1.25 * t_ins_f) ** 1.2)
-            rho_o_ins = (62.4 * gamma_o + 0.0136 * rs_ins * gas_sg_in) / bo_ins
-            rho_l_ins = (1.0 - (wc_in / 100.0)) * rho_o_ins + (wc_in / 100.0) * rho_w
-            
-            col_k3.metric("Solution GOR (R_s)", f"{rs_ins:.1f} scf/STB")
-            col_k4.metric("Oil Swelling (B_o)", f"{bo_ins:.3f} rb/STB")
-            col_k5.metric("Total Liquid Density (ρ_l)", f"{rho_l_ins:.2f} lb/ft³")
-        else:
-            z_ins = compute_dynamic_z_factor(p_ins_psia, t_ins_f + 459.67, gas_sg_in)
-            rho_g_ins = (2.7 * gas_sg_in * p_ins_psia) / (z_ins * (t_ins_f + 459.67))
-            bg_ins = 0.02829 * z_ins * (t_ins_f + 459.67) / p_ins_psia
-            
-            # Formatted compactly to prevent overflow ("XXX sci/...")
-            bg_str = f"{bg_ins:.2e}" if bg_ins < 0.001 else f"{bg_ins:.4f}"
-            
-            col_k3.metric("Z-Factor (Z)", f"{z_ins:.3f}")
-            col_k4.metric("Gas Vol Factor (B_g)", f"{bg_str} ft³/scf")
-            col_k5.metric("In-Situ Gas Density (ρ_g)", f"{rho_g_ins:.2f} lb/ft³")
-
-    # -------------------------------------------------------------------------
-    # TAB 2: GAS THERMODYNAMICS & MULTIPHASE MIXTURE DENSITY
-    # -------------------------------------------------------------------------
-    with tab_geo:
-        st.markdown("### 🧪 Gas PVT, Compressibility (<i>Z</i>) & Mixture Density (<i>ρ</i><sub>m</sub>)", unsafe_allow_html=True)
-        st.markdown(
-            f"""
-            <div style="background-color: #F8FAFC; border-left: 4px solid #0284C7; padding: 0.9rem; border-radius: 6px; margin-bottom: 1.2rem;">
-                <b style="color: #0369A1; font-size: 1.0rem;">🔥 Fundamental Differences: Oil PVT vs. Gas Well Thermodynamics</b>
-                <ul style="margin-top: 0.4rem; margin-bottom: 0rem; font-size: 0.88rem; color: #334155; line-height: 1.5;">
-                    <li><b>Compressibility Mechanics:</b> Gas density ({term("rho-g", "ρ<sub>g</sub>")}) changes dramatically with depth because gas is highly compressible ({term("z-factor", "<i>Z</i>-factor")} drops downhole under severe pressure). Oil density (<i>ρ</i><sub>o</sub>) is governed primarily by dissolved gas ({term("rs", "<i>R</i><sub>s</sub>")}) and liquid volume swelling ({term("bo", "<i>B</i><sub>o</sub>")}).</li>
-                    <li><b>Mixture Homogeneity:</b> In gas wells, the stream is gas-dominated (<i>Q</i><sub>g</sub>). Adding even small amounts of condensate (CGR) or water (WGR) increases {term("holdup", "liquid holdup")} (<i>λ</i><sub>l</sub>), causing significant shifts in the bulk mixture density (<i>ρ</i><sub>m</sub>).</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        inputs = st.session_state.inputs
-        with st.expander("⚙️ Gas Well PVT Parameters & Production Controls", expanded=True):
-            col_g1, col_g2, col_g3 = st.columns(3)
-            with col_g1:
-                tvd_gas = st.slider("Target TVD - Depth (ft)", min_value=2000.0, max_value=25000.0, value=float(inputs.get('tvd', 10000.0)), step=500.0, key="gas_tvd")
-                q_gas_mmscfd = st.number_input("Surface Gas Rate - Q_g (MMscf/D)", min_value=0.1, max_value=200.0, value=float(inputs.get('q_gas_mmscfd', 15.0)), step=0.5)
-                gas_sg_g = st.number_input("Gas Specific Gravity - γ_g (Air=1.0)", min_value=0.50, max_value=1.20, value=float(inputs.get('gas_sg', 0.65)), step=0.01, key="gas_sg_g")
-            with col_g2:
-                p_wh_g = st.number_input("Wellhead Pressure - P_wh (psig)", min_value=0.0, max_value=5000.0, value=float(inputs.get('p_wh', 800.0)), step=50.0, key="p_wh_g")
-                p_bhp_g = st.number_input("Bottomhole Pressure - P_bhp (psig)", min_value=500.0, max_value=20000.0, value=float(inputs.get('p_bhp', 4500.0)), step=100.0, key="p_bhp_g")
-                cgr_g = st.slider("Condensate-Gas Ratio - CGR (STB/MMscf)", min_value=0.0, max_value=500.0, value=float(inputs.get('cgr_stb_mmscf', 25.0)), step=5.0, key="cgr_g_slider")
-            with col_g3:
-                t_wh_g = st.number_input("Wellhead Temp - T_wh (°F)", min_value=32.0, max_value=300.0, value=float(inputs.get('t_wh', 150.0)), step=5.0, key="t_wh_g")
-                t_bht_g = st.number_input("Bottomhole Temp - T_bht (°F)", min_value=80.0, max_value=450.0, value=float(inputs.get('t_bht', 210.0)), step=5.0, key="t_bht_g")
-                wgr_g = st.slider("Water-Gas Ratio - WGR (bbl/MMscf)", min_value=0.0, max_value=200.0, value=float(inputs.get('wgr_bbl_mmscf', 5.0)), step=1.0, key="wgr_g_slider")
-        
-        p_pc = 756.8 - 131.07 * gas_sg_g - 3.6 * (gas_sg_g ** 2)
-        t_pc = 169.2 + 349.5 * gas_sg_g - 74.0 * (gas_sg_g ** 2)
-        st.markdown(f"**Standing's {term('pseudo-critical', 'Pseudo-Critical Anchors')}:** <i>P</i><sub>pc</sub> = <b>{p_pc:.1f} psia</b> | <i>T</i><sub>pc</sub> = <b>{t_pc:.1f} °R</b>", unsafe_allow_html=True)
-        
-        tvd_array_g = np.linspace(0, tvd_gas, 60)
-        tvd_negative_array_g = -tvd_array_g  # TVD mapped so 0 is surface and negative values go deeper
-        
-        api_g = float(inputs.get('api_gravity', 35.0))
-        gamma_o_g = 141.5 / (131.5 + api_g)
-        water_sg_g = float(inputs.get('water_sg', 1.05))
-        rho_w_g = water_sg_g * 62.4
-        
-        q_g_scf_d = q_gas_mmscfd * 1e6
-        q_cond_stbd = q_gas_mmscfd * cgr_g
-        q_wat_stbd = q_gas_mmscfd * wgr_g
-        q_l_ft3s = ((q_cond_stbd + q_wat_stbd) * 5.615) / 86400.0
-        
-        total_liq_bbl = q_cond_stbd + q_wat_stbd
-        if total_liq_bbl > 0:
-            wc_frac_g = q_wat_stbd / total_liq_bbl
-            rho_cond_g = 62.4 * gamma_o_g
-            rho_l_g = (1.0 - wc_frac_g) * rho_cond_g + wc_frac_g * rho_w_g
-        else:
-            rho_l_g = 62.4 * gamma_o_g
-            
-        depth_frac_g = tvd_array_g / tvd_gas if tvd_gas > 0 else np.zeros_like(tvd_array_g)
-        p_psia_g = p_wh_g + (p_bhp_g - p_wh_g) * depth_frac_g + 14.7
-        t_deg_r_g = t_wh_g + (t_bht_g - t_wh_g) * depth_frac_g + 459.67
-        
-        z_arr_g = np.array([
-            compute_dynamic_z_factor(p, t, gas_sg_g) for p, t in zip(p_psia_g, t_deg_r_g)
-        ])
-        
-        rho_g_arr_g = (2.7 * gas_sg_g * p_psia_g) / (z_arr_g * t_deg_r_g)
-        q_g_ft3s_arr = (q_g_scf_d * 14.7 * t_deg_r_g * z_arr_g) / (p_psia_g * 520.0 * 86400.0)
-        q_m_ft3s_arr = q_l_ft3s + q_g_ft3s_arr
-        lambda_l_arr = np.where(q_m_ft3s_arr > 0, q_l_ft3s / q_m_ft3s_arr, 0.0)
-        rho_m_arr = lambda_l_arr * rho_l_g + (1.0 - lambda_l_arr) * rho_g_arr_g
-        
-        df_gas_pvt = pd.DataFrame({
-            'TVD_ft': tvd_negative_array_g,
-            'TVD_positive_ft': tvd_array_g,
-            'Z_Factor': z_arr_g,
-            'rho_g': rho_g_arr_g,
-            'q_g_ft3s': q_g_ft3s_arr,
-            'lambda_l': lambda_l_arr,
-            'rho_m': rho_m_arr
-        })
-        
-        # -------------------------------------------------------------------------
-        # FOCUSED PLOTLY CHART (CHART B: DOWNHOLE RATE & MIXTURE DENSITY)
-        # -------------------------------------------------------------------------
-        fig_gas_b = go.Figure()
-        fig_gas_b.add_trace(go.Scatter(
-            x=df_gas_pvt['rho_m'], 
-            y=df_gas_pvt['TVD_ft'],
-            mode='lines+markers', 
-            name='Multiphase Mixture Density (ρ_m, lb/ft³)',
-            line=dict(color='#1E3A8A', width=3),
-            customdata=df_gas_pvt['TVD_positive_ft'],
-            hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>ρ_m: %{x:.2f} lb/ft³<extra></extra>'
-        ))
-        fig_gas_b.add_trace(go.Scatter(
-            x=df_gas_pvt['q_g_ft3s'], 
-            y=df_gas_pvt['TVD_ft'],
-            mode='lines', 
-            name='Downhole Volumetric Gas Rate (q_g, ft³/s)',
-            line=dict(color='#7C3AED', width=2.5, dash='dash'),
-            xaxis='x2',
-            customdata=df_gas_pvt['TVD_positive_ft'],
-            hovertemplate='Depth: %{customdata:.1f} ft (TVD: %{y:.1f} ft)<br>q_g: %{x:.3f} ft³/s<extra></extra>'
-        ))
-        
-        fig_gas_b.update_layout(
-            title=dict(
-                text='Downhole Gas Rate (q_g) & Homogeneous Mixture Density (ρ_m) vs. Depth'
-            ),
-            xaxis=dict(
-                title=dict(text='Multiphase Mixture Density ρ_m (lb/ft³)', font=dict(color='#1E3A8A'))
-            ),
-            xaxis2=dict(
-                title=dict(text='Downhole Gas Volumetric Rate q_g (ft³/s)', font=dict(color='#7C3AED')),
-                overlaying='x', 
-                side='top'
-            ),
-            yaxis=dict(
-                title=dict(text='True Vertical Depth - TVD (ft)'),
-                autorange=False,
-                range=[-tvd_gas, 0]
-            ),
-            height=540,
-            margin=dict(l=60, r=60, t=110, b=40),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5),
-            hovermode="y unified"
-        )
-        st.plotly_chart(fig_gas_b, use_container_width=True)
-        
-        # Physical Interpretation Card
-        st.markdown(
-            f"""
-            <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 8px; padding: 1.1rem; margin-top: 0.5rem;">
-                <h4 style="color: #1E40AF; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;">💡 Engineering Interpretation: Gas Expansion vs. Mixture Density Decay</h4>
-                <p style="font-size: 0.89rem; color: #1E293B; line-height: 1.6; margin-bottom: 0.5rem;">
-                    As produced gas travels upward from bottomhole (<i>P</i><sub>bhp</sub>) to wellhead (<i>P</i><sub>wh</sub>), the overburden pressure drops significantly. According to the Real Gas Law (<i>P</i> · <i>V</i> = <i>n</i> · <i>Z</i> · <i>R</i> · <i>T</i>):
-                </p>
-                <ul style="font-size: 0.87rem; color: #334155; line-height: 1.55; margin-bottom: 0;">
-                    <li><b>Volumetric Gas Expansion (<i>q</i><sub>g</sub> ↑):</b> Lower pressure shallow in the wellbore allows gas molecules to decompress and expand. The volumetric flow rate (<i>q</i><sub>g</sub>) increases drastically as the fluid approaches the surface, driving higher actual fluid velocities.</li>
-                    <li><b>Density Reduction ({term("rho-g", "ρ<sub>g</sub>")} ↓ & ρ<sub>m</sub> ↓):</b> Because the same mass of gas now occupies a significantly larger volume (<i>q</i><sub>g</sub>), in-situ gas density (ρ<sub>g</sub>) drops sharply toward the surface.</li>
-                    <li><b>Liquid Holdup Influence ({term("holdup", "λ<sub>l</sub>")}):</b> Lower mixture density (ρ<sub>m</sub>) near the surface reduces {term("hydrostatic", "hydrostatic head")} pressure losses. However, if condensate (CGR) or water (WGR) is present, the dense liquid phase exerts a stronger weighting on ρ<sub>m</sub> = λ<sub>l</sub> · ρ<sub>l</sub> + (1 - λ<sub>l</sub>) · ρ<sub>g</sub>, keeping ρ<sub>m</sub> higher than pure gas density.</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-# -----------------------------------------------------------------------------
-# PAGE 3: WELLBORE HYDRAULICS
-# -----------------------------------------------------------------------------
-elif page == "3. Wellbore Hydraulics":
+elif page == "2. Wellbore Hydraulics":
     st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Have a comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
     tab1, tab2 = st.tabs([
@@ -2107,7 +1658,7 @@ elif page == "3. Wellbore Hydraulics":
             When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a {term('slurry', 'slurry mixture')} that alters fluid density and causes aggressive pipe wear.
         </div>
         """, unsafe_allow_html=True)
-        # Simplified Callout Cards (Page 6 Style)
+        # Simplified Callout Cards (Page 5 Style)
         st.markdown(f"""
         <div class="m2-card">
             <div class="m2-card-head">
@@ -2459,9 +2010,9 @@ elif page == "3. Wellbore Hydraulics":
             st.plotly_chart(fig_area, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# PAGE 4: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
+# PAGE 3: TUBING STRESS & STRUCTURAL LOAD ANALYSIS
 # -----------------------------------------------------------------------------
-elif page == "4. Tubing Stress Analysis":
+elif page == "3. Tubing Stress Analysis":
     st.markdown('<div class="main-header">Step 4: Tubing Stress & Structural Load Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Comprehensive tubing load balance, trapped APB, Lamé stress distributions, shut-in burst, NACE sour service, and connection selection.</div>', unsafe_allow_html=True)
     
@@ -2904,9 +2455,9 @@ elif page == "4. Tubing Stress Analysis":
             st.warning(f"⚠️ **API 5CT PROOF-TEST ALERT**: Mill proof test pressure ({p_test_mill:.0f} psi) is below expected static shut-in CITHP ({cithp_calc_psi:.0f} psi). Wellhead pressure exceeds standard mill test parameters.")
 
 # -----------------------------------------------------------------------------
-# PAGE 5: METALLURGICAL & MATERIAL PROPERTY SELECTION (SOUR & QA LAB)
+# PAGE 4: METALLURGICAL & MATERIAL PROPERTY SELECTION (SOUR & QA LAB)
 # -----------------------------------------------------------------------------
-elif page == "5. Material Selection":
+elif page == "4. Material Selection":
     st.markdown("""
         <style>
         .lab-card {
@@ -2967,17 +2518,17 @@ elif page == "5. Material Selection":
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="main-header">Step 5: Metallurgical, Material QA & Connection Lab</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Step 4: Metallurgical, Material QA & Connection Lab</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Interactive educational lab for Sour Service (pH₂S), Premium Connection triggers, and API 5CT Material QA properties.</div>', unsafe_allow_html=True)
 
-    # Top-Level Tabs for Page 5
+    # Top-Level Tabs for Page 4
     page5_tab1, page5_tab2 = st.tabs([
         "🧪 Tab 1: Sour Service & Premium Connection Lab",
         "🔬 Tab 2: API 5CT Material QA & Concept Simulator"
     ])
 
     # =========================================================================
-    # PAGE 5 - TAB 1: SOUR SERVICE & PREMIUM CONNECTION LAB
+    # PAGE 4 - TAB 1: SOUR SERVICE & PREMIUM CONNECTION LAB
     # =========================================================================
     with page5_tab1:
         # 1. STREAMLINED CONCEPT PRIMER
@@ -3190,7 +2741,7 @@ elif page == "5. Material Selection":
         st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================================
-    # PAGE 5 - TAB 2: API 5CT MATERIAL QA & CONCEPT SIMULATOR (UPDATED CODES)
+    # PAGE 4 - TAB 2: API 5CT MATERIAL QA & CONCEPT SIMULATOR (UPDATED CODES)
     # =========================================================================
     with page5_tab2:
         st.markdown("### 🔬 API 5CT / ISO 11960 Material Property QA Simulator")
@@ -3433,10 +2984,10 @@ elif page == "5. Material Selection":
                     """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# PAGE 6: CALCULATION METHODOLOGY
+# PAGE 5: CALCULATION METHODOLOGY
 # -----------------------------------------------------------------------------
 elif page == METHODOLOGY_PAGE:
-    st.markdown('<div class="main-header">Step 6: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Step 5: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
     try:
         active_step = int(st.query_params.get("step", 0))
@@ -4087,10 +3638,10 @@ elif page == METHODOLOGY_PAGE:
         )
 
 # -----------------------------------------------------------------------------
-# 7: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
+# 6: WELLBORE & DUAL-LIFECYCLE OPERATIONAL INPUTS
 # -----------------------------------------------------------------------------
-elif page == "7. Well & Fluid Inputs":
-    st.markdown('<div class="main-header">Step 7: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True)
+elif page == "6. Well & Fluid Inputs":
+    st.markdown('<div class="main-header">Step 6: Wellbore Geometry & Operational Inputs</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Specify wellbore profile, environmental chemistry, solid particles production, rate modes, and dual-lifecycle operational envelopes.</div>', unsafe_allow_html=True)
 
     current_inputs = st.session_state.inputs
@@ -4413,13 +3964,13 @@ elif page == "7. Well & Fluid Inputs":
     _, col_btn_mid, _ = st.columns([1, 2, 1])
     with col_btn_mid:
         if st.button("💾 Save Operational Baseline & Lifecycle State", type="primary", use_container_width=True):
-            st.success("✅ Operational inputs saved! Proceed to Page 9 to view candidate screening calculations.")
+            st.success("✅ Operational inputs saved! Proceed to Page 8 to view candidate screening calculations.")
 
 # -----------------------------------------------------------------------------
-# 8: CANDIDATE TUBING SPECS
+# 7: CANDIDATE TUBING SPECS
 # -----------------------------------------------------------------------------
-elif page == "8. Candidate Tubing Specs":
-    st.markdown('<div class="main-header">Step 8: Candidate Tubing Database</div>', unsafe_allow_html=True)
+elif page == "7. Candidate Tubing Specs":
+    st.markdown('<div class="main-header">Step 7: Candidate Tubing Database</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Manage standard API tubing & casing dimensions (up to 9.625" OD), steel grades, UNS designations, and mechanical limits.</div>', unsafe_allow_html=True)
 
     st.subheader("🔍 Database Filter Controls")
@@ -4484,15 +4035,15 @@ elif page == "8. Candidate Tubing Specs":
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# 9: ENGINEERING CALCULATIONS
+# 8: ENGINEERING CALCULATIONS
 # -----------------------------------------------------------------------------
-elif page == "9. Engineering Calculations":
-    st.markdown('<div class="main-header">Step 9: Engineering Calculation Engine</div>', unsafe_allow_html=True)
+elif page == "8. Engineering Calculations":
+    st.markdown('<div class="main-header">Step 8: Engineering Calculation Engine</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluates dynamic PVT, pressure losses, velocity screening, APB, static CITHP burst, and Lubinski stress.</div>', unsafe_allow_html=True)
     
     candidates = active_candidate_df()
     if candidates.empty:
-        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 7.")
         st.stop()
         
     try:
@@ -4501,7 +4052,7 @@ elif page == "9. Engineering Calculations":
         st.error(f"Input validation failed: {error}")
         st.stop()
         
-    st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 8 filter selection.")
+    st.caption(f"Screening **{len(candidates)}** candidate(s) from the Page 7 filter selection.")
     
     # --- Main Candidate Screening Matrix ---
     st.subheader(f"Candidate Screening Matrix ({st.session_state.inputs.get('well_type', 'Oil Well')} Mode)")
@@ -4687,15 +4238,15 @@ elif page == "9. Engineering Calculations":
         st.markdown(f"• **Overall Compliance Status:** {'PASS' if row_det['Overall_Pass'] else 'FAIL'}")
 
 # -----------------------------------------------------------------------------
-# PAGE 10: RECOMMENDATION & LIFECYCLE SENSITIVITY
+# PAGE 9: RECOMMENDATION & LIFECYCLE SENSITIVITY
 # -----------------------------------------------------------------------------
-elif page == "10. Recommendation & Sensitivity":
+elif page == "9. Recommendation & Sensitivity":
     st.markdown('<div class="main-header">Step 10: Recommendations & Lifecycle Sensitivity Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluate qualified tubing options, dynamic pressure drop evolution over well field life, and drawdown limit thresholds.</div>', unsafe_allow_html=True)
     
     candidates = active_candidate_df()
     if candidates.empty:
-        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 8.")
+        st.warning("No tubing candidates are selected. Adjust the OD/grade filters on Page 7.")
         st.stop()
         
     try:
@@ -4704,7 +4255,7 @@ elif page == "10. Recommendation & Sensitivity":
         st.error(f"Input validation failed: {error}")
         st.stop()
         
-    # Create Main Tabs for Page 10
+    # Create Main Tabs for Page 9
     page10_tab1, page10_tab2 = st.tabs([
         "🏆 Tab 1: Qualified Recommendations & Sensitivity",
         "📈 Tab 2: Tubing Selection & Pressure Drop Along Well Life"
@@ -4806,7 +4357,7 @@ elif page == "10. Recommendation & Sensitivity":
                 * **NACE & Structural Safety:** All passed candidates provide a von Mises triaxial SF $\ge 1.25$ under Lubinski net axial tension and APB rise (**{top_1['dp_apb_psi']} psi**).
                 """)
 
-        # General Interactive Sensitivity Charts (Current Page 10 Tab 1 Plots)
+        # General Interactive Sensitivity Charts (Current Page 9 Tab 1 Plots)
         st.markdown("---")
         st.subheader("General Tubing Diameter Sensitivity Charts")
         sens_tab1, sens_tab2 = st.tabs(["Pressure Drop vs. Tubing ID", "Velocity Window vs. Tubing ID"])
