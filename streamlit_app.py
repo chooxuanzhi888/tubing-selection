@@ -1648,13 +1648,19 @@ elif page == "2. Wellbore Hydraulics":
     # =========================================================================
     with tab1:
         st.markdown("### 🧪 Slurry Physics and Velocity Limits")
-        st.markdown(f"""
-        <div class="m2-purpose" style="margin-bottom: 1.2rem; font-size: 1.2rem; line-height: 1.5;">
-            <b>What are solid particles, and where do they come from?</b><br/>
-            In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), 
-            {term('frac-proppant-flowback', 'frac proppant flowback')}, or {term('corrosion-scale', 'corrosion scale')}. When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a {term('slurry', 'slurry mixture')} that alters fluid density and causes aggressive pipe wear.
-        </div>
-        """, unsafe_allow_html=True)
+        col_slurry_text, col_slurry_html = st.columns([1, 1], gap="medium")
+        with col_slurry_text:
+            st.markdown(f"""
+            <div class="m2-purpose" style="margin-bottom: 1.2rem;">
+                <b>What are solid particles, and where do they come from?</b><br/>
+                In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), 
+                {term('frac-proppant-flowback', 'frac proppant flowback')}, or {term('corrosion-scale', 'corrosion scale')}.
+                They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well.
+                When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a {term('slurry', 'slurry mixture')} that alters fluid density and causes aggressive pipe wear.
+            </div>
+            """, unsafe_allow_html=True)
+        with col_slurry_html:
+            components.html(load_asset('slurry_physics.html'), height=320, scrolling=False)
         # Simplified Callout Cards (Page 5 Style)
         st.markdown(f"""
         <div class="m2-card">
