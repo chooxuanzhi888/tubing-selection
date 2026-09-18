@@ -2089,7 +2089,7 @@ elif page == "3. Wellbore Hydraulics":
     st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Have a comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
     tab1, tab2 = st.tabs([
-        "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
+        "⏳ Tab 1: Slurry Physics & Operating Envelope",
         "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics"
     ])
     # =========================================================================
