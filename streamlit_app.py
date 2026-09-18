@@ -1275,7 +1275,7 @@ st.sidebar.caption("Upper-Completion Design Engine")
 PAGE_LABELS = [
     "1. Introduction & Overview",
     "2. PVT Properties of Fluid",
-    "3. Wellbore Hydraulics & Velocity Limits",
+    "3. Wellbore Hydraulics",
     "4. Tubing Stress Analysis",
     "5. Material Selection",
     "6. Calculation Methodology",
@@ -2083,11 +2083,11 @@ elif page == "2. PVT Properties of Fluid":
         )
 
 # -----------------------------------------------------------------------------
-# PAGE 3: WELLBORE HYDRAULICS & VELOCITY LIMITS
+# PAGE 3: WELLBORE HYDRAULICS
 # -----------------------------------------------------------------------------
-elif page == "3. Wellbore Hydraulics & Velocity Limits":
-    st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics &amp; Velocity Limits</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
+elif page == "3. Wellbore Hydraulics":
+    st.markdown('<div class="main-header">Step 3: Wellbore Hydraulics</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Have a comprehensive velocity window screening, solid particle slurry physics, and dynamic pressure loss mechanics.</div>', unsafe_allow_html=True)
     tab1, tab2 = st.tabs([
         "⏳ Tab 1: Solid Particle Slurry Physics & Operating Envelope",
         "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics"
