@@ -1570,7 +1570,7 @@ if page == "1. Introduction & Overview":
         <p class="p1-section-lead">
             <b>Production tubing</b> is the primary conduit carrying <b>oil, gas, or injected fluids</b> between the
             reservoir and surface facilities. Its design balances <b>flow performance, mechanical integrity, and
-            operational requirements</b> — tubing size, wall thickness, steel grade, connection type, and mechanical
+            operational requirements</b>. For example, tubing size, wall thickness, steel grade, connection type, and mechanical
             strength must together withstand the pressure, temperature, and loads seen across the well's life.
         </p>
     </section>
