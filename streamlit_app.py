@@ -324,9 +324,9 @@ GLOSSARY = {
                             "The surface force holding a liquid droplet together against the gas around it. "
                             "It sets the largest droplet the gas stream can carry before it breaks up or falls back."),
     "frac-proppant-flowback": ("Frac proppant flowback",
-                               "High-strength ceramic or coated sand grains injected during hydraulic fracturing that flow back into the wellbore with produced fluids, acting as highly abrasive solids."),
+                               "Ceramic or coated sand grains injected during hydraulic fracturing. They flow back into the wellbore with produced fluids."),
     "corrosion-scale": ("Corrosion scale",
-                        "Solid mineral scale deposits or iron sulfide/oxide flakes detached from the casing/tubing inner walls that enter the flow stream, increasing fluid density and abrasive wear."),
+                        "Solid mineral scale deposits detached from the casing/tubing inner walls that enter the flow stream."),
     "sand-fallout": ("Sand fallout",
                      "The physical settling of suspended sand grains down the wellbore column when fluid velocity drops below terminal settling velocity, forming bottomhole sand bridges."),
     "wellbore-choking": ("Wellbore choking",
