@@ -1274,7 +1274,7 @@ st.sidebar.caption("Upper-Completion Design Engine")
 
 PAGE_LABELS = [
     "1. Introduction & Overview",
-    "2. Wellbore Geometry & PVT",
+    "2. PVT Properties of Fluid",
     "3. Wellbore Hydraulics & Velocity Limits",
     "4. Tubing Stress Analysis",
     "5. Material Selection",
@@ -1637,9 +1637,9 @@ if page == "1. Introduction & Overview":
 # -----------------------------------------------------------------------------
 # PAGE 2: WELLBORE HYDRAULICS & PVT
 # -----------------------------------------------------------------------------
-elif page == "2. Wellbore Geometry & PVT":
-    st.markdown('<div class="main-header">Step 2: Wellbore Geometry & Interactive PVT Characterization</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Interactive simulation of fluid phase behaviour, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
+elif page == "2. PVT Properties of Fluid":
+    st.markdown('<div class="main-header">Step 2: PVT Properties of Fluid</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Understand the fluid phase behaviour, downhole density profiles, and volume swelling across true vertical depth (TVD).</div>', unsafe_allow_html=True)
     
     tab_pvt, tab_geo = st.tabs([
         "📊 Tab 1: Interactive PVT & Depth Profiles",
