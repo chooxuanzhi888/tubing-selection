@@ -2093,10 +2093,10 @@ elif page == "3. Wellbore Hydraulics":
         "📊 Tab 2: Total Slurry Wellbore Pressure Loss & Friction Mechanics"
     ])
     # =========================================================================
-    # TAB 1: SOLID PARTICLE SLURRY PHYSICS
+    # TAB 1: SLURRY PHYSICS
     # =========================================================================
     with tab1:
-        st.markdown("### 🧪 Solid Particle Slurry Integration & Physics Mechanics")
+        st.markdown("### 🧪 Slurry Physics and Velocity Limits")
         # Introduction to Solid Particles with interactive GLOSSARY terms
         st.markdown(f"""
         <div class="m2-purpose" style="margin-bottom: 1.2rem;">
