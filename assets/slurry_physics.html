@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square Subsurface Slurry & Fluid Dynamics</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .stage-card {
+            width: 540px;
+            height: 540px;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08), 0 8px 12px -6px rgba(0, 0, 0, 0.04);
+            border: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .legend-bar {
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.70rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stage-card">
+        <div class="canvas-container">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <div class="legend-bar">
+            <div class="legend-item">
+                <span class="dot" style="background: #d97706;"></span>
+                <span>Sand</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot" style="background: #0284c7;"></span>
+                <span>Proppant</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot" style="background: #f59e0b;"></span>
+                <span>Oil/Gas</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot" style="background: #58240c;"></span>
+                <span>Slurry Stream</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let geom = {};
+        let particles = [];
+        let fluidStreamers = [];
+        let bubbles = [];
+        let animTime = 0;
+
+        function resizeCanvas() {
+            canvas.width = 540;
+            canvas.height = 492;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            geom = {
+                formationW: w * 0.22,
+                fracW: w * 0.14,
+                casingX: w * 0.44,
+                perfY: h * 0.52,
+                perfH: h * 0.22,
+                tubingLeftX: w * 0.68,
+                tubingRightX: w * 0.86
+            };
+        }
+
+        class Particle {
+            constructor(x, y, type = 'SAND', isPacked = true) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.isPacked = isPacked;
+                this.vx = 0;
+                this.vy = 0;
+
+                if (type === 'SAND') {
+                    this.radius = Math.random() * 1.2 + 1.6;
+                    this.color = '#d97706';
+                    this.density = 2.65;
+                } else {
+                    this.radius = Math.random() * 1.4 + 2.5;
+                    this.color = '#0284c7';
+                    this.density = 3.10;
+                }
+            }
+
+            reset(x, y, isPacked = true) {
+                this.x = x;
+                this.y = y;
+                this.isPacked = isPacked;
+                this.vx = 0;
+                this.vy = 0;
+            }
+        }
+
+        function initSimulation() {
+            particles = [];
+            fluidStreamers = [];
+            bubbles = [];
+
+            // Formation Sand Grains
+            for (let i = 0; i < 180; i++) {
+                const x = Math.random() * (geom.formationW - 8) + 4;
+                const y = Math.random() * canvas.height;
+                particles.push(new Particle(x, y, 'SAND', true));
+            }
+
+            // Hydraulic Fracture Proppants
+            for (let i = 0; i < 110; i++) {
+                const x = geom.formationW + Math.random() * geom.fracW;
+                const y = Math.random() * canvas.height;
+                particles.push(new Particle(x, y, 'PROPPANT', true));
+            }
+
+            // Hydrocarbon Streamlines
+            for (let i = 0; i < 35; i++) {
+                fluidStreamers.push({
+                    x: Math.random() * geom.casingX,
+                    y: geom.perfY - geom.perfH / 2 + Math.random() * geom.perfH,
+                    length: Math.random() * 16 + 10,
+                    speed: Math.random() * 0.9 + 0.7
+                });
+            }
+
+            // Micro-bubbles inside production tubing
+            for (let i = 0; i < 25; i++) {
+                bubbles.push({
+                    x: geom.tubingLeftX + Math.random() * (geom.tubingRightX - geom.tubingLeftX),
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.8 + 0.8,
+                    speed: Math.random() * 1.5 + 1.2,
+                    wobble: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function updatePhysics(dt) {
+            const fluidVelocity = 1.25;
+
+            // Streamlines
+            fluidStreamers.forEach(st => {
+                if (st.x < geom.tubingLeftX + 4) {
+                    st.x += (fluidVelocity * 2.4 + st.speed) * dt * 60;
+                    st.y += (geom.perfY - st.y) * 0.05;
+                } else {
+                    st.x = Math.max(geom.tubingLeftX + 3, Math.min(geom.tubingRightX - 3, st.x));
+                    st.y -= (fluidVelocity * 2.6 + st.speed) * dt * 60;
+                }
+
+                if (st.y < -20 || st.x > canvas.width + 20) {
+                    st.x = Math.random() * (geom.formationW + geom.fracW);
+                    st.y = geom.perfY - geom.perfH / 2 + Math.random() * geom.perfH;
+                }
+            });
+
+            // Micro-bubbles rising inside tubing
+            bubbles.forEach(b => {
+                b.y -= b.speed * dt * 60;
+                b.wobble += 0.08;
+                b.x += Math.sin(b.wobble) * 0.4;
+
+                const minX = geom.tubingLeftX + b.radius + 1;
+                const maxX = geom.tubingRightX - b.radius - 1;
+                if (b.x < minX) b.x = minX;
+                if (b.x > maxX) b.x = maxX;
+
+                if (b.y < -10) {
+                    b.y = canvas.height + 10;
+                    b.x = geom.tubingLeftX + Math.random() * (geom.tubingRightX - geom.tubingLeftX);
+                }
+            });
+
+            // Particles
+            particles.forEach(p => {
+                if (p.isPacked) {
+                    const nearPerfY = Math.abs(p.y - geom.perfY) < (geom.perfH * 0.88);
+                    const nearPerfX = p.x > (geom.formationW * 0.28);
+
+                    if (nearPerfY && nearPerfX) {
+                        if (Math.random() < 0.016) {
+                            p.isPacked = false;
+                        }
+                    }
+                } else {
+                    let targetVx = 0;
+                    let targetVy = 0;
+
+                    if (p.x < geom.casingX) {
+                        targetVx = fluidVelocity * (p.type === 'SAND' ? 2.5 : 1.9);
+                        targetVy = (geom.perfY - p.y) * 0.06 * fluidVelocity;
+                    } else if (p.x >= geom.casingX && p.x < geom.tubingLeftX + 5) {
+                        targetVx = fluidVelocity * 2.1;
+                        targetVy = (geom.perfY - p.y) * 0.08 * fluidVelocity - 0.4;
+                    } else {
+                        const tubingCenter = (geom.tubingLeftX + geom.tubingRightX) / 2;
+                        targetVx = (tubingCenter - p.x) * 0.12;
+                        
+                        const stokesSettling = (p.density * p.radius) / 6.0;
+                        targetVy = -(fluidVelocity * 3.0 - stokesSettling);
+                    }
+
+                    p.vx += (targetVx - p.vx) * 0.10 * dt * 60;
+                    p.vy += (targetVy - p.vy) * 0.10 * dt * 60;
+
+                    p.x += p.vx * dt * 60;
+                    p.y += p.vy * dt * 60;
+
+                    // Hard tubing wall bounds
+                    if (p.x >= geom.tubingLeftX - 2) {
+                        const minX = geom.tubingLeftX + p.radius + 2;
+                        const maxX = geom.tubingRightX - p.radius - 2;
+
+                        if (p.x < minX) { p.x = minX; p.vx = 0; }
+                        if (p.x > maxX) { p.x = maxX; p.vx = 0; }
+                    }
+
+                    if (p.y < -30 || p.y > canvas.height + 30 || p.x > canvas.width + 30) {
+                        if (p.type === 'SAND') {
+                            p.reset(Math.random() * geom.formationW, Math.random() * canvas.height, true);
+                        } else {
+                            p.reset(geom.formationW + Math.random() * geom.fracW, Math.random() * canvas.height, true);
+                        }
+                    }
+                }
+            });
+
+            if (Math.random() < 0.15) {
+                const isSand = Math.random() > 0.35;
+                particles.push(new Particle(
+                    isSand ? Math.random() * geom.formationW : geom.formationW + Math.random() * geom.fracW,
+                    geom.perfY + (Math.random() - 0.5) * geom.perfH * 0.8,
+                    isSand ? 'SAND' : 'PROPPANT',
+                    false
+                ));
+                if (particles.length > 320) particles.shift();
+            }
+        }
+
+        function calculateSlurryDensityAt(x, y, radius) {
+            let count = 0;
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                if (!p.isPacked) {
+                    const dx = p.x - x;
+                    const dy = p.y - y;
+                    if (dx * dx + dy * dy < radius * radius) {
+                        count++;
+                    }
+                }
+            }
+            return Math.min(count / 9, 1.0);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Sandstone Rock Layer
+            const rockGrad = ctx.createLinearGradient(0, 0, geom.formationW, 0);
+            rockGrad.addColorStop(0, '#fde68a');
+            rockGrad.addColorStop(1, '#fef3c7');
+            ctx.fillStyle = rockGrad;
+            ctx.fillRect(0, 0, geom.formationW, canvas.height);
+
+            ctx.fillStyle = 'rgba(217, 119, 6, 0.12)';
+            for (let i = 0; i < canvas.height; i += 16) {
+                ctx.fillRect(0, i, geom.formationW, 2);
+            }
+
+            // 2. Fracture Zone
+            const fracGrad = ctx.createLinearGradient(geom.formationW, 0, geom.formationW + geom.fracW, 0);
+            fracGrad.addColorStop(0, 'rgba(254, 243, 199, 0.9)');
+            fracGrad.addColorStop(0.5, 'rgba(253, 230, 138, 0.95)');
+            fracGrad.addColorStop(1, 'rgba(254, 243, 199, 0.9)');
+            ctx.fillStyle = fracGrad;
+            ctx.fillRect(geom.formationW, 0, geom.fracW, canvas.height);
+
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(geom.formationW, 0); ctx.lineTo(geom.formationW, canvas.height);
+            ctx.moveTo(geom.formationW + geom.fracW, 0); ctx.lineTo(geom.formationW + geom.fracW, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 3. Steel Casing & Perforation Tunnel
+            const casingWidth = 14;
+            const casingGrad = ctx.createLinearGradient(geom.casingX - casingWidth, 0, geom.casingX, 0);
+            casingGrad.addColorStop(0, '#64748b');
+            casingGrad.addColorStop(0.5, '#cbd5e1');
+            casingGrad.addColorStop(1, '#475569');
+            ctx.fillStyle = casingGrad;
+            ctx.fillRect(geom.casingX - casingWidth, 0, casingWidth, canvas.height);
+
+            const perfYTop = geom.perfY - geom.perfH / 2;
+            ctx.clearRect(geom.casingX - casingWidth - 2, perfYTop, casingWidth + 4, geom.perfH);
+
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(geom.casingX - casingWidth - 2, perfYTop, casingWidth + 4, geom.perfH);
+
+            // 4. Wellbore Annulus & Production Tubing Structure
+            const tubingWidth = geom.tubingRightX - geom.tubingLeftX;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(geom.casingX, 0, canvas.width - geom.casingX, canvas.height);
+
+            // Tubing Metallic Walls
+            const wallGrad = ctx.createLinearGradient(geom.tubingLeftX - 5, 0, geom.tubingLeftX, 0);
+            wallGrad.addColorStop(0, '#334155'); wallGrad.addColorStop(1, '#94a3b8');
+            ctx.fillStyle = wallGrad;
+            ctx.fillRect(geom.tubingLeftX - 5, 0, 5, canvas.height);
+            ctx.fillRect(geom.tubingRightX, 0, 5, canvas.height);
+
+            // 5. Dynamic Hydrocarbon Fluid & Slurry Color Transition
+            const perfXStart = geom.formationW;
+            const perfXEnd = geom.tubingLeftX;
+
+            const perfSlurryConc = calculateSlurryDensityAt(
+                (perfXStart + perfXEnd) / 2,
+                geom.perfY,
+                geom.perfH * 1.2
+            );
+
+            const rFluid = Math.round(245 * (1 - perfSlurryConc) + 88 * perfSlurryConc);
+            const gFluid = Math.round(158 * (1 - perfSlurryConc) + 36 * perfSlurryConc);
+            const bFluid = Math.round(11 * (1 - perfSlurryConc) + 12 * perfSlurryConc);
+            const alphaFluid = 0.38 + perfSlurryConc * 0.48;
+
+            ctx.fillStyle = `rgba(${rFluid}, ${gFluid}, ${bFluid}, ${alphaFluid})`;
+            ctx.beginPath();
+            ctx.moveTo(perfXStart, perfYTop);
+            ctx.lineTo(perfXEnd, perfYTop);
+            ctx.lineTo(perfXEnd, perfYTop + geom.perfH);
+            ctx.lineTo(perfXStart, perfYTop + geom.perfH);
+            ctx.closePath();
+            ctx.fill();
+
+            // 6. Shining, Realistic Fluid Texture Inside Production Tubing
+            const tubingSlurryConc = calculateSlurryDensityAt(
+                (geom.tubingLeftX + geom.tubingRightX) / 2,
+                canvas.height * 0.35,
+                tubingWidth * 1.5
+            );
+
+            const rTubing = Math.round(245 * (1 - tubingSlurryConc) + 88 * tubingSlurryConc);
+            const gTubing = Math.round(158 * (1 - tubingSlurryConc) + 36 * tubingSlurryConc);
+            const bTubing = Math.round(11 * (1 - tubingSlurryConc) + 12 * tubingSlurryConc);
+
+            // Shining Luminescence Multiplier
+            const shinePulse = 0.85 + 0.15 * Math.sin(animTime * 3.5);
+            const alphaTubing = (0.42 + tubingSlurryConc * 0.48) * shinePulse;
+
+            // Base Fluid Column
+            ctx.fillStyle = `rgba(${rTubing}, ${gTubing}, ${bTubing}, ${alphaTubing})`;
+            ctx.fillRect(geom.tubingLeftX, 0, tubingWidth, canvas.height);
+
+            // Organic Fluid Waves & Viscous Flow Lines
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(geom.tubingLeftX, 0, tubingWidth, canvas.height);
+            ctx.clip();
+
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 * shinePulse})`;
+            ctx.lineWidth = 1.5;
+            for (let offset = -50; offset < canvas.height + 50; offset += 30) {
+                const yPos = (offset - (animTime * 45) % 30);
+                ctx.beginPath();
+                for (let x = geom.tubingLeftX; x <= geom.tubingRightX; x += 3) {
+                    const waveY = yPos + Math.sin((x - geom.tubingLeftX) * 0.15 + animTime * 4) * 4;
+                    if (x === geom.tubingLeftX) ctx.moveTo(x, waveY);
+                    else ctx.lineTo(x, waveY);
+                }
+                ctx.stroke();
+            }
+
+            // Central Shimmering Specular Highlight Streak
+            const shineGrad = ctx.createLinearGradient(geom.tubingLeftX, 0, geom.tubingRightX, 0);
+            shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            shineGrad.addColorStop(0.4, `rgba(255, 253, 231, ${0.35 * shinePulse})`);
+            shineGrad.addColorStop(0.6, `rgba(255, 255, 255, ${0.45 * shinePulse})`);
+            shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = shineGrad;
+            ctx.fillRect(geom.tubingLeftX, 0, tubingWidth, canvas.height);
+
+            // Render Micro-Bubbles
+            bubbles.forEach(b => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * shinePulse})`;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.restore();
+
+            // 7. Hydrocarbon Streamlines
+            fluidStreamers.forEach(st => {
+                ctx.strokeStyle = `rgba(217, 119, 6, 0.55)`;
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.moveTo(st.x, st.y);
+                ctx.lineTo(st.x + st.length, st.y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(st.x + st.length, st.y, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 8. Sand & Proppant Particles
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+
+                if (!p.isPacked) {
+                    ctx.strokeStyle = '#451a03';
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            });
+
+            // 9. Visual Overlay Typography
+            ctx.font = 'bold 10px -apple-system, sans-serif';
+            ctx.fillStyle = '#78350f';
+            ctx.fillText('SANDSTONE MATRIX', 10, 18);
+
+            ctx.fillStyle = '#b45309';
+            ctx.fillText('FRACTURE PACK', geom.formationW + 6, 18);
+
+            ctx.fillStyle = '#dc2626';
+            ctx.fillText('PERFORATION TUNNEL', geom.casingX - 130, perfYTop - 6);
+
+            ctx.fillStyle = '#0369a1';
+            ctx.fillText('PRODUCTION TUBING', geom.tubingLeftX - 100, canvas.height - 14);
+        }
+
+        let lastTime = performance.now();
+        function loop(now) {
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+            animTime += dt;
+
+            updatePhysics(dt);
+            render();
+
+            requestAnimationFrame(loop);
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+            initSimulation();
+            requestAnimationFrame(loop);
+        };
+    </script>
+</body>
+</html>

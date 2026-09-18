@@ -207,8 +207,7 @@ ELONGATION_C_ISO_11960 = 1942.57
 
 # Maximum effective specimen area. A larger physical specimen does not earn a
 # lower elongation requirement -- the area is capped before it enters the
-# correlation.
-AREA_CAP_IN2 = 0.75
+# correlation. USCS specimen areas are converted to mm^2 and capped here.
 AREA_CAP_MM2 = 490.0
 
 # Fixed round-bar areas: 12.7 mm and 8.9 mm diameter reduced sections.
