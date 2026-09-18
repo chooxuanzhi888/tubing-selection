@@ -2099,7 +2099,7 @@ elif page == "3. Wellbore Hydraulics":
         st.markdown("### 🧪 Slurry Physics and Velocity Limits")
         # Introduction to Solid Particles with interactive GLOSSARY terms
         st.markdown(f"""
-        <div class="m2-purpose" style="margin-bottom: 1.2rem;">
+        <div class="m2-purpose" style="margin-bottom: 1.2rem; font-size: 1.6rem; line-height: 1.6;">">
             <b>What are solid particles, and where do they come from?</b><br/>
             In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), 
             {term('frac-proppant-flowback', 'frac proppant flowback')}, or {term('corrosion-scale', 'corrosion scale')}.
