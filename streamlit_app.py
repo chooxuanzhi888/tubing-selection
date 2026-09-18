@@ -1652,7 +1652,7 @@ elif page == "2. Wellbore Hydraulics":
         <div class="m2-purpose" style="margin-bottom: 1.2rem; font-size: 1.2rem; line-height: 1.5;">
             <b>What are solid particles, and where do they come from?</b><br/>
             In oil and gas production, solid particles primarily consist of <b>formation sand grains</b> (mostly quartz silica), 
-            {term('frac-proppant-flowback', 'frac proppant flowback')}, or {term('corrosion-scale', 'corrosion scale')}. They originate from weakly consolidated rock formations surrounding the wellbore that break down as reservoir fluids flow into the well.    When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a {term('slurry', 'slurry mixture')} that alters fluid density and causes aggressive pipe wear.
+            {term('frac-proppant-flowback', 'frac proppant flowback')}, or {term('corrosion-scale', 'corrosion scale')}. When these heavy, abrasive particles get carried up the tubing, they transform clean fluid into a {term('slurry', 'slurry mixture')} that alters fluid density and causes aggressive pipe wear.
         </div>
         """, unsafe_allow_html=True)
         # Simplified Callout Cards (Page 5 Style)
