@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -129,13 +128,14 @@
         </pattern>
       </defs>
 
+      <!-- Outer Cement & Casing -->
       <rect x="20" y="10" width="220" height="720" fill="url(#cementPattern)"/>
-
       <rect x="40" y="10" width="180" height="720" fill="#0284c7" fill-opacity="0.05" stroke="#cbd5e1" stroke-width="2"/>
       <line x1="40" y1="10" x2="40" y2="730" stroke="#475569" stroke-width="4"/>
       <line x1="220" y1="10" x2="220" y2="730" stroke="#475569" stroke-width="4"/>
 
-      <rect x="120" y="10" width="20" height="720" fill="url(#tubingMetal)" stroke="#475569" stroke-width="1"/>
+      <!-- Production Tubing String (Ends at y=590 at Guide Shoe entry) -->
+      <rect x="120" y="10" width="20" height="580" fill="url(#tubingMetal)" stroke="#475569" stroke-width="1"/>
 
       <g class="hotspot" id="th" onclick="selectComponent('th')">
         <rect class="selection-box" x="25" y="15" width="280" height="45"/>
@@ -212,21 +212,29 @@
         <text class="label-text" x="245" y="453">Production Packer</text>
       </g>
 
-      <g class="hotspot" id="irsv" onclick="selectComponent('irsv')">
+      <!-- Replaced IRSV with Landing Nipple -->
+      <g class="hotspot" id="ln" onclick="selectComponent('ln')">
         <rect class="selection-box" x="90" y="515" width="215" height="55"/>
         <g class="comp-body">
-          <rect x="112" y="520" width="36" height="45" rx="2" fill="url(#steelDark)" stroke="#9333ea" stroke-width="1.5"/>
-          <circle cx="130" cy="542" r="5" fill="#a855f7"/>
-          <polygon points="130,532 125,538 135,538" fill="#c084fc"/>
+          <rect x="114" y="520" width="32" height="42" rx="2" fill="url(#steelDark)" stroke="#0284c7" stroke-width="1.5"/>
+          <!-- Internal profile representation -->
+          <rect x="117" y="526" width="4" height="12" fill="#0284c7"/>
+          <rect x="139" y="526" width="4" height="12" fill="#0284c7"/>
+          <rect x="117" y="542" width="4" height="14" fill="#94a3b8"/>
+          <rect x="139" y="542" width="4" height="14" fill="#94a3b8"/>
         </g>
-        <line class="pointer-line" x1="148" y1="542" x2="240" y2="542"/>
-        <text class="label-text" x="245" y="545">IRSV Barrier</text>
+        <line class="pointer-line" x1="148" y1="541" x2="240" y2="541"/>
+        <text class="label-text" x="245" y="544">Landing Nipple</text>
       </g>
 
+      <!-- Bottommost component: Guide Shoe -->
       <g class="hotspot" id="shoe" onclick="selectComponent('shoe')">
         <rect class="selection-box" x="90" y="585" width="215" height="65"/>
         <g class="comp-body">
-          <path d="M 118 590 L 142 590 L 142 630 L 118 610 Z" fill="url(#steelDark)" stroke="#d97706" stroke-width="1.5"/>
+          <!-- Left Shoe Profile -->
+          <path d="M 118 590 L 126 590 L 126 630 L 118 615 Z" fill="url(#steelDark)" stroke="#d97706" stroke-width="1.5"/>
+          <!-- Right Shoe Profile -->
+          <path d="M 134 590 L 142 590 L 142 615 L 134 630 Z" fill="url(#steelDark)" stroke="#d97706" stroke-width="1.5"/>
         </g>
         <line class="pointer-line" x1="142" y1="605" x2="240" y2="605"/>
         <text class="label-text" x="245" y="608">Guide Shoe</text>
@@ -283,15 +291,15 @@ const data = {
     category: "Zonal Isolation",
     desc: "Utilizes expandable elastomer elements and opposing bi-directional mechanical slip wickers to anchor inside the casing. Isolates the annular space above the reservoir, containing formation pressure inside the tubing."
   },
-  irsv: {
-    title: "Injection-Retrievable Safety Valve (IRSV)",
-    category: "Secondary Barrier",
-    desc: "A specialized downhole safety sub designed with an internal check-valve mechanism. Allows controlled fluid injection while preventing uncontained backflow toward upper completion zones."
+  ln: {
+    title: "Landing Nipple",
+    category: "Flow Control & Isolation",
+    desc: "A specialized completion sub with an internal profile designed to receive a wireline-set lock assembly. It provides an internal seal bore for blanking plugs, pressure memory gauges, or standing valves near the base of the upper completion."
   },
   shoe: {
     title: "Self-Aligning Guide Shoe",
     category: "Completion Bottom-Hole Assembly",
-    desc: "Featuring a tapered mule-shoe profile at the base of the tubing string, this component guides wireline or coiled tubing tools smoothly back into the tubing bore during reentry interventions."
+    desc: "Featuring a bevelled or entry-guided profile at the absolute bottom of the tubing string, this component ensures smooth reentry of wireline, slickline, or coiled tubing tools into the tubing string during intervention operations."
   }
 };
 
