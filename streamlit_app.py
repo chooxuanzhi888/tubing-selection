@@ -1648,7 +1648,7 @@ elif page == "2. Wellbore Hydraulics":
     # =========================================================================
     with tab1:
         st.markdown("### 🧪 Slurry Physics and Velocity Limits")
-        col_slurry_text, col_slurry_html = st.columns([1, 1], gap="medium")
+        col_slurry_text, col_slurry_html = st.columns([1, 1.5], gap="medium")
         with col_slurry_text:
             st.markdown(f"""
             <div class="m2-purpose" style="margin-bottom: 1.2rem;">
@@ -2989,7 +2989,7 @@ elif page == "4. Material Selection":
 # -----------------------------------------------------------------------------
 # PAGE 5: CALCULATION METHODOLOGY
 # -----------------------------------------------------------------------------
-elif page == METHODOLOGY_PAGE:
+elif page == "Calculation Methodology":
     st.markdown('<div class="main-header">Step 5: Comprehensive Calculation Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Mathematical guide mapping wellbore parameters through fluid PVT, slurry dynamics, hydraulics, structural load balance, and environmental safety gates. Click any box in the flowchart to jump straight to that step; click an <u>underlined term</u> anywhere on this page for a plain-English explanation.</div>', unsafe_allow_html=True)
     try:
